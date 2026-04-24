@@ -181,12 +181,55 @@ body{font-family:Arial,sans-serif;font-size:13px;background:#d8d8d8;padding:14px
 .section-divider td{background:#e8f0e8 !important;font-size:10px;color:#3a7a52;font-weight:bold;padding:3px 12px !important;border:none !important;}
 .section-divider-sjk td{background:#e8eef4 !important;color:#4a6478;}
 
+/* ── LOGIN SCREEN ── */
+#login-screen{
+  position:fixed;top:0;left:0;width:100%;height:100%;
+  background:#d8d8d8;display:flex;align-items:center;
+  justify-content:center;z-index:9999;
+}
+.login-box{background:#fff;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.15);overflow:hidden;width:360px;}
+.login-header{background:#4a6478;color:#fff;padding:24px;text-align:center;}
+.login-header h1{font-size:18px;font-weight:bold;margin-bottom:4px;}
+.login-header p{font-size:12px;opacity:.8;}
+.login-body{padding:24px;}
+.login-field{margin-bottom:14px;}
+.login-field label{display:block;font-size:11px;font-weight:bold;color:#555;margin-bottom:5px;text-transform:uppercase;}
+.login-field input{width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:5px;font-size:13px;outline:none;}
+.login-field input:focus{border-color:#4a6478;}
+.login-btn{width:100%;background:#4a6478;color:#fff;border:none;border-radius:5px;padding:11px;font-size:14px;font-weight:bold;cursor:pointer;margin-top:4px;}
+.login-btn:hover{background:#3a5468;}
+.login-err{background:#fdecea;border:1px solid #f5b8b5;color:#7b1a19;border-radius:5px;padding:8px 12px;font-size:12px;margin-bottom:12px;display:none;}
+
 /* ── RODAPÉ ── */
 .footer{margin-top:10px;font-size:10px;color:#666;border-top:1px solid #ccc;padding-top:6px;display:flex;align-items:center;justify-content:space-between;}
 .footer-badge{background:#4a6478;color:#fff;font-size:9px;padding:2px 6px;border-radius:3px;font-weight:bold;}
 </style>
 </head>
 <body>
+
+<!-- ══════════════════════════════════════
+     TELA 0 — LOGIN
+══════════════════════════════════════ -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-header">
+      <h1>✈ CCO · SAFE Aviation</h1>
+      <p>Acesso restrito — Centro de Controle de Operações</p>
+    </div>
+    <div class="login-body">
+      <div class="login-err" id="login-err">Usuário ou senha incorretos.</div>
+      <div class="login-field">
+        <label>Usuário</label>
+        <input type="email" id="login-user" placeholder="seu@email.com" autocomplete="username">
+      </div>
+      <div class="login-field">
+        <label>Senha</label>
+        <input type="password" id="login-pass" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <button class="login-btn" onclick="fazerLogin()">Entrar</button>
+    </div>
+  </div>
+</div>
 
 <!-- ══════════════════════════════════════
      TELA 1 — UPLOAD + DISPONIBILIDADE
@@ -300,6 +343,28 @@ body{font-family:Arial,sans-serif;font-size:13px;background:#d8d8d8;padding:14px
 </div>
 
 <script>
+// ══════════════════════════════════════════════════════
+// LOGIN
+// ══════════════════════════════════════════════════════
+(function(){
+  const U='cco@voesafe.com.br',P='SafeCCO123$',K='cco_auth';
+  function check(){if(sessionStorage.getItem(K)==='1')document.getElementById('login-screen').style.display='none';}
+  window.fazerLogin=function(){
+    const u=document.getElementById('login-user').value.trim();
+    const p=document.getElementById('login-pass').value;
+    const err=document.getElementById('login-err');
+    if(u===U&&p===P){
+      sessionStorage.setItem(K,'1');
+      document.getElementById('login-screen').style.display='none';
+      err.style.display='none';
+    }else{err.style.display='block';}
+  };
+  document.addEventListener('keydown',function(e){
+    if(e.key==='Enter'&&document.getElementById('login-screen').style.display!=='none')fazerLogin();
+  });
+  check();
+})();
+
 // ══════════════════════════════════════════════════════
 // PWA
 // ══════════════════════════════════════════════════════
