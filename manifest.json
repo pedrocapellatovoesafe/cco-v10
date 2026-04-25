@@ -1,17 +1,14 @@
 {
-  "name": "CCO Editor de Escala",
-  "short_name": "CCO Escala",
+  "name": "CCO · SAFE Aviation",
+  "short_name": "CCO SAFE",
   "description": "Centro de Controle de Operações — SAFE Aviation School",
   "display": "standalone",
-  "background_color": "#d8d8d8",
+  "background_color": "#1a2a3a",
   "theme_color": "#4a6478",
   "orientation": "landscape",
   "start_url": "/",
   "icons": [
-    {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' fill='%234a6478' rx='16'/><text y='.9em' font-size='80' x='10'>✈</text></svg>",
-      "sizes": "any",
-      "type": "image/svg+xml"
-    }
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
   ]
 }
