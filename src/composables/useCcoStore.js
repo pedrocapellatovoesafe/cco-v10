@@ -105,6 +105,7 @@ const ORDEM_BARRAS = [
 const BARRAS_CONHECIDAS = [...ORDEM_BARRAS]
 
 const state = reactive({
+  isAuthenticated: sessionStorage.getItem(SESSION_KEY) === '1',
   loginUser: '',
   loginPass: '',
   loginError: false,
@@ -135,6 +136,7 @@ const state = reactive({
 function login() {
   if (state.loginUser.trim() === USER_EMAIL && state.loginPass === USER_PASSWORD) {
     sessionStorage.setItem(SESSION_KEY, '1')
+    state.isAuthenticated = true
     state.loginError = false
     return true
   }
@@ -142,9 +144,16 @@ function login() {
   return false
 }
 
+function logout() {
+  sessionStorage.removeItem(SESSION_KEY)
+  state.isAuthenticated = false
+  // Reset other relevant state if needed
+  state.loginUser = ''
+  state.loginPass = ''
+}
+
 function checkLogin() {
-  // Router handles this via guards
-  return sessionStorage.getItem(SESSION_KEY) === '1'
+  return state.isAuthenticated
 }
 
 function findCol(header, keys) {
@@ -875,10 +884,17 @@ function availabilityLabel(nome) {
   return estado === 'folga' ? '✗' : estado === 'cond' ? '?' : '✓'
 }
 
+function voltarUpload() {
+  state.fileOk = false
+  state.availSectionVisible = false
+  state.parsedSlots = []
+}
+
 export function useCcoStore() {
   return {
     state,
     login,
+    logout,
     checkLogin,
     onFile,
     generateEditor: gerarEditor,
@@ -903,7 +919,6 @@ export function useCcoStore() {
     calendarMonthLabel,
     calendarRows,
     calendarDays,
-    currentView: computed(() => state.view),
     scoreOk: computed(() => state.scoreOk),
     scoreErr: computed(() => state.scoreErr),
     isAuth,
@@ -915,10 +930,6 @@ export function useCcoStore() {
     SKIP_VALIDATION_ST,
     scoreSjk: computed(() => state.scoreSjk),
     scoreCpq: computed(() => state.scoreCpq),
-    loginScreenVisible: computed(() => state.view === 'login'),
-    uploadScreenVisible: computed(() => state.view === 'upload'),
-    editorScreenVisible: computed(() => state.view === 'editor'),
-    calendarScreenVisible: computed(() => state.view === 'calendar'),
     activeTab: computed({ get: () => state.activeTab, set: (value) => { state.activeTab = value } }),
     editorTitle: computed(() => state.editorTitle),
     shuffleLog: computed(() => state.shuffleLog),

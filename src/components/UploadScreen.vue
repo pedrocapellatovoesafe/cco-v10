@@ -1,66 +1,71 @@
 <template>
-  <div id="upload-screen" class="upload-screen">
-    <div class="up-header">
-      <div class="up-header-title">
-        <img :src="iconUrl" alt="SAFE" style="width:36px;height:36px;border-radius:50%;opacity:.9;" />
-        <div>
-          <h1>✈ CCO Editor de Escala v10</h1>
-          <p>Carregue o export do Cavok e informe a disponibilidade do dia</p>
-        </div>
-      </div>
-      <button class="btn-calendar" @click="handleOpenCalendar">📅 Calendário de Solo</button>
-    </div>
-
-    <div class="up-body">
-      <div
-        class="drop-zone"
-        :class="{ 'drag-over': dragging }"
-        @click.prevent="triggerFileInput"
-        @dragover.prevent="dragging = true"
-        @dragleave.prevent="dragging = false"
-        @drop.prevent="onDrop"
-      >
-        <input type="file" ref="fileInput" accept=".xls,.xlsx" @change="onFileInput" />
-        <div class="drop-icon">📂</div>
-        <h3>Clique ou arraste o arquivo XLS do Cavok</h3>
-        <p>Formatos aceitos: .xls e .xlsx</p>
-        <button class="btn-upload" @click.stop.prevent="triggerFileInput">Selecionar arquivo</button>
-      </div>
-
-      <div class="file-ok" v-if="store.fileOk">✅ <span>{{ store.fileName }}</span> carregado com sucesso!</div>
-
-      <div class="avail-section" v-if="store.availSectionVisible">
-        <h3>Disponibilidade do dia</h3>
-        <p class="avail-help">
-          Clique em cada instrutor para alternar: Verde = disponível · Vermelho = folga · Amarelo = condicional (CCO confirma)
-        </p>
-        <div class="avail-legend">
-          <span class="leg"><span class="leg-dot ld-avail"></span> Disponível</span>
-          <span class="leg"><span class="leg-dot ld-folga"></span> Folga</span>
-          <span class="leg"><span class="leg-dot ld-cond"></span> Condicional</span>
-        </div>
-
-        <div class="avail-base" v-for="base in ['SJK', 'CPQ']" :key="base">
-          <h4>✈ {{ base === 'SJK' ? 'SJK — São José dos Campos' : 'CPQ — Campinas' }}</h4>
-          <div class="avail-subtitle">INSTRUTORES DE VOO</div>
-          <div class="instr-grid">
-            <span
-              v-for="instr in store.availabilityGroups[base].voo"
-              :key="instr.nome"
-              class="instr-toggle"
-              :class="store.availabilityState(instr.nome)"
-              @click="store.toggleDisp(instr.nome)"
-              :title="instr.nome"
-            >
-              {{ instr.nome.split(' ')[0] }}
-            </span>
+  <div class="screen-layout">
+    <div id="upload-screen" class="upload-screen">
+      <div class="up-header">
+        <div class="up-header-title">
+          <img :src="iconUrl" alt="SAFE" style="width:36px;height:36px;border-radius:50%;opacity:.9;" />
+          <div>
+            <h1>✈ CCO Editor de Escala v10</h1>
+            <p>Carregue o export do Cavok e informe a disponibilidade do dia</p>
           </div>
         </div>
+        <div class="header-actions">
+          <button class="btn-calendar" @click="handleOpenCalendar">📅 Calendário de Solo</button>
+          <button class="btn-logout" @click="handleLogout">Sair</button>
+        </div>
+      </div>
 
-        <p class="avail-notice">✓ Disponibilidade dos instrutores de solo carregada automaticamente do Calendário.</p>
-        <button class="btn-gerar" :disabled="store.btnGerarDisabled" @click="handleGenerateEditor">
-          ⚡ Gerar Editor de Escala
-        </button>
+      <div class="up-body">
+        <div
+          class="drop-zone"
+          :class="{ 'drag-over': dragging }"
+          @click.prevent="triggerFileInput"
+          @dragover.prevent="dragging = true"
+          @dragleave.prevent="dragging = false"
+          @drop.prevent="onDrop"
+        >
+          <input type="file" ref="fileInput" accept=".xls,.xlsx" @change="onFileInput" />
+          <div class="drop-icon">📂</div>
+          <h3>Clique ou arraste o arquivo XLS do Cavok</h3>
+          <p>Formatos aceitos: .xls e .xlsx</p>
+          <button class="btn-upload" @click.stop.prevent="triggerFileInput">Selecionar arquivo</button>
+        </div>
+
+        <div class="file-ok" v-if="store.state.fileOk">✅ <span>{{ store.state.fileName }}</span> carregado com sucesso!</div>
+
+        <div class="avail-section" v-if="store.state.availSectionVisible">
+          <h3>Disponibilidade do dia</h3>
+          <p class="avail-help">
+            Clique em cada instrutor para alternar: Verde = disponível · Vermelho = folga · Amarelo = condicional (CCO confirma)
+          </p>
+          <div class="avail-legend">
+            <span class="leg"><span class="leg-dot ld-avail"></span> Disponível</span>
+            <span class="leg"><span class="leg-dot ld-folga"></span> Folga</span>
+            <span class="leg"><span class="leg-dot ld-cond"></span> Condicional</span>
+          </div>
+
+          <div class="avail-base" v-for="base in ['SJK', 'CPQ']" :key="base">
+            <h4>✈ {{ base === 'SJK' ? 'SJK — São José dos Campos' : 'CPQ — Campinas' }}</h4>
+            <div class="avail-subtitle">INSTRUTORES DE VOO</div>
+            <div class="instr-grid">
+              <span
+                v-for="instr in store.availabilityGroups.value[base].voo"
+                :key="instr.nome"
+                class="instr-toggle"
+                :class="store.availabilityState(instr.nome)"
+                @click="store.toggleDisp(instr.nome)"
+                :title="instr.nome"
+              >
+                {{ instr.nome.split(' ')[0] }}
+              </span>
+            </div>
+          </div>
+
+          <p class="avail-notice">✓ Disponibilidade dos instrutores de solo carregada automaticamente do Calendário.</p>
+          <button class="btn-gerar" :disabled="store.state.btnGerarDisabled" @click="handleGenerateEditor">
+            ⚡ Gerar Editor de Escala
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -68,14 +73,11 @@
 
 <script setup>
 import iconUrl from '../icons/icon-192.png'
-import { ref } from 'vue'
-const props = defineProps({
-  store: {
-    type: Object,
-    required: true,
-  },
-})
-const store = props.store
+import { ref, inject } from 'vue'
+import { useRouter } from 'vue-router'
+
+const store = inject('store')
+const router = useRouter()
 const dragging = ref(false)
 const fileInput = ref(null)
 
@@ -93,9 +95,30 @@ function onDrop(event) {
   const file = event.dataTransfer?.files?.[0]
   if (file) store.onFile(file)
 }
+
+function handleLogout() {
+  store.logout()
+  router.push('/login')
+}
+
+function handleOpenCalendar() {
+  router.push('/calendar')
+}
+
+function handleGenerateEditor() {
+  store.generateEditor()
+  router.push('/editor')
+}
 </script>
 
 <style scoped>
+.screen-layout {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
 .upload-screen {
   max-width: 900px;
   width: 100%;
@@ -133,8 +156,12 @@ function onDrop(event) {
   font-size: 12px;
   opacity: 0.8;
 }
-.btn-calendar {
-  margin-top: 10px;
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.btn-calendar, .btn-logout {
   background: rgba(255, 255, 255, 0.2);
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.4);
@@ -144,8 +171,15 @@ function onDrop(event) {
   font-weight: bold;
   cursor: pointer;
 }
-.btn-calendar:hover {
+.btn-calendar:hover, .btn-logout:hover {
   background: rgba(255, 255, 255, 0.28);
+}
+.btn-logout {
+  background: rgba(231, 76, 60, 0.2);
+  border-color: rgba(231, 76, 60, 0.4);
+}
+.btn-logout:hover {
+  background: rgba(231, 76, 60, 0.3);
 }
 .up-body {
   padding: 24px;

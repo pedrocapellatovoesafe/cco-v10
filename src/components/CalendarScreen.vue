@@ -1,56 +1,59 @@
 <template>
-  <div id="cal-screen" class="calendar-screen">
-    <div class="cal-header">
-      <h1>📅 Disponibilidade Mensal — Instrutores de Solo</h1>
-      <div class="cal-nav">
-        <button class="btn-nav" @click="store.changeCalendarMonth(-1)">◀</button>
-        <div class="cal-month">{{ store.calendarMonthLabel }}</div>
-        <button class="btn-nav" @click="store.changeCalendarMonth(1)">▶</button>
+  <div class="screen-layout">
+    <div id="cal-screen" class="calendar-screen">
+      <div class="cal-header">
+        <h1>📅 Disponibilidade Mensal — Instrutores de Solo</h1>
+        <div class="cal-nav">
+          <button class="btn-nav" @click="store.changeCalendarMonth(-1)">◀</button>
+          <div class="cal-month">{{ store.calendarMonthLabel.value }}</div>
+          <button class="btn-nav" @click="store.changeCalendarMonth(1)">▶</button>
+        </div>
+        <button class="btn-cal-save" @click="store.saveCalendarStorage">💾 Salvar</button>
+        <span class="cal-saved">✓ Salvo!</span>
+        <button class="btn-cal-back" @click="handleBackToUpload">← Voltar</button>
+        <button class="btn-logout-cal" @click="handleLogout">Sair</button>
       </div>
-      <button class="btn-cal-save" @click="store.saveCalendarStorage">💾 Salvar</button>
-      <span class="cal-saved">✓ Salvo!</span>
-      <button class="btn-cal-back" @click="handleBackToUpload">← Voltar</button>
-    </div>
 
-    <div class="cal-body">
-      <div class="table-wrapper">
-        <table class="cal-table">
-          <thead>
-            <tr>
-              <th class="th-name">Instrutor</th>
-              <th v-for="day in store.calendarDays" :key="day.key" :style="day.isWeekend ? weekendHeaderStyle : null">
-                {{ day.day }}<br /><span class="day-label">{{ day.weekDay }}</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr class="section-divider-sjk"><td :colspan="store.calendarDays.length + 1">✈ SJK — São José dos Campos</td></tr>
-            <tr v-for="row in store.calendarRows.filter(r => r.base === 'SJK')" :key="row.nome">
-              <td class="td-name solo-sjk">{{ row.nome.split(' ').slice(0, 2).join(' ') }}</td>
-              <td v-for="day in row.days" :key="day.key">
-                <button class="day-cell" :class="day.estado + (day.isToday ? ' today' : '')" @click="store.toggleCalendarDay(day.key, day.isWeekend)" :title="`${row.nome} — ${day.key}`">
-                  {{ day.label }}
-                </button>
-              </td>
-            </tr>
-            <tr class="section-divider"><td :colspan="store.calendarDays.length + 1">✈ CPQ — Campinas</td></tr>
-            <tr v-for="row in store.calendarRows.filter(r => r.base === 'CPQ')" :key="row.nome">
-              <td class="td-name solo-cpq">{{ row.nome.split(' ').slice(0, 2).join(' ') }}</td>
-              <td v-for="day in row.days" :key="day.key">
-                <button class="day-cell" :class="day.estado + (day.isToday ? ' today' : '')" @click="store.toggleCalendarDay(day.key, day.isWeekend)" :title="`${row.nome} — ${day.key}`">
-                  {{ day.label }}
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="cal-legend">
-        <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#27ae60"></div> Disponível</div>
-        <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#c0392b"></div> Folga/Indisponível</div>
-        <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#f39c12"></div> Condicional (CCO confirma)</div>
-        <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#f8f8f8;border:1px solid #ddd"></div> Sem voo (fora do período)</div>
-        <span class="cal-hint">Clique em cada dia para alternar o status · Dados salvos automaticamente no navegador</span>
+      <div class="cal-body">
+        <div class="table-wrapper">
+          <table class="cal-table">
+            <thead>
+              <tr>
+                <th class="th-name">Instrutor</th>
+                <th v-for="day in store.calendarDays.value" :key="day.key" :style="day.isWeekend ? weekendHeaderStyle : null">
+                  {{ day.day }}<br /><span class="day-label">{{ day.weekDay }}</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="section-divider-sjk"><td :colspan="store.calendarDays.value.length + 1">✈ SJK — São José dos Campos</td></tr>
+              <tr v-for="row in store.calendarRows.value.filter(r => r.base === 'SJK')" :key="row.nome">
+                <td class="td-name solo-sjk">{{ row.nome.split(' ').slice(0, 2).join(' ') }}</td>
+                <td v-for="day in row.days" :key="day.key">
+                  <button class="day-cell" :class="day.estado + (day.isToday ? ' today' : '')" @click="store.toggleCalendarDay(day.key, day.isWeekend)" :title="`${row.nome} — ${day.key}`">
+                    {{ day.label }}
+                  </button>
+                </td>
+              </tr>
+              <tr class="section-divider"><td :colspan="store.calendarDays.value.length + 1">✈ CPQ — Campinas</td></tr>
+              <tr v-for="row in store.calendarRows.value.filter(r => r.base === 'CPQ')" :key="row.nome">
+                <td class="td-name solo-cpq">{{ row.nome.split(' ').slice(0, 2).join(' ') }}</td>
+                <td v-for="day in row.days" :key="day.key">
+                  <button class="day-cell" :class="day.estado + (day.isToday ? ' today' : '')" @click="store.toggleCalendarDay(day.key, day.isWeekend)" :title="`${row.nome} — ${day.key}`">
+                    {{ day.label }}
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="cal-legend">
+          <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#27ae60"></div> Disponível</div>
+          <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#c0392b"></div> Folga/Indisponível</div>
+          <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#f39c12"></div> Condicional (CCO confirma)</div>
+          <div class="cal-leg-item"><div class="cal-leg-dot" style="background:#f8f8f8;border:1px solid #ddd"></div> Sem voo (fora do período)</div>
+          <span class="cal-hint">Clique em cada dia para alternar o status · Dados salvos automaticamente no navegador</span>
+        </div>
       </div>
     </div>
   </div>
@@ -68,9 +71,20 @@ function handleBackToUpload() {
   store.closeCalendar()
   router.push('/upload')
 }
+
+function handleLogout() {
+  store.logout()
+  router.push('/login')
+}
 </script>
 
 <style scoped>
+.screen-layout {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+}
 .calendar-screen {
   width: 100%;
 }
@@ -106,7 +120,8 @@ function handleBackToUpload() {
 }
 .btn-nav,
 .btn-cal-save,
-.btn-cal-back {
+.btn-cal-back,
+.btn-logout-cal {
   background: #1d2951;
   color: #fff;
   border: none;
@@ -121,6 +136,12 @@ function handleBackToUpload() {
 .btn-cal-save:hover { background: #1e8449; }
 .btn-cal-back { background: #888; }
 .btn-cal-back:hover { background: #666; }
+.btn-logout-cal {
+  background: #c0392b;
+}
+.btn-logout-cal:hover {
+  background: #a93226;
+}
 .cal-saved {
   font-size: 11px;
   color: #155724;

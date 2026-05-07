@@ -1,126 +1,136 @@
 <template>
-  <div id="editor-screen" class="editor-screen">
-    <div class="topbar">
-      <img :src="iconUrl" alt="SAFE" style="width:28px;height:28px;border-radius:50%;opacity:.85;" />
-      <h1>{{ store.editorTitle }}</h1>
-      <div class="controls">
-        <div class="score-box">🟢 <span class="score-num sg">{{ store.scoreOk }}</span> &nbsp;|&nbsp; 🔴 <span class="score-num sr">{{ store.scoreErr }}</span></div>
-        <button class="btn-auto" @click="store.smartShuffle">⚡ Auto-resolver</button>
-        <button class="btn-reset" @click="store.resetSchedule">↺ Reset</button>
-        <button class="btn-back" @click="() => router.push('/upload')">📂 Nova escala</button>
-      </div>
-    </div>
-
-    <div class="shuffle-log" v-if="store.shuffleLog">{{ store.shuffleLog }}</div>
-    <div class="alert-panel">
-      <div class="alert-line al-ok" v-if="!alertList.length">✅ Escala 100% verde — nenhum problema!</div>
-      <div class="alert-line al-err" v-for="alert in alertList" :key="alert.msg">{{ alert.msg }}</div>
-    </div>
-
-    <div class="panels">
-      <div class="panel-box" style="flex:2;"><h3>Jornada ao vivo</h3><div class="jornada-panel">
-        <div v-if="jornadaRows.length === 0" class="empty-message">Nenhum escalado.</div>
-        <div v-for="row in jornadaRows" :key="row.instr" class="j-row">
-          <div class="j-name">{{ row.instr }}</div>
-          <div class="j-slots">{{ row.times }}</div>
-          <div class="j-bar"><div class="j-fill" :class="row.barClass" :style="{ width: row.fill + '%' }"></div></div>
-          <div class="j-h" :class="{ 'jerr-t': row.fill > 100 }">{{ row.duration }}h</div>
+  <div class="screen-layout">
+    <div id="editor-screen" class="editor-screen">
+      <div class="topbar">
+        <img :src="iconUrl" alt="SAFE" style="width:28px;height:28px;border-radius:50%;opacity:.85;" />
+        <h1>{{ store.state.editorTitle }}</h1>
+        <div class="controls">
+          <div class="score-box">🟢 <span class="score-num sg">{{ store.scoreOk.value }}</span> &nbsp;|&nbsp; 🔴 <span class="score-num sr">{{ store.scoreErr.value }}</span></div>
+          <button class="btn-auto" @click="store.smartShuffle">⚡ Auto-resolver</button>
+          <button class="btn-reset" @click="store.resetSchedule">↺ Reset</button>
+          <button class="btn-back" @click="() => router.push('/upload')">📂 Nova escala</button>
+          <button class="btn-logout-editor" @click="handleLogout">Sair</button>
         </div>
-      </div></div>
+      </div>
 
-      <div class="panel-box"><h3>Disponibilidade</h3><div class="disp-panel">
-        <div class="disp-group" v-for="base in ['SJK', 'CPQ']" :key="base">
-          <div class="disp-group-label">{{ base }}</div>
-          <div class="disp-chips">
-            <span
-              v-for="instr in store.availabilityGroups[base].voo"
-              :key="instr.nome"
-              class="ic"
-              :class="store.availabilityClass(instr.nome)"
-              @click="store.toggleDisp(instr.nome)"
-              :title="instr.nome"
+      <div class="shuffle-log" v-if="store.state.shuffleLog">{{ store.state.shuffleLog }}</div>
+      <div class="alert-panel">
+        <div class="alert-line al-ok" v-if="!alertList.length">✅ Escala 100% verde — nenhum problema!</div>
+        <div class="alert-line al-err" v-for="alert in alertList" :key="alert.msg">{{ alert.msg }}</div>
+      </div>
+
+      <div class="panels">
+        <div class="panel-box" style="flex:2;"><h3>Jornada ao vivo</h3><div class="jornada-panel">
+          <div v-if="jornadaRows.length === 0" class="empty-message">Nenhum escalado.</div>
+          <div v-for="row in jornadaRows" :key="row.instr" class="j-row">
+            <div class="j-name">{{ row.instr }}</div>
+            <div class="j-slots">{{ row.times }}</div>
+            <div class="j-bar"><div class="j-fill" :class="row.barClass" :style="{ width: row.fill + '%' }"></div></div>
+            <div class="j-h" :class="{ 'jerr-t': row.fill > 100 }">{{ row.duration }}h</div>
+          </div>
+        </div></div>
+
+        <div class="panel-box"><h3>Disponibilidade</h3><div class="disp-panel">
+          <div class="disp-group" v-for="base in ['SJK', 'CPQ']" :key="base">
+            <div class="disp-group-label">{{ base }}</div>
+            <div class="disp-chips">
+              <span
+                v-for="instr in store.availabilityGroups.value[base].voo"
+                :key="instr.nome"
+                class="ic"
+                :class="store.availabilityClass(instr.nome)"
+                @click="store.toggleDisp(instr.nome)"
+                :title="instr.nome"
+              >
+                {{ instr.nome.split(' ')[0] }}
+              </span>
+            </div>
+          </div>
+        </div></div>
+      </div>
+
+      <div class="tabs">
+        <button :class="['tab-btn', store.state.activeTab === 'SJK' ? 't-sjk' : '']" @click="store.state.activeTab = 'SJK'">✈ SJK <span class="tscore">{{ store.scoreSjk.value }}</span></button>
+        <button :class="['tab-btn', store.state.activeTab === 'CPQ' ? 't-cpq' : '']" @click="store.state.activeTab = 'CPQ'">✈ CPQ <span class="tscore">{{ store.scoreCpq.value }}</span></button>
+      </div>
+
+      <div class="tab-panel active">
+        <div v-for="block in store.scheduleBlocks.value[store.state.activeTab]" :key="block.id" class="barra-bloco">
+          <div class="bh" :style="{ gridTemplateColumns: `110px repeat(${block.slots.length}, 1fr)` }">
+            <div class="hd"><div class="d1">{{ store.state.parsedDate }}</div><div class="d2">{{ store.state.parsedDayName }}</div></div>
+            <div v-for="slot in block.slots" :key="slot.id" class="hh" draggable="true"
+              @dragstart="onDragStart(slot.id)"
+              @dragend="onDragEnd"
+              @dragover.prevent="onDragOver(slot.id)"
+              @dragleave="onDragLeave(slot.id)"
+              @drop.prevent="onDropSlot(slot.id)"
             >
-              {{ instr.nome.split(' ')[0] }}
-            </span>
+              {{ slot.hora }} <span v-if="!slot.anac" class="drag-indicator">⠿</span>
+            </div>
           </div>
-        </div>
-      </div></div>
-    </div>
 
-    <div class="tabs">
-      <button :class="['tab-btn', store.activeTab === 'SJK' ? 't-sjk' : '']" @click="store.activeTab = 'SJK'">✈ SJK <span class="tscore">{{ store.scoreSjk }}</span></button>
-      <button :class="['tab-btn', store.activeTab === 'CPQ' ? 't-cpq' : '']" @click="store.activeTab = 'CPQ'">✈ CPQ <span class="tscore">{{ store.scoreCpq }}</span></button>
-    </div>
-
-    <div class="tab-panel active">
-      <div v-for="block in store.scheduleBlocks[store.activeTab]" :key="block.id" class="barra-bloco">
-        <div class="bh" :style="{ gridTemplateColumns: `110px repeat(${block.slots.length}, 1fr)` }">
-          <div class="hd"><div class="d1">{{ store.parsedDate }}</div><div class="d2">{{ store.parsedDayName }}</div></div>
-          <div v-for="slot in block.slots" :key="slot.id" class="hh" draggable="true"
-            @dragstart="onDragStart(slot.id)"
-            @dragend="onDragEnd"
-            @dragover.prevent="onDragOver(slot.id)"
-            @dragleave="onDragLeave(slot.id)"
-            @drop.prevent="onDropSlot(slot.id)"
-          >
-            {{ slot.hora }} <span v-if="!slot.anac" class="drag-indicator">⠿</span>
+          <div class="barra-body">
+            <div class="brow" v-for="label in rowLabels" :key="label" :style="{ gridTemplateColumns: `110px repeat(${block.slots.length}, 1fr)` }">
+              <div class="rl">{{ label }}</div>
+              <template v-for="slot in block.slots" :key="slot.id + label">
+                <div v-if="label === 'Aluno'" class="sc" :class="slot.aluno ? '' : 'sc-empty'"><div class="sv">{{ slot.aluno }}</div></div>
+                <div v-else-if="label === 'Instrutor'" :class="slotCellClass(slot)">
+                  <template v-if="slot.anac"><div class="sv locked">🔒 {{ slot.inva }}</div></template>
+                  <template v-else>
+                    <select class="slot-input" v-model="slot.inva" @change="onInstructorChange(slot.id, slot.inva)">
+                      <option value="">—</option>
+                      <optgroup label="Autorizados">
+                        <option v-for="name in instructorOptions(slot, true)" :key="name" :value="name">{{ name }}</option>
+                      </optgroup>
+                      <optgroup label="Não autorizados" v-if="instructorOptions(slot, false).length">
+                        <option v-for="name in instructorOptions(slot, false)" :key="name" :value="name">{{ name }}</option>
+                      </optgroup>
+                    </select>
+                  </template>
+                </div>
+                <div v-else-if="label === 'AE'" class="sc"><div class="sv">{{ block.ae }}</div></div>
+                <div v-else-if="label === 'Missão'" class="sc" :class="slot.missao ? '' : 'sc-empty'"><div class="sv">{{ slot.missao }}</div></div>
+                <div v-else-if="label === 'Status'" class="sc">
+                  <template v-if="slot.aluno && !slot.anac">
+                    <select class="slot-input" v-model="slot.st" @change="onStatusChange(slot.id, slot.st)">
+                      <option value="CONFIRMADO">CONFIRMADO</option>
+                      <option value="PENDENTE">PENDENTE</option>
+                      <option value="AGUARDANDO CONFIRMAÇÃO">AGUARDANDO CONFIRMAÇÃO</option>
+                      <option value="REVISÃO">REVISÃO</option>
+                      <option value="OPERAÇÕES">OPERAÇÕES</option>
+                      <option value="METEOROLOGIA">METEOROLOGIA</option>
+                      <option value="MANUTENÇÃO">MANUTENÇÃO</option>
+                      <option value="INDISPONIBILIDADE">INDISPONIBILIDADE</option>
+                    </select>
+                  </template>
+                </div>
+                <div v-else-if="label === 'Base'" class="sc"><div class="sv">{{ block.id.startsWith('MC') ? 'MC01' : block.id.includes('COLT') ? 'COLT' : block.ae }}</div></div>
+              </template>
+            </div>
           </div>
-        </div>
 
-        <div class="barra-body">
-          <div class="brow" v-for="label in rowLabels" :key="label" :style="{ gridTemplateColumns: `110px repeat(${block.slots.length}, 1fr)` }">
-            <div class="rl">{{ label }}</div>
-            <template v-for="slot in block.slots" :key="slot.id + label">
-              <div v-if="label === 'Aluno'" class="sc" :class="slot.aluno ? '' : 'sc-empty'"><div class="sv">{{ slot.aluno }}</div></div>
-              <div v-else-if="label === 'Instrutor'" :class="slotCellClass(slot)">
-                <template v-if="slot.anac"><div class="sv locked">🔒 {{ slot.inva }}</div></template>
-                <template v-else>
-                  <select v-model="slot.inva" @change="onInstructorChange(slot.id, slot.inva)">
-                    <option value="">—</option>
-                    <optgroup label="Autorizados">
-                      <option v-for="name in instructorOptions(slot, true)" :key="name" :value="name">{{ name }}</option>
-                    </optgroup>
-                    <optgroup label="Não autorizados" v-if="instructorOptions(slot, false).length">
-                      <option v-for="name in instructorOptions(slot, false)" :key="name" :value="name">{{ name }}</option>
-                    </optgroup>
-                  </select>
-                </template>
+          <div class="btn-row" :style="{ gridTemplateColumns: `110px repeat(${block.slots.length}, 1fr)` }">
+            <div class="bl"></div>
+            <div v-for="slot in block.slots" :key="slot.id + '-btn'" class="bcell">
+              <div class="btn-container">
+                <button class="btn-cav" :class="buttonClass(slot)" @click="onApproveIncentivo(slot)">
+                  {{ buttonLabel(slot) }}
+                </button>
+                <div v-if="buttonLabel(slot) === '⛔ Problema'" class="tooltip">
+                  <div class="tooltip-content">
+                    <div v-for="error in getSlotErrorMessages(slot)" :key="error" class="tooltip-line">{{ error }}</div>
+                  </div>
+                </div>
               </div>
-              <div v-else-if="label === 'AE'" class="sc"><div class="sv">{{ block.ae }}</div></div>
-              <div v-else-if="label === 'Missão'" class="sc" :class="slot.missao ? '' : 'sc-empty'"><div class="sv">{{ slot.missao }}</div></div>
-              <div v-else-if="label === 'Status'" class="sc">
-                <template v-if="slot.aluno && !slot.anac">
-                  <select v-model="slot.st" @change="onStatusChange(slot.id, slot.st)">
-                    <option value="CONFIRMADO">CONFIRMADO</option>
-                    <option value="PENDENTE">PENDENTE</option>
-                    <option value="AGUARDANDO CONFIRMAÇÃO">AGUARDANDO CONFIRMAÇÃO</option>
-                    <option value="REVISÃO">REVISÃO</option>
-                    <option value="OPERAÇÕES">OPERAÇÕES</option>
-                    <option value="METEOROLOGIA">METEOROLOGIA</option>
-                    <option value="MANUTENÇÃO">MANUTENÇÃO</option>
-                    <option value="INDISPONIBILIDADE">INDISPONIBILIDADE</option>
-                  </select>
-                </template>
-              </div>
-              <div v-else-if="label === 'Base'" class="sc"><div class="sv">{{ block.id.startsWith('MC') ? 'MC01' : block.id.includes('COLT') ? 'COLT' : block.ae }}</div></div>
-            </template>
-          </div>
-        </div>
-
-        <div class="btn-row" :style="{ gridTemplateColumns: `110px repeat(${block.slots.length}, 1fr)` }">
-          <div class="bl"></div>
-          <div v-for="slot in block.slots" :key="slot.id + '-btn'" class="bcell">
-            <button class="btn-cav" :class="buttonClass(slot)" @click="onApproveIncentivo(slot)">
-              {{ buttonLabel(slot) }}
-            </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
 
-    <div class="footer">
-      <span>CCO · Editor de Escala v10 · SAFE Aviation School</span>
-      <span class="footer-badge">Node.js</span>
+      <div class="footer">
+        <span>CCO · Editor de Escala v10 · SAFE Aviation School</span>
+        <span class="footer-badge">Node.js</span>
+      </div>
     </div>
   </div>
 </template>
@@ -166,9 +176,8 @@ function instructorOptions(slot, authorizedOnly) {
     const d = store.state.INST[name]
     if (!d) return false
     if (d.tipo === 'anac') return false
-    if (!store.isAuth(name, slot.barra)) return false
-    if (authorizedOnly) return true
-    return !store.isAuth(name, slot.barra)
+    const isAuth = store.isAuth(name, slot.barra)
+    return authorizedOnly ? isAuth : !isAuth
   })
   return names
 }
@@ -186,6 +195,7 @@ function buttonLabel(slot) {
   if (isInc(slot.aluno) && store.getErrs(slot).some((e) => e.code === 'CONSEC_INC')) return '⚠ Incentivo'
   const errors = [...store.getErrs(slot), ...crossForSlot(slot)]
   if (errors.some((e) => e.code === 'SIMULT')) return '🚫 Simultâneo'
+  const ERR_CODES = new Set(['FOLGA', 'BARRA', 'NO_INSTR', 'JORNADA', 'SIMULT', 'LAB', 'MISSAO_REST'])
   if (errors.some((e) => ERR_CODES.has(e.code))) return '⛔ Problema'
   if (slot.inva && errors.some((e) => e.code === 'CONSEC')) return '⚠ Consecutiv.'
   if (!slot.inva) return '⛔ Sem instrutor'
@@ -199,6 +209,7 @@ function buttonClass(slot) {
   if (slot.navsolo) return slot.inva ? 'btn-mod-ok' : 'btn-mod-err'
   if (isInc(slot.aluno) && slot.incentOk) return 'btn-mod-ok'
   const errors = [...store.getErrs(slot), ...crossForSlot(slot)]
+  const ERR_CODES = new Set(['FOLGA', 'BARRA', 'NO_INSTR', 'JORNADA', 'SIMULT', 'LAB', 'MISSAO_REST'])
   if (isInc(slot.aluno) && errors.some((e) => e.code === 'CONSEC_INC')) return 'btn-mod-inc'
   if (errors.some((e) => e.code === 'SIMULT')) return 'btn-mod-err'
   if (errors.some((e) => ERR_CODES.has(e.code))) return 'btn-mod-err'
@@ -211,8 +222,6 @@ function onApproveIncentivo(slot) {
   if (isInc(slot.aluno)) store.approveIncentivo(slot.id)
 }
 
-const ERROR_CODES = ['CONSEC_INC', 'SIMULT', 'FOLGA', 'BARRA', 'NO_INSTR', 'JORNADA', 'LAB', 'MISSAO_REST']
-
 function isInc(aluno) {
   return aluno && aluno.toUpperCase().includes('INCENTIVO')
 }
@@ -220,6 +229,16 @@ function isInc(aluno) {
 function crossForSlot(slot) {
   const ce = store.getCross(store.state.SCH)
   return ce[slot.id] || []
+}
+
+function getSlotErrorTooltip(slot) {
+  const errors = [...store.getErrs(slot), ...crossForSlot(slot)]
+  return errors.map(e => e.msg).filter(msg => msg).join('\n')
+}
+
+function getSlotErrorMessages(slot) {
+  const errors = [...store.getErrs(slot), ...crossForSlot(slot)]
+  return errors.map(e => e.msg).filter(msg => msg)
 }
 
 function onDragStart(id) {
@@ -231,19 +250,22 @@ function onDragEnd() {
 }
 
 function onDragOver(id) {
-  if (dragSourceId.value && dragSourceId.value !== id) {
-    // no-op, purely to allow drop
-  }
+  // logic to allow drop
 }
 
 function onDragLeave(id) {
-  // no-op
+  // logic
 }
 
 function onDropSlot(id) {
   if (!dragSourceId.value || dragSourceId.value === id) return
   store.swapSlots(dragSourceId.value, id)
   dragSourceId.value = null
+}
+
+function handleLogout() {
+  store.logout()
+  router.push('/login')
 }
 
 const alertList = computed(() => {
@@ -261,164 +283,416 @@ const alertList = computed(() => {
 </script>
 
 <style scoped>
+.screen-layout {
+  min-height: 100vh;
+  padding: 24px;
+  background: #f0f4f8;
+}
 .editor-screen {
   width: 100%;
+  max-width: 1380px;
+  margin: 0 auto;
 }
 .topbar {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 22px;
   background: #fff;
-  border-radius: 6px;
-  padding: 10px 14px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  border: 1px solid #dae2ec;
+  border-radius: 14px;
+  box-shadow: 0 16px 32px rgba(14, 38, 72, 0.08);
 }
 .topbar img {
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  opacity: 0.85;
+  opacity: 0.9;
 }
 .topbar h1 {
-  font-size: 15px;
-  font-weight: bold;
-  color: #333;
+  font-size: 17px;
+  font-weight: 700;
+  color: #1d2951;
   margin: 0;
+  letter-spacing: 0.02em;
 }
 .controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-end;
+  gap: 10px;
   margin-left: auto;
   flex-wrap: wrap;
 }
 .score-box {
-  background: #f0f0f0;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 3px 10px;
-  font-size: 12px;
-  font-weight: bold;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #eef4fb;
+  border: 1px solid #cfdce9;
+  color: #1d2951;
+  font-size: 13px;
+  font-weight: 700;
 }
-.score-num {
-  font-size: 17px;
-  font-weight: bold;
-}
+.score-num { font-size: 16px; }
 .btn-auto,
 .btn-reset,
-.btn-back {
+.btn-back,
+.btn-logout-editor {
   border: none;
-  border-radius: 5px;
-  padding: 7px 14px;
+  border-radius: 10px;
+  padding: 10px 16px;
   font-size: 13px;
-  font-weight: bold;
+  font-weight: 700;
   cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 .btn-auto {
   background: #5baee2;
   color: #fff;
 }
-.btn-auto:hover { background: #4a9fd0; }
+.btn-auto:hover { background: #4a9fd0; transform: translateY(-1px); }
 .btn-reset { background: #888; color: #fff; }
-.btn-reset:hover { background: #666; }
+.btn-reset:hover { background: #666; transform: translateY(-1px); }
 .btn-back { background: #1d3a52; color: #fff; }
-.btn-back:hover { background: #162e42; }
+.btn-back:hover { background: #162e42; transform: translateY(-1px); }
+.btn-logout-editor {
+  background: #c0392b;
+  color: #fff;
+}
+.btn-logout-editor:hover { background: #a93226; transform: translateY(-1px); }
 .shuffle-log {
-  margin-bottom: 10px;
-  font-size: 11.5px;
-  padding: 7px 12px;
-  background: #e8f4fd;
-  border-left: 3px solid #2980b9;
-  border-radius: 3px;
-  color: #1a4a80;
+  margin: 16px 0 12px;
+  padding: 12px 14px;
+  font-size: 12px;
   line-height: 1.6;
+  border-radius: 12px;
+  background: #e8f4fd;
+  border-left: 4px solid #2980b9;
+  color: #1a4a80;
 }
-.alert-panel {
-  margin-bottom: 12px;
-}
+.alert-panel { margin-bottom: 16px; display: grid; gap: 8px; }
 .alert-line {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 6px 10px;
-  border-radius: 3px;
-  font-size: 11.5px;
-  line-height: 1.4;
-  border-left: 3px solid;
+  padding: 10px 14px;
+  border-radius: 12px;
+  line-height: 1.5;
+  font-size: 12px;
+  border-left: 4px solid;
 }
 .al-err { background: #fdecea; border-color: #c0392b; color: #5a0d0d; }
-.al-ok { background: #d4edda; border-color: #1e7e34; color: #0f4020; font-weight: bold; }
+.al-ok { background: #d4edda; border-color: #1e7e34; color: #0f4020; font-weight: 700; }
 .panels {
-  display: flex;
-  gap: 10px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
 }
 .panel-box {
+  padding: 18px 18px 16px;
   background: #fff;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 8px 10px;
-  min-width: 260px;
-  flex: 1;
+  border: 1px solid #dae2ec;
+  border-radius: 16px;
 }
-.panel-box h3 { margin: 0 0 10px; font-size: 12px; }
-.disp-group { margin-bottom: 12px; }
-.disp-group-label { font-size: 10px; font-weight: bold; color: #1d2951; margin-bottom: 6px; }
-.disp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-.ic { display: inline-block; font-size: 10px; padding: 2px 5px; border-radius: 3px; margin: 2px; font-weight: bold; cursor: pointer; }
+.panel-box h3 {
+  margin: 0 0 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1d2951;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.disp-group { margin-bottom: 18px; }
+.disp-group-label {
+  display: inline-block;
+  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1d2951;
+  letter-spacing: 0.04em;
+}
+.disp-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.ic {
+  font-size: 10px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  font-weight: 700;
+  cursor: pointer;
+}
 .ic-ok { background: #d4edda; color: #155724; }
 .ic-folga { background: #fdecea; color: #7b1a19; text-decoration: line-through; }
 .ic-cond { background: #fef9e7; color: #856404; }
-.tabs { display: flex; gap: 3px; margin-bottom: 0; }
-.tab-btn { padding: 8px 24px; font-size: 13px; font-weight: bold; cursor: pointer; border: none; border-radius: 6px 6px 0 0; background: #aaa; color: #fff; transition: background 0.15s; display: flex; align-items: center; gap: 8px; }
-.tab-btn.t-sjk { background: #1d2951; }
-.tab-btn.t-cpq { background: #1d3a52; }
-.tscore { font-size: 11px; background: rgba(255, 255, 255, 0.22); padding: 1px 7px; border-radius: 10px; }
-.barra-bloco { margin-bottom: 12px; border-radius: 0 4px 4px 4px; overflow: hidden; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18); }
-.bh { display: grid; background: #1d2951; color: #fff; font-weight: bold; font-size: 13px; }
-.bh .hd { padding: 8px 12px; line-height: 1.35; min-width: 110px; }
-.bh .d1 { font-size: 13px; }
-.bh .d2 { font-size: 12px; font-weight: normal; }
-.hh { display: flex; align-items: center; justify-content: center; padding: 8px 4px; border-left: 1px solid rgba(255, 255, 255, 0.18); font-size: 14px; white-space: nowrap; }
-.drag-indicator { opacity: 0.4; font-size: 10px; margin-left: 4px; }
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.tab-btn {
+  padding: 10px 22px;
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  border-radius: 999px;
+  background: #d4d4d4;
+  color: #1b1b1b;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.tab-btn.t-sjk { background: #1d2951; color: #fff; }
+.tab-btn.t-cpq { background: #1d3a52; color: #fff; }
+.tscore {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+}
+.tab-panel.active { display: block; }
+.barra-bloco {
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 16px 30px rgba(14, 38, 72, 0.08);
+  margin-bottom: 18px;
+}
+.bh {
+  display: grid;
+  background: #1d2951;
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+}
+.bh .hd {
+  padding: 14px 16px;
+  min-width: 110px;
+}
+.bh .d1 { font-size: 14px; }
+.bh .d2 { font-size: 12px; opacity: 0.9; }
+.hh {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 6px;
+  border-left: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: 13px;
+}
+.drag-indicator { opacity: 0.45; font-size: 10px; margin-left: 6px; }
 .barra-body { background: #fff; }
-.brow { display: grid; border-bottom: 1px dashed #d0d0d0; min-height: 34px; overflow: hidden; }
+.brow {
+  display: grid;
+  min-height: 48px;
+  border-bottom: 1px solid #e3e9f0;
+  align-items: stretch;
+}
 .brow:last-child { border-bottom: none; }
-.rl { padding: 6px 10px; background: #f0f0f0; font-size: 12px; font-weight: bold; color: #444; border-right: 1px solid #ddd; display: flex; align-items: center; min-width: 110px; }
-.sc { border-right: 1px solid #ddd; min-height: 34px; display: flex; align-items: center; overflow: hidden; }
+.rl {
+  padding: 14px 12px;
+  background: #f6f8fb;
+  font-size: 12px;
+  font-weight: 700;
+  color: #2a3b59;
+  border-right: 1px solid #dde4ef;
+  display: flex;
+  align-items: center;
+}
+.sc {
+  border-right: 1px solid #dde4ef;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 0 6px;
+}
 .sc:last-child { border-right: none; }
-.sc-empty { background: #cce4ee; }
+.sc-empty { background: #fff; }
 .sc-filled { background: #fff; }
-.sc-err { background: #fdecea; }
-.sc-warn { background: #fef9e7; }
+.sc-err { background: #fff; }
+.sc-warn { background: #fff; }
 .sc-incent { background: #fff8e1; }
 .sc-ok-manual { background: #eafaf1; }
 .sc-anac { background: #eaf4fb; }
 .sc-st-conf { background: #fff; }
-.sc-st-agua { background: #fffde7; }
+.sc-st-agua { background: #fff; }
 .sc-st-other { background: #fdecea; }
-.sc select { width: 100%; border: none; background: transparent; font-size: 11px; font-family: Arial, sans-serif; padding: 4px 6px; cursor: pointer; color: #222; appearance: none; outline: none; }
-.sc select:focus { background: #fffde7; }
-.sv { display: flex; align-items: center; justify-content: center; text-align: center; font-size: 12px; padding: 4px 6px; width: 100%; line-height: 1.3; word-break: break-word; }
-.locked { color: #1a4a80; font-weight: bold; font-size: 11px; }
-.btn-row { display: grid; background: #f0f0f0; border-top: 1px solid #ddd; }
+.sc select,
+.sv select,
+.slot-input {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid #d8dee8;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 12px;
+  font-family: inherit;
+  padding: 8px 10px;
+  color: #1d2951;
+  cursor: pointer;
+  appearance: none;
+  outline: none;
+}
+.sc select:focus,
+.sv select:focus,
+.slot-input:focus {
+  border-color: #5baee2;
+  background: #f5fbff;
+}
+.sv {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 12px;
+  padding: 10px 8px;
+  width: 100%;
+  line-height: 1.3;
+  word-break: break-word;
+}
+.locked {
+  color: #1a4a80;
+  font-weight: 700;
+  font-size: 11px;
+}
+.btn-row {
+  display: grid;
+  background: #f5f8fc;
+  border-top: 1px solid #dde4ef;
+}
 .bl { min-height: 4px; }
-.bcell { padding: 5px 4px; display: flex; align-items: center; justify-content: center; }
-.btn-cav { border: none; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer; padding: 5px 4px; width: 100%; text-align: center; }
-.btn-mod-ok { background: #27ae60; color: #fff; cursor: default; }
-.btn-mod-err { background: #c0392b; color: #fff; cursor: default; }
-.btn-mod-wrn { background: #d4821a; color: #fff; cursor: default; }
-.btn-mod-inc { background: #f39c12; color: #fff; cursor: pointer; }
+.bcell {
+  padding: 8px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-cav {
+  width: 100%;
+  padding: 10px 8px;
+  border: none;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-mod-ok { background: #27ae60; color: #fff; }
+.btn-mod-err { background: #c0392b; color: #fff; }
+.btn-mod-wrn { background: #d4821a; color: #fff; }
+.btn-mod-inc { background: #f39c12; color: #fff; }
 .btn-mod-inc:hover { background: #d68910; }
-.btn-disp { background: #1d2951; color: #fff; cursor: default; }
-.btn-anac { background: #2980b9; color: #fff; cursor: default; }
-.footer { margin-top: 10px; font-size: 10px; color: #666; border-top: 1px solid #ccc; padding-top: 6px; display: flex; align-items: center; justify-content: space-between; }
-.footer-badge { background: #1d2951; color: #fff; font-size: 9px; padding: 2px 6px; border-radius: 3px; font-weight: bold; }
-.empty-message { color: #999; font-size: 11px; padding: 12px; }
+.btn-disp { background: #1d2951; color: #fff; }
+.btn-anac { background: #2980b9; color: #fff; }
+.footer {
+  margin-top: 18px;
+  font-size: 11px;
+  color: #5a6370;
+  border-top: 1px solid #dde4ef;
+  padding-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.footer-badge {
+  background: #1d2951;
+  color: #fff;
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+.empty-message {
+  color: #7a8290;
+  font-size: 12px;
+  padding: 18px 14px;
+}
+.j-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 11px;
+}
+.j-name {
+  min-width: 140px;
+  font-weight: 700;
+  color: #1d2951;
+}
+.j-slots {
+  flex: 1;
+  color: #4f5f75;
+  font-size: 11px;
+}
+.j-bar {
+  flex: 2;
+  height: 6px;
+  background: #e5e9f0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+.j-fill {
+  height: 100%;
+  transition: width 0.25s ease;
+}
+.jok { background: #27ae60; }
+.jwrn { background: #f39c12; }
+.jerr { background: #c0392b; }
+.j-h {
+  min-width: 34px;
+  text-align: right;
+  font-weight: 700;
+  color: #1d2951;
+}
+.jerr-t { color: #c0392b; }
+.btn-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  z-index: 1000;
+  margin-bottom: 8px;
+}
+.btn-container:hover .tooltip {
+  opacity: 1;
+  visibility: visible;
+}
+.tooltip-content {
+  background: #2a3b59;
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: nowrap;
+  max-width: 280px;
+  word-wrap: break-word;
+  white-space: normal;
+}
+.tooltip-line {
+  margin-bottom: 4px;
+}
+.tooltip-line:last-child {
+  margin-bottom: 0;
+}
+.tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: #2a3b59;
+}
 </style>
