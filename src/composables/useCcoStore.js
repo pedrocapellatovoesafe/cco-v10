@@ -4,91 +4,6 @@ import api from '../services/api'
 const SESSION_KEY = 'cco_auth'
 const TOKEN_KEY = 'cco_token'
 
-const QUADRO = {
-  SJK: [
-    { nome: 'KEVIN ARAÚJO WAJIMA', tipo: 'clt_full', auth: ['MC01', 'SIRA', 'SM_AATD_SJK'] },
-    { nome: 'DIEGO SOARES GONÇALVES', tipo: 'clt_full', auth: ['MC01', 'SM_AATD_SJK'] },
-    { nome: 'DALAQUA', tipo: 'clt_part', auth: ['MC01', 'SM_AATD_SJK'] },
-    { nome: 'DANILO LIRA SILVEIRA', tipo: 'eventual_livre', auth: ['MC01', 'SM_AATD_SJK', 'PCATD_SJK'] },
-    { nome: 'KLEBER RICARDO DE MIRANDA', tipo: 'eventual_livre', auth: ['MC01', 'SIRA'] },
-    { nome: 'VIVIAN XAVIER CAVALCANTE', tipo: 'eventual_livre', auth: ['MC01', 'SM_AATD_SJK'] },
-    { nome: 'BERNARDO BANDEIRA', tipo: 'eventual_rest', auth: ['MC01'] },
-    { nome: 'ISABELA GARCIA', tipo: 'eventual_rest', auth: ['MC01'] },
-    { nome: 'DANIEL BRUM', tipo: 'eventual_rest', auth: ['MC01'] },
-    { nome: 'MAYSON DE VICENTE DOS SANTOS', tipo: 'eventual_rest', auth: ['MC01'] },
-    { nome: 'LUAN SANTANA', tipo: 'eventual_rest', auth: ['MC01'] },
-    { nome: 'CAIQUE DUARTE', tipo: 'solo_sjk', auth: ['PCATD_SJK'] },
-    { nome: 'RODRIGO NASCIMENTO', tipo: 'solo_sjk', auth: ['PCATD_SJK'] },
-    { nome: 'RODRIGO MELO', tipo: 'solo_sjk', auth: ['PCATD_SJK'] },
-    { nome: 'PEDRO LUCAS', tipo: 'solo_sjk', auth: ['PCATD_SJK'] },
-    { nome: 'EDUARDO RAHMAN', tipo: 'solo_sjk', auth: ['PCATD_SJK'] },
-    { nome: 'VICTOR DE PINHO', tipo: 'solo_sjk', auth: ['PCATD_SJK'] },
-    { nome: 'ERIK SUZUKI', tipo: 'solo_sjk', auth: ['PCATD_SJK'] },
-    { nome: 'WILLARD QUEIROZ', tipo: 'solo_sjk', auth: ['PCATD_SJK'] },
-  ],
-  CPQ: [
-    { nome: 'ABBEGG', tipo: 'clt_full', auth: ['COLT', 'SM_AATD_CPQ', 'PCATD_CPQ'] },
-    { nome: 'IGOR', tipo: 'clt_part', auth: ['COLT', 'SM_AATD_CPQ'] },
-    { nome: 'PEDRO SALES', tipo: 'clt_part', auth: ['COLT', 'SM_AATD_CPQ'] },
-    { nome: 'LANY', tipo: 'eventual_rest', auth: ['COLT'] },
-    { nome: 'EDUARDO GEVINSKI', tipo: 'eventual_rest', auth: ['COLT'] },
-    { nome: 'IAN FRANCISCO GAIECKI OLIVEIRA', tipo: 'eventual_rest', auth: ['COLT'] },
-    { nome: 'JOSÉ FELIPE DE CAMARGO BARROS NETO', tipo: 'eventual_rest', auth: ['COLT'] },
-    { nome: 'LUIZ QUAGLIA', tipo: 'eventual_rest', auth: ['COLT'] },
-    { nome: 'STEPHANIE BRUNO', tipo: 'solo_cpq', auth: ['PCATD_CPQ'] },
-    { nome: 'THEO SILVA', tipo: 'solo_cpq', auth: ['PCATD_CPQ'] },
-    { nome: 'JHONY BINATTO', tipo: 'solo_cpq', auth: ['PCATD_CPQ'] },
-    { nome: 'BERNARDO FERREIRA', tipo: 'solo_cpq', auth: ['PCATD_CPQ'] },
-    { nome: 'GABRIEL ANDRADE', tipo: 'solo_cpq', auth: ['PCATD_CPQ'] },
-    { nome: 'GABRIEL COMARELLA', tipo: 'solo_cpq', auth: ['PCATD_CPQ'] },
-  ],
-}
-
-const SOLO_INSTRUTORES = [
-  { nome: 'CAIQUE DUARTE', base: 'SJK' },
-  { nome: 'RODRIGO NASCIMENTO', base: 'SJK' },
-  { nome: 'RODRIGO MELO', base: 'SJK' },
-  { nome: 'PEDRO LUCAS', base: 'SJK' },
-  { nome: 'EDUARDO RAHMAN', base: 'SJK' },
-  { nome: 'VICTOR DE PINHO', base: 'SJK' },
-  { nome: 'ERIK SUZUKI', base: 'SJK' },
-  { nome: 'WILLARD QUEIROZ', base: 'SJK' },
-  { nome: 'STEPHANIE BRUNO', base: 'CPQ' },
-  { nome: 'THEO SILVA', base: 'CPQ' },
-  { nome: 'JHONY BINATTO', base: 'CPQ' },
-  { nome: 'BERNARDO FERREIRA', base: 'CPQ' },
-  { nome: 'GABRIEL ANDRADE', base: 'CPQ' },
-]
-
-const LAB_AUTH = new Set([
-  'KEVIN ARAÚJO WAJIMA',
-  'DANILO LIRA SILVEIRA',
-  'VIVIAN XAVIER CAVALCANTE',
-  'DIEGO SOARES GONÇALVES',
-  'PEDRO SALES',
-  'EDUARDO GEVINSKI',
-  'IGOR',
-  'ABBEGG',
-])
-
-const ERR_CODES = new Set(['FOLGA', 'BARRA', 'NO_INSTR', 'JORNADA', 'SIMULT', 'LAB', 'MISSAO_REST'])
-
-const MISSOES_EVENTUAL_PERMITIDAS = new Set([
-  'PS01', 'PS02', 'PS03', 'PS07', 'PS08', 'PS13',
-  'AP01', 'AP02', 'AP03', 'AP05',
-  'NOT01',
-  'NAV01', 'NAV03', 'NAV04', 'NAV05',
-  'AD01',
-  'VOO DE INCENTIVO', 'VOO INCENTIVO', 'VOO EMPRESA',
-])
-
-const MISSOES_AVALIACAO = new Set([
-  'CHEQUE ANAC', 'CHEQUE ANAC - PC', 'AVALIAÇÃO FINAL', 'AVAL. FINAL',
-  'CHEQUE FINAL', 'IFR FINAL', 'FAP', 'CHEQUE', 'AVALIAÇÃO',
-])
-
-const VALID_ST = new Set(['CONFIRMADO', 'PENDENTE', 'AGUARDANDO CONFIRMAÇÃO', 'REVISÃO', 'OPERAÇÕES', 'METEOROLOGIA', 'MANUTENÇÃO', 'INDISPONIBILIDADE'])
-const SKIP_VALIDATION_ST = new Set(['REVISÃO', 'OPERAÇÕES', 'METEOROLOGIA', 'MANUTENÇÃO', 'INDISPONIBILIDADE'])
 const DIAS_PT = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
 const MESES_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 const DIAS_SEMANA_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
@@ -137,10 +52,6 @@ const state = reactive({
   AERONAVES: [],
   BARRAS: [],
   highlighted: new Set(),
-  scoreOk: 0,
-  scoreErr: 0,
-  scoreSjk: '',
-  scoreCpq: '',
 })
 
 function login() {
@@ -151,7 +62,6 @@ function login() {
 
   return api.post('/auth/login', payload)
     .then(response => {
-      // Adjusted to handle { data: { token: '...' } } or { token: '...' }
       const token = response.data?.token || response.data?.data?.token
       if (token) {
         localStorage.setItem(TOKEN_KEY, token)
@@ -210,6 +120,8 @@ function parseRows(rows) {
     data: ['data', 'data do voo', 'data voo'],
     missao: ['missao', 'missão', 'missao/treino', 'missão/treino'],
     horario: ['horario', 'horário', 'hora', 'hora inicio', 'hora início'],
+    ae: ['aeronave', 'prefixo'],
+    obs: ['obs', 'observação', 'observações'],
   }
   const iAluno = findCol(header, COLS.aluno)
   const iStatus = findCol(header, COLS.status)
@@ -218,6 +130,8 @@ function parseRows(rows) {
   const iData = findCol(header, COLS.data)
   const iMissao = findCol(header, COLS.missao)
   const iHorario = findCol(header, COLS.horario)
+  const iAe = findCol(header, COLS.ae)
+  const iObs = findCol(header, COLS.obs)
 
   const gAluno = iAluno >= 0 ? (r) => String(r[iAluno] || '').trim() : (r) => String(r[0] || '').trim()
   const gStatus = iStatus >= 0 ? (r) => String(r[iStatus] || '').trim().toUpperCase() : (r) => String(r[1] || '').trim().toUpperCase()
@@ -226,6 +140,8 @@ function parseRows(rows) {
   const gData = iData >= 0 ? (r) => String(r[iData] || '').trim() : (r) => String(r[5] || '').trim()
   const gMissao = iMissao >= 0 ? (r) => String(r[iMissao] || '').trim() : (r) => String(r[6] || '').trim()
   const gHorario = iHorario >= 0 ? (r) => String(r[iHorario] || '').trim() : (r) => String(r[7] || '').trim()
+  const gAe = iAe >= 0 ? (r) => String(r[iAe] || '').trim() : (r) => ''
+  const gObs = iObs >= 0 ? (r) => String(r[iObs] || '').trim() : (r) => ''
 
   state.parsedDate = ''
   state.parsedDayName = ''
@@ -239,22 +155,27 @@ function parseRows(rows) {
     const data = gData(row)
     const missao = gMissao(row)
     const horario = gHorario(row)
+    const ae = gAe(row)
+    const obs = gObs(row)
 
-    if (!VALID_ST.has(status) || !barra || !horario) continue
+    if (!barra || !horario) continue
     const hm = horario.match(/^(\d{2}:\d{2})/)
     if (!hm) continue
     const hora = hm[1]
     const base = getBase(barra)
     let missaoShort = missao
     if (missao.includes(' > ')) missaoShort = missao.split(' > ').pop().trim()
-    const isAnac = inva.toUpperCase().includes('ANDRE OLIVEIRA') || inva.toUpperCase().includes('PISANI')
-    const isNavsolo = missaoShort.toUpperCase().includes('NAV SOLO') || missaoShort.toUpperCase().includes('NAV MENTOR')
 
     if (!state.parsedDate && data) {
       state.parsedDate = normalizeDate(data)
     }
-    state.parsedSlots.push({ barra, base, hora, aluno, inva, ae: '', missao: missaoShort, st: status, anac: isAnac, navsolo: isNavsolo, data })
+
+    const slot = { barra, base, hora, aluno, inva, ae, missao: missaoShort, st: status, data, obs }
+    // console.log(`[XLS Parse] Row ${i}:`, slot)
+    state.parsedSlots.push(slot)
   }
+
+  // console.log(`[XLS Parse] Total slots parsed: ${state.parsedSlots.length}`)
 
   if (state.parsedDate) {
     const parts = state.parsedDate.split('/')
@@ -273,28 +194,6 @@ function getBase(barraId) {
   return 'SJK'
 }
 
-function isInc(aluno) {
-  return aluno && aluno.toUpperCase().includes('INCENTIVO')
-}
-
-function isMissaoPermitidaEventual(missao) {
-  if (!missao) return true
-  const m = missao.toUpperCase().trim()
-  for (const p of MISSOES_EVENTUAL_PERMITIDAS) {
-    if (m === p || m.startsWith(`${p} `) || m.endsWith(` ${p}`) || m.includes(p)) return true
-  }
-  if (/^NAV\s*\d/.test(m) || m.startsWith('NAV ')) {
-    if (m.includes('NAV X1') || m.includes('NAV X2')) return false
-    return true
-  }
-  const ehAval = Array.from(MISSOES_AVALIACAO).some((a) => m.includes(a))
-  const ehSim = m.startsWith('SIM ') || m.startsWith('LAB ')
-  const ehIfr = m.startsWith('IFR ')
-  const ehInva = m === 'INVA' || m.startsWith('INVA ')
-  if (!ehAval && !ehSim && !ehIfr && !ehInva) return true
-  return false
-}
-
 function normalizeInstructorName(nomeXls, inst) {
   if (!nomeXls) return ''
   const upper = nomeXls.trim().toUpperCase()
@@ -302,56 +201,16 @@ function normalizeInstructorName(nomeXls, inst) {
   for (const nome of Object.keys(inst)) {
     if (upper.startsWith(`${nome} `) || upper === nome) return nome
   }
-  const xlsWords = upper.split(' ').filter(Boolean)
-  for (const nome of Object.keys(inst)) {
-    const nomWords = nome.split(' ').filter(Boolean)
-    if (xlsWords[0] === nomWords[0] && xlsWords[xlsWords.length - 1] === nomWords[nomWords.length - 1]) return nome
-  }
-  for (const nome of Object.keys(inst)) {
-    const nomWords = nome.split(' ').filter(Boolean)
-    if (xlsWords[0] === nomWords[0] && nomWords.slice(1).some((w) => xlsWords.includes(w))) return nome
-  }
   return upper
 }
 
 function buildInst() {
   const inst = {}
-  for (const base of ['SJK', 'CPQ']) {
-    for (const q of QUADRO[base]) {
-      const av = state.availability[q.nome] || 'avail'
-      inst[q.nome] = { base, tipo: q.tipo, auth: q.auth, folga: av === 'folga', cond: av === 'cond' }
-    }
-  }
+  // This will be populated from API eventually
   return inst
 }
 
-function fillSolosDoCalendario(dateString) {
-  if (!dateString) return
-  const parts = dateString.split('/')
-  if (parts.length < 3) return
-  const iso = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
-  const ano = parseInt(parts[2], 10)
-  const mesIdx = parseInt(parts[1], 10) - 1
-  let data = {}
-  try {
-    const raw = localStorage.getItem(`cco_solo_cal_${ano}_${mesIdx + 1}`)
-    data = raw ? JSON.parse(raw) : {}
-  } catch (e) {
-    data = {}
-  }
-  SOLO_INSTRUTORES.forEach((instr) => {
-    const key = `${instr.nome}|${iso}`
-    const estado = data[key] || 'avail'
-    state.availability[instr.nome] = estado === 'weekend' ? 'avail' : estado
-  })
-}
-
 function buildAvailForm() {
-  fillSolosDoCalendario(state.parsedDate)
-  ;[...QUADRO.SJK, ...QUADRO.CPQ].forEach((q) => {
-    if (q.tipo.includes('solo')) return
-    if (!(q.nome in state.availability)) state.availability[q.nome] = 'avail'
-  })
   state.availSectionVisible = true
   state.btnGerarDisabled = false
 }
@@ -383,15 +242,11 @@ async function importScale() {
   
   try {
     const payload = {
-      // data: state.parsedDate,
       slots: state.parsedSlots
-      // availability: state.availability
     }
     
     const response = await api.post('/slots/import', payload)
-    
-    // If successful, we can fetch the slots from the API 
-    // to populate the editor with what the server created
+    console.log(payload)
     await fetchSlots()
     
     return { success: true, data: response.data }
@@ -441,7 +296,6 @@ function gerarEditor() {
     const gradeBase = isPcatd ? HORAS_PCATD : HORAS_DEFAULT
     const horasFinais = [...new Set([...gradeBase, ...Object.keys(byHora)])].sort()
     
-    // Default model/type for this bar if not provided by API
     let defaultAe = 'MC01'
     const bu = barraId.toUpperCase()
     if (bu.includes('SIRA')) defaultAe = 'SIRA'
@@ -452,8 +306,7 @@ function gerarEditor() {
     horasFinais.forEach((hora) => {
       const existing = byHora[hora]
       const invaRaw = existing ? normalizeInstructorName(existing.inva, state.INST) : ''
-      const d = state.INST[invaRaw]
-      const invaClean = d && d.folga ? '' : invaRaw
+      const invaClean = invaRaw
       
       let finalAe = existing ? existing.ae : ''
       if (!finalAe && existing?.aeronaveId && state.AERONAVES.length > 0) {
@@ -472,10 +325,7 @@ function gerarEditor() {
         ae: finalAe,
         modelo: existing ? existing.modelo : defaultAe,
         missao: existing ? existing.missao : '',
-        st: existing ? existing.st : '',
-        anac: existing ? existing.anac : false,
-        navsolo: existing ? existing.navsolo : false,
-        incentOk: false,
+        st: existing ? existing.st : ''
       })
     })
   })
@@ -495,200 +345,10 @@ function clearEditor() {
   state.editorTitle = '✈ CCO · Editor de Escala'
 }
 
-function getErrs(slot) {
-  const errs = []
-  if (slot.anac || !slot.aluno) return errs
-  if (SKIP_VALIDATION_ST.has(slot.st)) return errs
-  if (slot.navsolo) {
-    if (!slot.inva) errs.push({ code: 'NO_INSTR', msg: `Sem instrutor de solo: ${slot.barra} ${slot.hora} (${slot.aluno})` })
-    return errs
-  }
-  if (isInc(slot.aluno) && slot.incentOk) return errs
-  if (!slot.inva) {
-    errs.push({ code: 'NO_INSTR', msg: `Sem instrutor: ${slot.barra} ${slot.hora} (${slot.aluno})` })
-    return errs
-  }
-  const d = state.INST[slot.inva]
-  if (!d) return errs
-  if (d.folga) errs.push({ code: 'FOLGA', msg: `${slot.inva} em folga → ${slot.hora} ${slot.barra}` })
-  if (!isAuth(slot.inva, slot.barra)) errs.push({ code: 'BARRA', msg: `${slot.inva} não autorizado para ${slot.barra}` })
-  if (slot.missao && slot.missao.toUpperCase().includes('LAB') && !LAB_AUTH.has(slot.inva)) errs.push({ code: 'LAB', msg: `${slot.inva} não autorizado LAB → ${slot.hora} ${slot.barra}` })
-  if (d.tipo === 'eventual_rest' && slot.missao && !isMissaoPermitidaEventual(slot.missao)) errs.push({ code: 'MISSAO_REST', msg: `⛔ Missão não autorizada para eventual: ${slot.inva} → ${slot.missao} (${slot.hora})` })
-  return errs
-}
-
-function getCross(sch = state.SCH) {
-  const ce = {}
-  const byI = {}
-  sch.forEach((s) => {
-    if (!s.inva || s.inva.trim() === '' || s.inva === '--' || s.anac || !s.aluno || SKIP_VALIDATION_ST.has(s.st)) return
-    if (!byI[s.inva]) byI[s.inva] = []
-    byI[s.inva].push(s)
-  })
-  Object.entries(byI).forEach(([instr, slots]) => {
-    const sr = slots.slice().sort((a, b) => hv(a.hora) - hv(b.hora))
-    for (let i = 0; i < sr.length; i += 1) {
-      for (let j = i + 1; j < sr.length; j += 1) {
-        if (sr[i].hora === sr[j].hora && sr[i].barra !== sr[j].barra) {
-          const msg = `🚫 Simultâneo: ${instr} às ${sr[i].hora} em ${sr[i].barra} + ${sr[j].barra}`
-          ;[sr[i].id, sr[j].id].forEach((id) => {
-            if (!ce[id]) ce[id] = []
-            ce[id].push({ code: 'SIMULT', msg })
-          })
-        }
-      }
-    }
-    for (let i = 0; i < sr.length - 1; i += 1) {
-      if (Math.abs(hv(sr[i + 1].hora) - hv(sr[i].hora) - 2) < 0.01 && sr[i].aluno !== sr[i + 1].aluno) {
-        const s1inc = isInc(sr[i].aluno)
-        const s2inc = isInc(sr[i + 1].aluno)
-        if ((s1inc && sr[i].incentOk) || (s2inc && sr[i + 1].incentOk)) continue
-        const code = s1inc || s2inc ? 'CONSEC_INC' : 'CONSEC'
-        const msg = s1inc || s2inc
-          ? `⚠ Incentivo: ${instr} → ${sr[i].hora} + ${sr[i + 1].hora} (verificar duração)`
-          : `⚠ Consecutividade: ${instr} → ${sr[i].hora} (${sr[i].aluno.split(' ')[0]}) + ${sr[i + 1].hora} (${sr[i + 1].aluno.split(' ')[0]})`
-        ;[sr[i].id, sr[i + 1].id].forEach((id) => {
-          if (!ce[id]) ce[id] = []
-          ce[id].push({ code, msg })
-        })
-      }
-    }
-    const hs = sr.map((s) => hv(s.hora)).filter((h) => h > 0)
-    if (hs.length) {
-      const j = Math.max(...hs) + 2 - (Math.min(...hs) - 1)
-      if (j > 11) {
-        const msg = `⛔ Jornada: ${instr} → ${j.toFixed(0)}h (máx 11h)`
-        sr.forEach((s) => {
-          if (!ce[s.id]) ce[s.id] = []
-          ce[s.id].push({ code: 'JORNADA', msg })
-        })
-      }
-    }
-  })
-  return ce
-}
-
-function score(sch = state.SCH) {
-  const ce = getCross(sch)
-  let errs = 0
-  let ok = 0
-  sch.forEach((s) => {
-    if (!s.aluno || s.anac) return
-    if (SKIP_VALIDATION_ST.has(s.st)) return
-    if (s.navsolo) {
-      if (s.inva) ok += 1
-      else errs += 1
-      return
-    }
-    if (isInc(s.aluno) && s.incentOk) {
-      ok += 1
-      return
-    }
-    const all = [...getErrs(s), ...(ce[s.id] || [])]
-    if (all.some((e) => ERR_CODES.has(e.code))) errs += 1
-    else if (s.inva) ok += 1
-    else errs += 1
-  })
-  return { errs, ok }
-}
-
-function canAssign(name, slot, sch = state.SCH) {
-  const d = state.INST[name]
-  if (!d || d.folga || d.tipo === 'anac') return false
-  if (slot.navsolo) {
-    return d.tipo === 'solo_cpq' || d.tipo === 'solo_sjk'
-  }
-  if (!isAuth(name, slot.barra)) return false
-  if (slot.missao && slot.missao.toUpperCase().includes('LAB') && !LAB_AUTH.has(name)) return false
-  const hora = hv(slot.hora)
-  const my = sch.filter((s) => s.inva === name && s.aluno && s.id !== slot.id && !s.anac)
-  if (my.some((s) => hv(s.hora) === hora)) return false
-  const all = [...my, { ...slot, inva: name }].sort((a, b) => hv(a.hora) - hv(b.hora))
-  for (let i = 0; i < all.length - 1; i += 1) {
-    if (Math.abs(hv(all[i + 1].hora) - hv(all[i].hora) - 2) < 0.01 && all[i].aluno !== all[i + 1].aluno) {
-      if (!isInc(all[i].aluno) && !isInc(all[i + 1].aluno)) return false
-    }
-  }
-  const hs = my.map((s) => hv(s.hora)).concat([hora]).filter((h) => h > 0)
-  if (hs.length && Math.max(...hs) + 2 - (Math.min(...hs) - 1) > 11) return false
-  return true
-}
-
-function candidates(slot) {
-  return Object.keys(state.INST)
-    .filter((n) => state.INST[n].tipo !== 'anac' && !state.INST[n].cond && canAssign(n, slot))
-    .sort((a, b) => state.SCH.filter((s) => s.inva === a && s.aluno).length - state.SCH.filter((s) => s.inva === b && s.aluno).length)
-}
-
-function smartShuffle() {
-  const before = score(state.SCH).errs
-  let best = state.SCH.map((s) => ({ ...s }))
-  let bestScore = score(best).errs
-  const changes = []
-  for (let pass = 0; pass < 12; pass += 1) {
-    const ce = getCross(best)
-    const prob = best
-      .filter((s) => s.aluno && !s.anac)
-      .map((s) => ({
-        slot: s,
-        n: [...getErrs(s), ...(ce[s.id] || [])].filter((e) => ERR_CODES.has(e.code)).length + (s.navsolo && !s.inva ? 1 : 0),
-      }))
-      .filter((x) => x.n > 0)
-      .sort((a, b) => b.n - a.n)
-    if (!prob.length) break
-    let improved = false
-    for (const { slot } of prob) {
-      const cands = candidates(slot)
-      if (!cands.length) continue
-      let bestC = null
-      let bestGain = -Infinity
-      for (const c of cands) {
-        if (c === slot.inva) continue
-        const trial = best.map((s) => (s.id === slot.id ? { ...s, inva: c } : s))
-        const gain = bestScore - score(trial).errs
-        if (gain > bestGain) {
-          bestGain = gain
-          bestC = c
-        }
-      }
-      if (bestC && bestGain >= 0) {
-        const old = slot.inva
-        best = best.map((s) => (s.id === slot.id ? { ...s, inva: bestC } : s))
-        const ns = score(best).errs
-        if (ns <= bestScore) {
-          if (old !== bestC) {
-            changes.push({ id: slot.id, from: old, to: bestC, hora: slot.hora, b: slot.barra.split(' ')[0] })
-          }
-          bestScore = ns
-          improved = true
-        } else {
-          best = best.map((s) => (s.id === slot.id ? { ...s, inva: old } : s))
-        }
-      }
-    }
-    if (!improved) break
-  }
-  const after = score(best).errs
-  state.SCH = best
-  state.highlighted = new Set(changes.map((c) => c.id))
-  if (after < before) {
-    state.shuffleLog = `⚡ ${changes.length} mudança(s) — ${before - after} erro(s) eliminado(s).`
-    setTimeout(() => {
-      state.highlighted = new Set()
-    }, 3000)
-  } else if (after === 0) {
-    state.shuffleLog = '✅ Escala 100% verde!'
-  } else {
-    state.shuffleLog = `⚡ Melhor possível: ${after} problema(s) restante(s).`
-  }
-  updateScore()
-}
-
 function resetSchedule() {
   state.SCH = state.INITIAL.map((s) => ({ ...s }))
   state.highlighted = new Set()
   state.shuffleLog = '↺ Escala restaurada ao estado original.'
-  updateScore()
 }
 
 function hv(hora) {
@@ -696,31 +356,8 @@ function hv(hora) {
   return m ? +m[1] + +m[2] / 60 : 0
 }
 
-function isAuth(name, bid) {
-  const d = state.INST[name]
-  if (!d) return false
-  const b = bid.toUpperCase()
-  if (b.includes('SIRA')) return d.auth.includes('SIRA')
-  if (b.includes('SM AATD SJK')) return d.auth.includes('SM_AATD_SJK')
-  if (b.includes('SIM AATD CPQ')) return d.auth.includes('SM_AATD_CPQ')
-  if (b.includes('SBSJ') || b.includes('SM PCATD SJK') || b.includes('SIM PCATD SJK')) return d.auth.includes('PCATD_SJK')
-  if (b.includes('PCATD') || b.includes('SM PCATD') || b.includes('SIM PCATD')) return d.auth.includes('PCATD_SJK') || d.auth.includes('PCATD_CPQ')
-  if (b.includes('COLT')) return d.auth.includes('COLT')
-  if (b.includes('MC')) return d.auth.includes('MC01')
-  return false
-}
-
 function getSlotClass(slot) {
-  if (slot.anac) return 'sc sc-anac'
-  if (!slot.aluno) return SKIP_VALIDATION_ST.has(slot.st) ? 'sc sc-st-other' : 'sc sc-empty'
-  if (SKIP_VALIDATION_ST.has(slot.st)) return 'sc sc-st-other'
-  if (isInc(slot.aluno) && slot.incentOk) return 'sc sc-ok-manual'
-  if (slot.navsolo && !slot.inva) return 'sc sc-err'
-  if (!slot.inva) return 'sc sc-err'
-  const all = [...getErrs(slot), ...(getCross()[slot.id] || [])]
-  if (all.some((e) => ERR_CODES.has(e.code))) return 'sc sc-err'
-  if (all.some((e) => e.code === 'CONSEC_INC')) return 'sc sc-incent'
-  if (all.some((e) => e.code === 'CONSEC')) return 'sc sc-warn'
+  if (!slot.aluno) return 'sc sc-empty'
   return stCls(slot.st)
 }
 
@@ -734,55 +371,13 @@ function toggleDisp(nome) {
   const estados = ['avail', 'folga', 'cond']
   const cur = state.availability[nome] || 'avail'
   state.availability[nome] = estados[(estados.indexOf(cur) + 1) % 3]
-  if (SOLO_INSTRUTORES.some((instr) => instr.nome === nome) && state.parsedDate) {
-    const parts = state.parsedDate.split('/')
-    if (parts.length >= 3) {
-      const ano = parseInt(parts[2], 10)
-      const mes = parseInt(parts[1], 10)
-      const iso = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`
-      const key = `${nome}|${iso}`
-      const storKey = `cco_solo_cal_${ano}_${mes}`
-      let data = {}
-      try {
-        const r = localStorage.getItem(storKey)
-        data = r ? JSON.parse(r) : {}
-      } catch (e) {
-        data = {}
-      }
-      data[key] = state.availability[nome]
-      try {
-        localStorage.setItem(storKey, JSON.stringify(data))
-      } catch (e) {
-        console.error(e)
-      }
-    }
-  }
   state.INST = buildInst()
-}
-
-function updateScore() {
-  const total = score(state.SCH)
-  state.scoreOk = total.ok
-  state.scoreErr = total.errs
-  const sjk = score(state.SCH.filter((s) => s.base === 'SJK'))
-  const cpq = score(state.SCH.filter((s) => s.base === 'CPQ'))
-  state.scoreSjk = sjk.errs > 0 ? `⛔ ${sjk.errs}` : '✅ OK'
-  state.scoreCpq = cpq.errs > 0 ? `⛔ ${cpq.errs}` : '✅ OK'
-}
-
-function approveIncentivo(slotId) {
-  const slot = state.SCH.find((s) => s.id === slotId)
-  if (slot && isInc(slot.aluno)) {
-    slot.incentOk = true
-    updateScore()
-  }
 }
 
 function updateSlotInstructor(id, value) {
   const slot = state.SCH.find((s) => s.id === id)
   if (slot) {
     slot.inva = value
-    updateScore()
   }
 }
 
@@ -790,7 +385,6 @@ function updateSlotStatus(id, value) {
   const slot = state.SCH.find((s) => s.id === id)
   if (slot) {
     slot.st = value
-    updateScore()
   }
 }
 
@@ -798,12 +392,11 @@ function swapSlots(idA, idB) {
   const a = state.SCH.find((s) => s.id === idA)
   const b = state.SCH.find((s) => s.id === idB)
   if (!a || !b) return
-  const fields = ['aluno', 'inva', 'missao', 'st', 'anac', 'navsolo', 'incentOk']
+  const fields = ['aluno', 'inva', 'missao', 'st', 'ae', 'obs']
   const temp = {}
   fields.forEach((key) => { temp[key] = a[key] })
   fields.forEach((key) => { a[key] = b[key] })
   fields.forEach((key) => { b[key] = temp[key] })
-  updateScore()
 }
 
 function getTabBlocks(base) {
@@ -866,7 +459,7 @@ const calendarDays = computed(() => {
   }))
 })
 
-const calendarRows = computed(() => SOLO_INSTRUTORES.map((instr) => ({
+const calendarRows = computed(() => [].map((instr) => ({
   ...instr,
   days: calendarDays.value.map((cell) => {
     const key = buildCalendarKey(instr, state.calendarYear, state.calendarMonthIdx, cell.key)
@@ -917,18 +510,18 @@ function closeCalendar() {
 function toggleCalendarInstr(instrName) {
   const current = state.availability[instrName] || 'avail'
   const next = ['avail', 'folga', 'cond'][(['avail', 'folga', 'cond'].indexOf(current) + 1) % 3]
-  state.availability[instrName] = next
+  state.availability[nome] = next
   state.INST = buildInst()
 }
 
 const availabilityGroups = computed(() => ({
   SJK: {
-    voo: QUADRO.SJK.filter((q) => !q.tipo.includes('solo')),
-    solo: SOLO_INSTRUTORES.filter((instr) => instr.base === 'SJK'),
+    voo: [],
+    solo: [],
   },
   CPQ: {
-    voo: QUADRO.CPQ.filter((q) => !q.tipo.includes('solo')),
-    solo: SOLO_INSTRUTORES.filter((instr) => instr.base === 'CPQ'),
+    voo: [],
+    solo: [],
   },
 }))
 
@@ -1002,10 +595,9 @@ function fetchSlots() {
         const missao = slot.missao?.nome || ''
         let missaoShort = missao
         if (missao.includes(' > ')) missaoShort = missao.split(' > ').pop().trim()
-        
-        const isAnac = inva.toUpperCase().includes('ANDRE OLIVEIRA') || inva.toUpperCase().includes('PISANI')
-        const isNavsolo = missaoShort.toUpperCase().includes('NAV SOLO') || missaoShort.toUpperCase().includes('NAV MENTOR')
 
+        console.log(apiSlots);
+        
         return {
           id: `api-${slot.id}`,
           barra: barraNome.trim(),
@@ -1018,8 +610,6 @@ function fetchSlots() {
           modelo: (slot.aeronave?.modeloAeronave?.nome || '').trim(),
           missao: missaoShort.trim(),
           st: slot.statusSlot?.nome || 'PENDENTE',
-          anac: isAnac,
-          navsolo: isNavsolo,
           data
         }
       })
@@ -1064,7 +654,6 @@ function updateSlotAeronave(id, value) {
   const slot = state.SCH.find((s) => s.id === id)
   if (slot) {
     slot.ae = value
-    updateScore()
   }
 }
 
@@ -1083,9 +672,7 @@ export function useCcoStore() {
     updateSlotAeronave,
     generateEditor: gerarEditor,
     voltarUpload,
-    smartShuffle,
     resetSchedule,
-    approveIncentivo,
     updateSlotInstructor,
     updateSlotStatus,
     toggleDisp,
@@ -1103,17 +690,9 @@ export function useCcoStore() {
     calendarMonthLabel,
     calendarRows,
     calendarDays,
-    scoreOk: computed(() => state.scoreOk),
-    scoreErr: computed(() => state.scoreErr),
-    isAuth,
-    getCross,
-    getErrs,
     getSlotClass,
     hv,
     swapSlots,
-    SKIP_VALIDATION_ST,
-    scoreSjk: computed(() => state.scoreSjk),
-    scoreCpq: computed(() => state.scoreCpq),
     activeTab: computed({ get: () => state.activeTab, set: (value) => { state.activeTab = value } }),
     editorTitle: computed(() => state.editorTitle),
     shuffleLog: computed(() => state.shuffleLog),

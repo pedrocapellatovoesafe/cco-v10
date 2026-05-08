@@ -9,44 +9,26 @@
         <img :src="iconUrl" alt="SAFE" style="width:28px;height:28px;border-radius:50%;opacity:.85;" />
         <h1>{{ store.state.editorTitle }}</h1>
         <div class="controls">
-          <div class="score-box">🟢 <span class="score-num sg">{{ store.scoreOk.value }}</span> &nbsp;|&nbsp; 🔴 <span class="score-num sr">{{ store.scoreErr.value }}</span></div>
-          <button class="btn-auto" @click="store.smartShuffle">⚡ Auto-resolver</button>
           <button class="btn-reset" @click="store.resetSchedule">↺ Reset</button>
           <button class="btn-back" @click="() => router.push('/upload')">📂 Nova escala</button>
           <button class="btn-logout-editor" @click="handleLogout">Sair</button>
         </div>
       </div>
 
-      <div class="shuffle-log" v-if="store.state.shuffleLog">{{ store.state.shuffleLog }}</div>
-      <div class="alert-panel">
-        <div class="alert-line al-ok" v-if="!alertList.length">✅ Escala 100% verde — nenhum problema!</div>
-        <div class="alert-line al-err" v-for="alert in alertList" :key="alert.msg">{{ alert.msg }}</div>
-      </div>
-
       <div class="panels">
-        <div class="panel-box" style="flex:2;"><h3>Jornada ao vivo</h3><div class="jornada-panel">
-          <div v-if="jornadaRows.length === 0" class="empty-message">Nenhum escalado.</div>
-          <div v-for="row in jornadaRows" :key="row.instr" class="j-row">
-            <div class="j-name">{{ row.instr }}</div>
-            <div class="j-slots">{{ row.times }}</div>
-            <div class="j-bar"><div class="j-fill" :class="row.barClass" :style="{ width: row.fill + '%' }"></div></div>
-            <div class="j-h" :class="{ 'jerr-t': row.fill > 100 }">{{ row.duration }}h</div>
-          </div>
-        </div></div>
-
         <div class="panel-box"><h3>Disponibilidade</h3><div class="disp-panel">
           <div class="disp-group" v-for="base in ['SJK', 'CPQ']" :key="base">
             <div class="disp-group-label">{{ base }}</div>
             <div class="disp-chips">
               <span
-                v-for="instr in store.availabilityGroups.value[base].voo"
+                v-for="instr in (store.availabilityGroups?.value?.[base]?.voo || [])"
                 :key="instr.nome"
                 class="ic"
                 :class="store.availabilityClass(instr.nome)"
                 @click="store.toggleDisp(instr.nome)"
                 :title="instr.nome"
               >
-                {{ instr.nome.split(' ')[0] }}
+                {{ instr.nome ? instr.nome.split(' ')[0] : '—' }}
               </span>
             </div>
           </div>
@@ -54,57 +36,43 @@
       </div>
 
       <div class="tabs">
-        <button :class="['tab-btn', store.state.activeTab === 'SJK' ? 't-sjk' : '']" @click="store.state.activeTab = 'SJK'">✈ SJK <span class="tscore">{{ store.scoreSjk.value }}</span></button>
-        <button :class="['tab-btn', store.state.activeTab === 'CPQ' ? 't-cpq' : '']" @click="store.state.activeTab = 'CPQ'">✈ CPQ <span class="tscore">{{ store.scoreCpq.value }}</span></button>
+        <button :class="['tab-btn', store.state.activeTab === 'SJK' ? 't-sjk' : '']" @click="store.state.activeTab = 'SJK'">✈ SJK</button>
+        <button :class="['tab-btn', store.state.activeTab === 'CPQ' ? 't-cpq' : '']" @click="store.state.activeTab = 'CPQ'">✈ CPQ</button>
       </div>
 
       <div class="tab-panel active">
-        <div v-for="block in store.scheduleBlocks.value[store.state.activeTab]" :key="block.id" class="barra-bloco">
+        <div v-for="block in (store.scheduleBlocks?.value?.[store.state.activeTab] || [])" :key="block.id" class="barra-bloco">
           <div class="bh" :style="{ gridTemplateColumns: `110px repeat(${block.slots.length}, 1fr)` }">
             <div class="hd"><div class="d1">{{ store.state.parsedDate }}</div><div class="d2">{{ store.state.parsedDayName }}</div></div>
-            <div v-for="slot in block.slots" :key="slot.id" class="hh" draggable="true"
+            <div v-for="slot in (block.slots || [])" :key="slot.id" class="hh" draggable="true"
               @dragstart="onDragStart(slot.id)"
               @dragend="onDragEnd"
               @dragover.prevent="onDragOver(slot.id)"
               @dragleave="onDragLeave(slot.id)"
               @drop.prevent="onDropSlot(slot.id)"
             >
-              {{ slot.hora }} <span v-if="!slot.anac" class="drag-indicator">⠿</span>
+              {{ slot.hora }} <span class="drag-indicator">⠿</span>
             </div>
           </div>
           <div class="barra-body">
-            <div class="brow" v-for="label in rowLabels" :key="label" :style="{ gridTemplateColumns: `110px repeat(${block.slots.length}, 1fr)` }">
+            <div class="brow" v-for="label in rowLabels" :key="label" :style="{ gridTemplateColumns: `110px repeat(${(block.slots || []).length}, 1fr)` }">
               <div class="rl">{{ label }}</div>
-              <template v-for="slot in block.slots" :key="slot.id + label">
+              <template v-for="slot in (block.slots || [])" :key="slot.id + label">
                 <div v-if="label === 'Aluno'" class="sc" :class="slot.aluno ? '' : 'sc-empty'"><div class="sv">{{ slot.aluno }}</div></div>
                 <div v-else-if="label === 'Instrutor'" :class="slotCellClass(slot)">
-                  <template v-if="slot.anac"><div class="sv locked">🔒 {{ slot.inva }}</div></template>
-                  <template v-else>
-                    <select class="slot-input" v-model="slot.inva" @change="onInstructorChange(slot.id, slot.inva)">
-                      <option value="">—</option>
-                      <optgroup label="Autorizados">
-                        <option v-for="name in instructorOptions(slot, true)" :key="name" :value="name">{{ name }}</option>
-                      </optgroup>
-                      <optgroup label="Não autorizados" v-if="instructorOptions(slot, false).length">
-                        <option v-for="name in instructorOptions(slot, false)" :key="name" :value="name">{{ name }}</option>
-                      </optgroup>
-                    </select>
-                  </template>
+                  <input class="slot-input" v-model="slot.inva" @change="onInstructorChange(slot.id, slot.inva)" placeholder="—" />
                 </div>
                 <div v-else-if="label === 'Aeronave'" class="sc">
-                  <template v-if="slot.anac"><div class="sv">{{ slot.ae }}</div></template>
-                  <template v-else>
-                    <select class="slot-input" v-model="slot.ae" @change="onAeronaveChange(slot.id, slot.ae)">
-                      <option value="">—</option>
-                      <option v-for="aero in store.getAeronavesByBarra(slot.barra, slot.ae)" :key="aero.id" :value="aero.nome">
-                        {{ aero.nome }}
-                      </option>
-                    </select>
-                  </template>
+                  <select class="slot-input" v-model="slot.ae" @change="onAeronaveChange(slot.id, slot.ae)">
+                    <option value="">—</option>
+                    <option v-for="aero in (store.getAeronavesByBarra ? store.getAeronavesByBarra(slot.barra, slot.ae) : [])" :key="aero.id" :value="aero.nome">
+                      {{ aero.nome }}
+                    </option>
+                  </select>
                 </div>
                 <div v-else-if="label === 'Missão'" class="sc" :class="slot.missao ? '' : 'sc-empty'"><div class="sv">{{ slot.missao }}</div></div>
                 <div v-else-if="label === 'Status'" class="sc">
-                  <template v-if="slot.aluno && !slot.anac">
+                  <template v-if="slot.aluno">
                     <select class="slot-input" v-model="slot.st" @change="onStatusChange(slot.id, slot.st)">
                       <option value="CONFIRMADO">CONFIRMADO</option>
                       <option value="PENDENTE">PENDENTE</option>
@@ -122,18 +90,13 @@
             </div>
           </div>
 
-          <div class="btn-row" :style="{ gridTemplateColumns: `110px repeat(${block.slots.length}, 1fr)` }">
+          <div class="btn-row" :style="{ gridTemplateColumns: `110px repeat(${(block.slots || []).length}, 1fr)` }">
             <div class="bl"></div>
-            <div v-for="slot in block.slots" :key="slot.id + '-btn'" class="bcell">
+            <div v-for="slot in (block.slots || [])" :key="slot.id + '-btn'" class="bcell">
               <div class="btn-container">
-                <button class="btn-cav" :class="buttonClass(slot)" @click="onApproveIncentivo(slot)">
+                <button class="btn-cav" :class="buttonClass(slot)">
                   {{ buttonLabel(slot) }}
                 </button>
-                <div v-if="buttonLabel(slot) === '⛔ Problema'" class="tooltip">
-                  <div class="tooltip-content">
-                    <div v-for="error in getSlotErrorMessages(slot)" :key="error" class="tooltip-line">{{ error }}</div>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
@@ -149,7 +112,7 @@
 </template>
 
 <script setup>
-import { ref, computed, inject, onMounted } from 'vue'
+import { ref, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import iconUrl from '../icons/icon-192.png'
 
@@ -165,7 +128,6 @@ onMounted(async () => {
       store.fetchBars(),
       store.fetchAeronaves()
     ])
-    // Generate editor after all data is available
     store.generateEditor()
   } finally {
     isLoading.value = false
@@ -173,31 +135,6 @@ onMounted(async () => {
 })
 const dragSourceId = ref(null)
 const rowLabels = ['Aluno', 'Instrutor', 'Aeronave', 'Missão', 'Status', 'Barra']
-
-const jornadaRows = computed(() => {
-  if (!store?.state?.SCH) return []
-  const byInstr = {}
-  store.state.SCH.forEach((slot) => {
-    if (!slot.inva || slot.anac || !slot.aluno) return
-    if (!byInstr[slot.inva]) byInstr[slot.inva] = []
-    byInstr[slot.inva].push(slot)
-  })
-  return Object.entries(byInstr).map(([instr, slots]) => {
-    const sortedSlots = [...slots].sort((a, b) => a.hora.localeCompare(b.hora))
-    const times = sortedSlots.map((slot) => slot.hora).join(' · ')
-    const hs = sortedSlots.map((slot) => store.hv(slot.hora)).filter((v) => v > 0)
-    
-    let duration = 0
-    if (hs.length > 0) {
-      duration = Math.max(...hs) - Math.min(...hs) + 2
-    }
-    
-    let barClass = 'jok'
-    if (duration > 11) barClass = 'jerr'
-    else if (duration >= 10) barClass = 'jwrn'
-    return { instr, times, duration: duration.toFixed(0), fill: Math.min(100, Math.round((duration / 11) * 100)), barClass }
-  })
-})
 
 function onInstructorChange(slotId, value) {
   store.updateSlotInstructor(slotId, value)
@@ -211,74 +148,18 @@ function onStatusChange(slotId, value) {
   store.updateSlotStatus(slotId, value)
 }
 
-function instructorOptions(slot, authorizedOnly) {
-  const names = Object.keys(store.state.INST).filter((name) => {
-    const d = store.state.INST[name]
-    if (!d) return false
-    if (d.tipo === 'anac') return false
-    const isAuth = store.isAuth(name, slot.barra)
-    return authorizedOnly ? isAuth : !isAuth
-  })
-  return names
-}
-
 function slotCellClass(slot) {
   return store.getSlotClass(slot)
 }
 
 function buttonLabel(slot) {
-  if (slot.anac) return '🔒 ANAC'
-  if (!slot.aluno) return store.SKIP_VALIDATION_ST?.has(slot.st) ? slot.st : 'Disponível'
-  if (store.SKIP_VALIDATION_ST?.has(slot.st)) return slot.st
-  if (slot.navsolo) return slot.inva ? '✓ Solo OK' : '⛔ Sem Instr. Solo'
-  if (isInc(slot.aluno) && slot.incentOk) return '✅ Aprovado'
-  if (isInc(slot.aluno) && store.getErrs(slot).some((e) => e.code === 'CONSEC_INC')) return '⚠ Incentivo'
-  const errors = [...store.getErrs(slot), ...crossForSlot(slot)]
-  if (errors.some((e) => e.code === 'SIMULT')) return '🚫 Simultâneo'
-  const ERR_CODES = new Set(['FOLGA', 'BARRA', 'NO_INSTR', 'JORNADA', 'SIMULT', 'LAB', 'MISSAO_REST'])
-  if (errors.some((e) => ERR_CODES.has(e.code))) return '⛔ Problema'
-  if (slot.inva && errors.some((e) => e.code === 'CONSEC')) return '⚠ Consecutiv.'
-  if (!slot.inva) return '⛔ Sem instrutor'
-  return '✓ OK'
+  if (!slot.aluno) return slot.st || 'Disponível'
+  return slot.st || '✓ OK'
 }
 
 function buttonClass(slot) {
-  if (slot.anac) return 'btn-anac'
-  if (!slot.aluno) return slot.st && store.SKIP_VALIDATION_ST?.has(slot.st) ? 'btn-mod-err' : 'btn-disp'
-  if (store.SKIP_VALIDATION_ST?.has(slot.st)) return 'btn-mod-err'
-  if (slot.navsolo) return slot.inva ? 'btn-mod-ok' : 'btn-mod-err'
-  if (isInc(slot.aluno) && slot.incentOk) return 'btn-mod-ok'
-  const errors = [...store.getErrs(slot), ...crossForSlot(slot)]
-  const ERR_CODES = new Set(['FOLGA', 'BARRA', 'NO_INSTR', 'JORNADA', 'SIMULT', 'LAB', 'MISSAO_REST'])
-  if (isInc(slot.aluno) && errors.some((e) => e.code === 'CONSEC_INC')) return 'btn-mod-inc'
-  if (errors.some((e) => e.code === 'SIMULT')) return 'btn-mod-err'
-  if (errors.some((e) => ERR_CODES.has(e.code))) return 'btn-mod-err'
-  if (slot.inva && errors.some((e) => e.code === 'CONSEC')) return 'btn-mod-wrn'
-  if (!slot.inva) return 'btn-mod-err'
+  if (!slot.aluno) return 'btn-disp'
   return 'btn-mod-ok'
-}
-
-function onApproveIncentivo(slot) {
-  if (isInc(slot.aluno)) store.approveIncentivo(slot.id)
-}
-
-function isInc(aluno) {
-  return aluno && aluno.toUpperCase().includes('INCENTIVO')
-}
-
-function crossForSlot(slot) {
-  const ce = store.getCross(store.state.SCH)
-  return ce[slot.id] || []
-}
-
-function getSlotErrorTooltip(slot) {
-  const errors = [...store.getErrs(slot), ...crossForSlot(slot)]
-  return errors.map(e => e.msg).filter(msg => msg).join('\n')
-}
-
-function getSlotErrorMessages(slot) {
-  const errors = [...store.getErrs(slot), ...crossForSlot(slot)]
-  return errors.map(e => e.msg).filter(msg => msg)
 }
 
 function onDragStart(id) {
@@ -307,19 +188,6 @@ function handleLogout() {
   store.logout()
   router.push('/login')
 }
-
-const alertList = computed(() => {
-  const alerts = []
-  const ce = store.getCross(store.state.SCH)
-  store.state.SCH.forEach((slot) => {
-    if (!slot.aluno) return
-    const all = [...store.getErrs(slot), ...(ce[slot.id] || [])]
-    all.forEach((e) => {
-      if (e.msg) alerts.push(e)
-    })
-  })
-  return alerts
-})
 </script>
 
 <style scoped>
@@ -393,20 +261,6 @@ const alertList = computed(() => {
   margin-left: auto;
   flex-wrap: wrap;
 }
-.score-box {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: #eef4fb;
-  border: 1px solid #cfdce9;
-  color: #1d2951;
-  font-size: 13px;
-  font-weight: 700;
-}
-.score-num { font-size: 16px; }
-.btn-auto,
 .btn-reset,
 .btn-back,
 .btn-logout-editor {
@@ -421,11 +275,6 @@ const alertList = computed(() => {
   align-items: center;
   gap: 6px;
 }
-.btn-auto {
-  background: #5baee2;
-  color: #fff;
-}
-.btn-auto:hover { background: #4a9fd0; transform: translateY(-1px); }
 .btn-reset { background: #888; color: #fff; }
 .btn-reset:hover { background: #666; transform: translateY(-1px); }
 .btn-back { background: #1d3a52; color: #fff; }
@@ -435,29 +284,9 @@ const alertList = computed(() => {
   color: #fff;
 }
 .btn-logout-editor:hover { background: #a93226; transform: translateY(-1px); }
-.shuffle-log {
-  margin: 16px 0 12px;
-  padding: 12px 14px;
-  font-size: 12px;
-  line-height: 1.6;
-  border-radius: 12px;
-  background: #e8f4fd;
-  border-left: 4px solid #2980b9;
-  color: #1a4a80;
-}
-.alert-panel { margin-bottom: 16px; display: grid; gap: 8px; }
-.alert-line {
-  padding: 10px 14px;
-  border-radius: 12px;
-  line-height: 1.5;
-  font-size: 12px;
-  border-left: 4px solid;
-}
-.al-err { background: #fdecea; border-color: #c0392b; color: #5a0d0d; }
-.al-ok { background: #d4edda; border-color: #1e7e34; color: #0f4020; font-weight: 700; }
 .panels {
   display: grid;
-  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  grid-template-columns: 1fr;
   gap: 14px;
   margin-bottom: 16px;
 }
@@ -513,12 +342,6 @@ const alertList = computed(() => {
 }
 .tab-btn.t-sjk { background: #1d2951; color: #fff; }
 .tab-btn.t-cpq { background: #1d3a52; color: #fff; }
-.tscore {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.22);
-}
 .tab-panel.active { display: block; }
 .barra-bloco {
   border-radius: 18px;
@@ -578,16 +401,8 @@ const alertList = computed(() => {
 .sc:last-child { border-right: none; }
 .sc-empty { background: #fff; }
 .sc-filled { background: #fff; }
-.sc-err { background: #fff; }
-.sc-warn { background: #fff; }
-.sc-incent { background: #fff8e1; }
-.sc-ok-manual { background: #eafaf1; }
-.sc-anac { background: #eaf4fb; }
-.sc-st-conf { background: #fff; }
 .sc-st-agua { background: #fff; }
-.sc-st-other { background: #fdecea; }
-.sc select,
-.sv select,
+.sc-st-other { background: #fff; }
 .slot-input {
   width: 100%;
   min-height: 40px;
@@ -599,11 +414,8 @@ const alertList = computed(() => {
   padding: 8px 10px;
   color: #1d2951;
   cursor: pointer;
-  appearance: none;
   outline: none;
 }
-.sc select:focus,
-.sv select:focus,
 .slot-input:focus {
   border-color: #5baee2;
   background: #f5fbff;
@@ -646,12 +458,7 @@ const alertList = computed(() => {
   cursor: pointer;
 }
 .btn-mod-ok { background: #27ae60; color: #fff; }
-.btn-mod-err { background: #c0392b; color: #fff; }
-.btn-mod-wrn { background: #d4821a; color: #fff; }
-.btn-mod-inc { background: #f39c12; color: #fff; }
-.btn-mod-inc:hover { background: #d68910; }
 .btn-disp { background: #1d2951; color: #fff; }
-.btn-anac { background: #2980b9; color: #fff; }
 .footer {
   margin-top: 18px;
   font-size: 11px;
@@ -670,97 +477,5 @@ const alertList = computed(() => {
   padding: 4px 10px;
   border-radius: 999px;
   font-weight: 700;
-}
-.empty-message {
-  color: #7a8290;
-  font-size: 12px;
-  padding: 18px 14px;
-}
-.j-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-  font-size: 11px;
-}
-.j-name {
-  min-width: 140px;
-  font-weight: 700;
-  color: #1d2951;
-}
-.j-slots {
-  flex: 1;
-  color: #4f5f75;
-  font-size: 11px;
-}
-.j-bar {
-  flex: 2;
-  height: 6px;
-  background: #e5e9f0;
-  border-radius: 999px;
-  overflow: hidden;
-}
-.j-fill {
-  height: 100%;
-  transition: width 0.25s ease;
-}
-.jok { background: #27ae60; }
-.jwrn { background: #f39c12; }
-.jerr { background: #c0392b; }
-.j-h {
-  min-width: 34px;
-  text-align: right;
-  font-weight: 700;
-  color: #1d2951;
-}
-.jerr-t { color: #c0392b; }
-.btn-container {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.tooltip {
-  position: absolute;
-  bottom: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
-  z-index: 1000;
-  margin-bottom: 8px;
-}
-.btn-container:hover .tooltip {
-  opacity: 1;
-  visibility: visible;
-}
-.tooltip-content {
-  background: #2a3b59;
-  color: #fff;
-  padding: 12px 16px;
-  border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  font-size: 11px;
-  line-height: 1.5;
-  white-space: nowrap;
-  max-width: 280px;
-  word-wrap: break-word;
-  white-space: normal;
-}
-.tooltip-line {
-  margin-bottom: 4px;
-}
-.tooltip-line:last-child {
-  margin-bottom: 0;
-}
-.tooltip::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  border: 6px solid transparent;
-  border-top-color: #2a3b59;
 }
 </style>
