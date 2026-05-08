@@ -1,6 +1,10 @@
 <template>
   <div class="screen-layout">
-    <div id="editor-screen" class="editor-screen">
+    <div v-if="isLoading" class="loading-overlay">
+      <div class="loader"></div>
+      <p>Sincronizando dados com o servidor...</p>
+    </div>
+    <div id="editor-screen" class="editor-screen" v-else>
       <div class="topbar">
         <img :src="iconUrl" alt="SAFE" style="width:28px;height:28px;border-radius:50%;opacity:.85;" />
         <h1>{{ store.state.editorTitle }}</h1>
@@ -88,7 +92,17 @@
                     </select>
                   </template>
                 </div>
-                <div v-else-if="label === 'AE'" class="sc"><div class="sv">{{ block.ae }}</div></div>
+                <div v-else-if="label === 'AE'" class="sc">
+                  <template v-if="slot.anac"><div class="sv">{{ slot.ae }}</div></template>
+                  <template v-else>
+                    <select class="slot-input" v-model="slot.ae" @change="onAeronaveChange(slot.id, slot.ae)">
+                      <option value="">—</option>
+                      <option v-for="aero in store.getAeronavesByBarra(slot.barra)" :key="aero.id" :value="aero.nome">
+                        {{ aero.nome }}
+                      </option>
+                    </select>
+                  </template>
+                </div>
                 <div v-else-if="label === 'Missão'" class="sc" :class="slot.missao ? '' : 'sc-empty'"><div class="sv">{{ slot.missao }}</div></div>
                 <div v-else-if="label === 'Status'" class="sc">
                   <template v-if="slot.aluno && !slot.anac">
@@ -104,7 +118,7 @@
                     </select>
                   </template>
                 </div>
-                <div v-else-if="label === 'Base'" class="sc"><div class="sv">{{ block.id.startsWith('MC') ? 'MC01' : block.id.includes('COLT') ? 'COLT' : block.ae }}</div></div>
+                <div v-else-if="label === 'Base'" class="sc"><div class="sv">{{ block.modelo }}</div></div>
               </template>
             </div>
           </div>
@@ -136,16 +150,31 @@
 </template>
 
 <script setup>
-import { ref, computed, inject } from 'vue'
+import { ref, computed, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import iconUrl from '../icons/icon-192.png'
 
 const router = useRouter()
 const store = inject('store')
+const isLoading = ref(true)
+
+onMounted(async () => {
+  isLoading.value = true
+  try {
+    await Promise.all([
+      store.fetchSlots(),
+      store.fetchBars(),
+      store.fetchAeronaves()
+    ])
+  } finally {
+    isLoading.value = false
+  }
+})
 const dragSourceId = ref(null)
 const rowLabels = ['Aluno', 'Instrutor', 'AE', 'Missão', 'Status', 'Base']
 
 const jornadaRows = computed(() => {
+  if (!store?.state?.SCH) return []
   const byInstr = {}
   store.state.SCH.forEach((slot) => {
     if (!slot.inva || slot.anac || !slot.aluno) return
@@ -153,9 +182,15 @@ const jornadaRows = computed(() => {
     byInstr[slot.inva].push(slot)
   })
   return Object.entries(byInstr).map(([instr, slots]) => {
-    const times = slots.sort((a, b) => a.hora.localeCompare(b.hora)).map((slot) => slot.hora).join(' · ')
-    const hs = slots.map((slot) => store.hv(slot.hora)).filter((v) => v > 0)
-    const duration = Math.max(...hs) - Math.min(...hs) + 2
+    const sortedSlots = [...slots].sort((a, b) => a.hora.localeCompare(b.hora))
+    const times = sortedSlots.map((slot) => slot.hora).join(' · ')
+    const hs = sortedSlots.map((slot) => store.hv(slot.hora)).filter((v) => v > 0)
+    
+    let duration = 0
+    if (hs.length > 0) {
+      duration = Math.max(...hs) - Math.min(...hs) + 2
+    }
+    
     let barClass = 'jok'
     if (duration > 11) barClass = 'jerr'
     else if (duration >= 10) barClass = 'jwrn'
@@ -165,6 +200,10 @@ const jornadaRows = computed(() => {
 
 function onInstructorChange(slotId, value) {
   store.updateSlotInstructor(slotId, value)
+}
+
+function onAeronaveChange(slotId, value) {
+  store.updateSlotAeronave(slotId, value)
 }
 
 function onStatusChange(slotId, value) {
@@ -287,6 +326,34 @@ const alertList = computed(() => {
   min-height: 100vh;
   padding: 24px;
   background: #f0f4f8;
+  position: relative;
+}
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(240, 244, 248, 0.8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  border-radius: 14px;
+}
+.loader {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #1d2951;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin-bottom: 15px;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 .editor-screen {
   width: 100%;

@@ -132,6 +132,8 @@ const state = reactive({
   SCH: [],
   INITIAL: [],
   INST: {},
+  AERONAVES: [],
+  BARRAS: [],
   highlighted: new Set(),
   scoreOk: 0,
   scoreErr: 0,
@@ -147,7 +149,8 @@ function login() {
 
   return api.post('/auth/login', payload)
     .then(response => {
-      const { token } = response.data.data
+      // Adjusted to handle { data: { token: '...' } } or { token: '...' }
+      const token = response.data?.token || response.data?.data?.token
       if (token) {
         localStorage.setItem(TOKEN_KEY, token)
         sessionStorage.setItem(SESSION_KEY, '1')
@@ -408,13 +411,14 @@ function gerarEditor() {
     const isPcatd = barraId.toUpperCase().includes('PCATD') || barraId.toUpperCase().includes('SM PCATD')
     const gradeBase = isPcatd ? HORAS_PCATD : HORAS_DEFAULT
     const horasFinais = [...new Set([...gradeBase, ...Object.keys(byHora)])].sort()
-    let ae = ''
+    
+    // Default model/type for this bar if not provided by API
+    let defaultAe = 'MC01'
     const bu = barraId.toUpperCase()
-    if (bu.includes('SIRA')) ae = 'SIRA'
-    else if (bu.includes('SM AATD') || bu.includes('SIM AATD')) ae = 'SM AATD'
-    else if (bu.includes('PCATD') || bu.includes('SM PCATD') || bu.includes('SIM PCATD')) ae = 'SM PCATD'
-    else if (bu.includes('COLT')) ae = 'COLT'
-    else ae = 'MC01'
+    if (bu.includes('SIRA')) defaultAe = 'SIRA'
+    else if (bu.includes('SM AATD') || bu.includes('SIM AATD')) defaultAe = 'SM AATD'
+    else if (bu.includes('PCATD') || bu.includes('SM PCATD') || bu.includes('SIM PCATD')) defaultAe = 'SM PCATD'
+    else if (bu.includes('COLT')) defaultAe = 'COLT'
 
     horasFinais.forEach((hora) => {
       const existing = byHora[hora]
@@ -429,7 +433,8 @@ function gerarEditor() {
         hora,
         aluno: existing ? existing.aluno : '',
         inva: invaClean,
-        ae,
+        ae: existing ? existing.ae : '',
+        modelo: existing ? existing.modelo : defaultAe,
         missao: existing ? existing.missao : '',
         st: existing ? existing.st : '',
         anac: existing ? existing.anac : false,
@@ -769,7 +774,7 @@ function getTabBlocks(base) {
   const barras = [...new Set(state.SCH.map((slot) => slot.barra))]
     .map((barraId) => {
       const slots = state.SCH.filter((s) => s.barra === barraId).sort((a, b) => hv(a.hora) - hv(b.hora))
-      return { id: barraId, base: slots[0]?.base || 'SJK', ae: slots[0]?.ae || '—', slots }
+      return { id: barraId, base: slots[0]?.base || 'SJK', ae: slots[0]?.ae || '—', modelo: slots[0]?.modelo || '—', slots }
     })
     .filter((block) => block.base === base)
     .sort((a, b) => {
@@ -911,6 +916,108 @@ function voltarUpload() {
   state.parsedSlots = []
 }
 
+function fetchBars() {
+  return api.get('/barras')
+    .then(response => {
+      // Enrich bars with guessed model if missing
+      state.BARRAS = response.data.map(b => {
+        if (b.modeloAeronave) return b
+        let modelo = 'MC01'
+        const bu = b.nome.toUpperCase()
+        if (bu.includes('SIRA')) modelo = 'SIRA'
+        else if (bu.includes('AATD')) modelo = 'SM AATD'
+        else if (bu.includes('PCATD')) modelo = 'SM PCATD'
+        else if (bu.includes('COLT')) modelo = 'COLT'
+        return { ...b, modeloAeronave: { nome: modelo } }
+      })
+      return true
+    })
+}
+
+function fetchAeronaves() {
+  return api.get('/aeronaves')
+    .then(response => {
+      state.AERONAVES = response.data
+      return true
+    })
+}
+
+function fetchSlots() {
+  return api.get('/slots')
+    .then(response => {
+      const apiSlots = response.data
+      const mappedSlots = apiSlots.map(slot => {
+        const dt = slot.dataHora ? new Date(slot.dataHora) : new Date()
+        const hora = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        const data = dt.toLocaleDateString('pt-BR')
+        
+        const barraNome = slot.barra?.nome || ''
+        const base = getBase(barraNome)
+        
+        // Use slot.inva instead of slot.instrutor
+        const inva = slot.inva?.nome || ''
+        const missao = slot.missao?.nome || ''
+        let missaoShort = missao
+        if (missao.includes(' > ')) missaoShort = missao.split(' > ').pop().trim()
+        
+        const isAnac = inva.toUpperCase().includes('ANDRE OLIVEIRA') || inva.toUpperCase().includes('PISANI')
+        const isNavsolo = missaoShort.toUpperCase().includes('NAV SOLO') || missaoShort.toUpperCase().includes('NAV MENTOR')
+
+        // Map to internal structure
+        return {
+          id: `api-${slot.id}`,
+          barra: barraNome,
+          base,
+          hora,
+          aluno: slot.aluno?.nome || '',
+          inva: inva, 
+          ae: slot.aeronave?.nome || '',
+          modelo: slot.aeronave?.modeloAeronave?.nome || '',
+          missao: missaoShort,
+          st: slot.statusSlot?.nome || 'PENDENTE',
+          anac: isAnac,
+          navsolo: isNavsolo,
+          data
+        }
+      })
+
+      state.parsedSlots = mappedSlots
+      if (mappedSlots.length > 0) {
+        state.parsedDate = mappedSlots[0].data
+        const parts = state.parsedDate.split('/')
+        if (parts.length >= 3) {
+          const d = new Date(+parts[2], +parts[1] - 1, +parts[0])
+          state.parsedDayName = DIAS_PT[d.getDay()] || ''
+        }
+      }
+      
+      gerarEditor()
+      return true
+    })
+    .catch(error => {
+      console.error('Error fetching slots:', error)
+      return false
+    })
+}
+
+function getAeronavesByBarra(barraId) {
+  // Find the bar model
+  const barra = state.BARRAS.find(b => b.nome === barraId)
+  if (!barra) return state.AERONAVES
+  
+  // Return aircraft that match the bar's aircraft model
+  // Note: Adjust property names based on your actual Aeronave/Barra model if different
+  return state.AERONAVES.filter(a => a.modeloAeronave?.nome === barra.modeloAeronave?.nome)
+}
+
+function updateSlotAeronave(id, value) {
+  const slot = state.SCH.find((s) => s.id === id)
+  if (slot) {
+    slot.ae = value
+    updateScore()
+  }
+}
+
 export function useCcoStore() {
   return {
     state,
@@ -918,6 +1025,11 @@ export function useCcoStore() {
     logout,
     checkLogin,
     onFile,
+    fetchSlots,
+    fetchBars,
+    fetchAeronaves,
+    getAeronavesByBarra,
+    updateSlotAeronave,
     generateEditor: gerarEditor,
     voltarUpload,
     smartShuffle,
