@@ -1,8 +1,8 @@
 import { reactive, computed } from 'vue'
+import api from '../services/api'
 
-const USER_EMAIL = 'cco@voesafe.com.br'
-const USER_PASSWORD = 'SafeCCO123$'
 const SESSION_KEY = 'cco_auth'
+const TOKEN_KEY = 'cco_token'
 
 const QUADRO = {
   SJK: [
@@ -105,7 +105,13 @@ const ORDEM_BARRAS = [
 const BARRAS_CONHECIDAS = [...ORDEM_BARRAS]
 
 const state = reactive({
-  isAuthenticated: sessionStorage.getItem(SESSION_KEY) === '1',
+  isAuthenticated: (function() {
+    try {
+      return !!localStorage.getItem(TOKEN_KEY)
+    } catch (e) {
+      return false
+    }
+  })(),
   loginUser: '',
   loginPass: '',
   loginError: false,
@@ -134,20 +140,35 @@ const state = reactive({
 })
 
 function login() {
-  if (state.loginUser.trim() === USER_EMAIL && state.loginPass === USER_PASSWORD) {
-    sessionStorage.setItem(SESSION_KEY, '1')
-    state.isAuthenticated = true
-    state.loginError = false
-    return true
+  const payload = {
+    email: state.loginUser.trim(),
+    password: state.loginPass
   }
-  state.loginError = true
-  return false
+
+  return api.post('/auth/login', payload)
+    .then(response => {
+      const { token } = response.data.data
+      if (token) {
+        localStorage.setItem(TOKEN_KEY, token)
+        sessionStorage.setItem(SESSION_KEY, '1')
+        state.isAuthenticated = true
+        state.loginError = false
+        return true
+      }
+      state.loginError = true
+      return false
+    })
+    .catch(error => {
+      console.error('Login error:', error)
+      state.loginError = true
+      return false
+    })
 }
 
 function logout() {
+  localStorage.removeItem(TOKEN_KEY)
   sessionStorage.removeItem(SESSION_KEY)
   state.isAuthenticated = false
-  // Reset other relevant state if needed
   state.loginUser = ''
   state.loginPass = ''
 }

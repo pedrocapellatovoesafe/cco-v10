@@ -1,13 +1,11 @@
 <template>
   <div class="app-root">
-    <router-view :key="$route.path" />
+    <router-view />
   </div>
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
-
-const router = useRouter()
+// Root component
 </script>
 
 <style scoped>

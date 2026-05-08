@@ -1,14 +1,34 @@
 <script setup>
-import { inject } from 'vue'
+import { inject, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import iconUrl from '../icons/icon-192.png'
 
 const router = useRouter()
 const store = inject('store')
+const isLoading = ref(false)
+
+const loginUser = computed({
+  get: () => store?.state?.loginUser || '',
+  set: (val) => { if (store) store.state.loginUser = val }
+})
+
+const loginPass = computed({
+  get: () => store?.state?.loginPass || '',
+  set: (val) => { if (store) store.state.loginPass = val }
+})
+
+const loginError = computed(() => store?.state?.loginError || false)
 
 const handleLogin = async () => {
-  if (store.login()) {
-    router.push('/upload')
+  if (!store || isLoading.value) return
+  isLoading.value = true
+  try {
+    const success = await store.login()
+    if (success) {
+      router.push('/editor')
+    }
+  } finally {
+    isLoading.value = false
   }
 }
 </script>
@@ -21,17 +41,23 @@ const handleLogin = async () => {
         <h1>✈ CCO · SAFE Aviation</h1>
         <p>Acesso restrito — Centro de Controle de Operações</p>
       </div>
-      <div class="login-body">
-        <div class="login-err" v-if="store.state.loginError">Usuário ou senha incorretos.</div>
+      <div class="login-body" v-if="store">
+        <div class="login-err" v-if="loginError">Usuário ou senha incorretos.</div>
         <div class="login-field">
           <label>Usuário</label>
-          <input type="email" v-model="store.state.loginUser" placeholder="seu@email.com" autocomplete="username" @keyup.enter="handleLogin" />
+          <input type="email" v-model="loginUser" placeholder="seu@email.com" autocomplete="username" @keyup.enter="handleLogin" :disabled="isLoading" />
         </div>
         <div class="login-field">
           <label>Senha</label>
-          <input type="password" v-model="store.state.loginPass" placeholder="••••••••" autocomplete="current-password" @keyup.enter="handleLogin" />
+          <input type="password" v-model="loginPass" placeholder="••••••••" autocomplete="current-password" @keyup.enter="handleLogin" :disabled="isLoading" />
         </div>
-        <button class="login-btn" @click="handleLogin">Entrar</button>
+        <button class="login-btn" @click="handleLogin" :disabled="isLoading">
+          <span v-if="isLoading">Autenticando...</span>
+          <span v-else>Entrar</span>
+        </button>
+      </div>
+      <div class="login-body" v-else>
+        Carregando sistema...
       </div>
     </div>
   </div>

@@ -1,16 +1,25 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import LoginScreen from '../components/LoginScreen.vue'
-import UploadScreen from '../components/UploadScreen.vue'
-import EditorScreen from '../components/EditorScreen.vue'
-import CalendarScreen from '../components/CalendarScreen.vue'
+
+const LoginScreen = () => import('../components/LoginScreen.vue')
+const UploadScreen = () => import('../components/UploadScreen.vue')
+const EditorScreen = () => import('../components/EditorScreen.vue')
+const CalendarScreen = () => import('../components/CalendarScreen.vue')
+const UnauthorizedScreen = () => import('../components/UnauthorizedScreen.vue')
 
 const SESSION_KEY = 'cco_auth'
+const TOKEN_KEY = 'cco_token'
 
 const routes = [
   {
     path: '/login',
     name: 'Login',
     component: LoginScreen,
+    meta: { requiresAuth: false }
+  },
+  {
+    path: '/unauthorized',
+    name: 'Unauthorized',
+    component: UnauthorizedScreen,
     meta: { requiresAuth: false }
   },
   {
@@ -33,37 +42,38 @@ const routes = [
   },
   {
     path: '/',
-    redirect: () => {
-      const isAuthenticated = sessionStorage.getItem(SESSION_KEY) === '1'
-      return isAuthenticated ? '/upload' : '/login'
-    }
+    name: 'Root',
+    meta: { requiresAuth: true }
   },
   {
     path: '/:pathMatch(.*)*',
-    redirect: () => {
-      const isAuthenticated = sessionStorage.getItem(SESSION_KEY) === '1'
-      return isAuthenticated ? '/upload' : '/login'
-    }
+    redirect: '/unauthorized'
   }
 ]
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL || '/'),
+  history: createWebHistory('/'),
   routes
 })
 
 // Navigation guard para verificar autenticação
 router.beforeEach((to, from, next) => {
-  const isAuthenticated = sessionStorage.getItem(SESSION_KEY) === '1'
+  let isAuthenticated = false
+  try {
+    isAuthenticated = !!localStorage.getItem(TOKEN_KEY)
+  } catch (e) {
+    console.error('LocalStorage access error:', e)
+  }
+
+  if (to.path === '/') {
+    return next(isAuthenticated ? '/editor' : '/login')
+  }
 
   if (to.meta.requiresAuth && !isAuthenticated) {
-    // Rota protegida, mas não autenticado - redireciona para login
-    next('/login')
+    next('/unauthorized')
   } else if (to.path === '/login' && isAuthenticated) {
-    // Já autenticado tentando acessar login - vai para upload
     next('/upload')
   } else {
-    // Permite a navegação
     next()
   }
 })
