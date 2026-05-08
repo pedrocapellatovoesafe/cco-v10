@@ -51,6 +51,7 @@ const state = reactive({
   INST: {},
   AERONAVES: [],
   BARRAS: [],
+  INVAS: [],
   highlighted: new Set(),
 })
 
@@ -579,6 +580,18 @@ function fetchAeronaves() {
     })
 }
 
+function fetchInvas() {
+  return api.get('/invas')
+    .then(response => {
+      state.INVAS = response.data?.data || response.data
+      return true
+    })
+    .catch(error => {
+      console.error('Error fetching invas:', error)
+      return false
+    })
+}
+
 function fetchSlots() {
   return api.get('/slots')
     .then(response => {
@@ -668,6 +681,7 @@ export function useCcoStore() {
     fetchSlots,
     fetchBars,
     fetchAeronaves,
+    fetchInvas,
     getAeronavesByBarra,
     updateSlotAeronave,
     generateEditor: gerarEditor,

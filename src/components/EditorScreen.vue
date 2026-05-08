@@ -60,7 +60,12 @@
               <template v-for="slot in (block.slots || [])" :key="slot.id + label">
                 <div v-if="label === 'Aluno'" class="sc" :class="slot.aluno ? '' : 'sc-empty'"><div class="sv">{{ slot.aluno }}</div></div>
                 <div v-else-if="label === 'Instrutor'" :class="slotCellClass(slot)">
-                  <input class="slot-input" v-model="slot.inva" @change="onInstructorChange(slot.id, slot.inva)" placeholder="—" />
+                  <select class="slot-input" v-model="slot.inva" @change="onInstructorChange(slot.id, slot.inva)">
+                    <option value="">—</option>
+                    <option v-for="inva in (store.state.INVAS || [])" :key="inva.id" :value="inva.nome">
+                      {{ inva.nome }}
+                    </option>
+                  </select>
                 </div>
                 <div v-else-if="label === 'Aeronave'" class="sc">
                   <select class="slot-input" v-model="slot.ae" @change="onAeronaveChange(slot.id, slot.ae)">
@@ -126,7 +131,8 @@ onMounted(async () => {
     await Promise.all([
       store.fetchSlots(),
       store.fetchBars(),
-      store.fetchAeronaves()
+      store.fetchAeronaves(),
+      store.fetchInvas()
     ])
     store.generateEditor()
   } finally {
@@ -396,7 +402,7 @@ function handleLogout() {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  padding: 0 6px;
+  padding: 4px 6px;
 }
 .sc:last-child { border-right: none; }
 .sc-empty { background: #fff; }
@@ -405,20 +411,35 @@ function handleLogout() {
 .sc-st-other { background: #fff; }
 .slot-input {
   width: 100%;
-  min-height: 40px;
+  height: 36px;
   border: 1px solid #d8dee8;
-  border-radius: 10px;
-  background: #fff;
-  font-size: 12px;
+  border-radius: 8px;
+  background: #fdfdfd;
+  font-size: 11.5px;
   font-family: inherit;
-  padding: 8px 10px;
+  padding: 0 10px;
   color: #1d2951;
   cursor: pointer;
   outline: none;
+  text-align: center;
+  text-align-last: center;
+  transition: all 0.2s ease;
 }
 .slot-input:focus {
   border-color: #5baee2;
   background: #f5fbff;
+  box-shadow: 0 0 0 3px rgba(91, 174, 226, 0.15);
+}
+.slot-input:hover {
+  border-color: #b8c2d1;
+}
+select.slot-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231d2951' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 14px;
+  padding-right: 28px;
 }
 .sv {
   display: flex;
