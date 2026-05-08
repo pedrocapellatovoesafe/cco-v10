@@ -124,6 +124,8 @@ const state = reactive({
   availability: {},
   btnGerarDisabled: true,
   activeTab: 'SJK',
+  isUploading: false,
+  uploadError: null,
   editorTitle: '✈ CCO · Editor de Escala',
   shuffleLog: '',
   calendarYear: new Date().getFullYear(),
@@ -375,6 +377,33 @@ function onFile(file) {
   reader.readAsArrayBuffer(file)
 }
 
+async function importScale() {
+  state.isUploading = true
+  state.uploadError = null
+  
+  try {
+    const payload = {
+      // data: state.parsedDate,
+      slots: state.parsedSlots
+      // availability: state.availability
+    }
+    
+    const response = await api.post('/slots/import', payload)
+    
+    // If successful, we can fetch the slots from the API 
+    // to populate the editor with what the server created
+    await fetchSlots()
+    
+    return { success: true, data: response.data }
+  } catch (err) {
+    console.error('Erro ao importar escala:', err)
+    state.uploadError = err.response?.data?.message || err.message
+    return { success: false, error: state.uploadError }
+  } finally {
+    state.isUploading = false
+  }
+}
+
 function ordemBarra(id) {
   const idx = ORDEM_BARRAS.findIndex((o) => id.toUpperCase().includes(o.toUpperCase()) || o.toUpperCase().includes(id.toUpperCase()))
   if (idx >= 0) return idx
@@ -425,6 +454,13 @@ function gerarEditor() {
       const invaRaw = existing ? normalizeInstructorName(existing.inva, state.INST) : ''
       const d = state.INST[invaRaw]
       const invaClean = d && d.folga ? '' : invaRaw
+      
+      let finalAe = existing ? existing.ae : ''
+      if (!finalAe && existing?.aeronaveId && state.AERONAVES.length > 0) {
+        const found = state.AERONAVES.find(a => a.id === existing.aeronaveId)
+        if (found) finalAe = found.nome
+      }
+
       sid += 1
       schSlots.push({
         id: `s${sid}`,
@@ -433,7 +469,7 @@ function gerarEditor() {
         hora,
         aluno: existing ? existing.aluno : '',
         inva: invaClean,
-        ae: existing ? existing.ae : '',
+        ae: finalAe,
         modelo: existing ? existing.modelo : defaultAe,
         missao: existing ? existing.missao : '',
         st: existing ? existing.st : '',
@@ -919,16 +955,24 @@ function voltarUpload() {
 function fetchBars() {
   return api.get('/barras')
     .then(response => {
-      // Enrich bars with guessed model if missing
-      state.BARRAS = response.data.map(b => {
-        if (b.modeloAeronave) return b
-        let modelo = 'MC01'
-        const bu = b.nome.toUpperCase()
-        if (bu.includes('SIRA')) modelo = 'SIRA'
-        else if (bu.includes('AATD')) modelo = 'SM AATD'
-        else if (bu.includes('PCATD')) modelo = 'SM PCATD'
-        else if (bu.includes('COLT')) modelo = 'COLT'
-        return { ...b, modeloAeronave: { nome: modelo } }
+      const data = response.data?.data || response.data
+      state.BARRAS = data.map(b => {
+        let modelo = b.modeloAeronave?.nome
+        if (!modelo) {
+          const bu = b.nome.toUpperCase()
+          if (bu.includes('SIRA')) modelo = 'SIRA'
+          else if (bu.includes('AATD')) modelo = 'SM AATD'
+          else if (bu.includes('PCATD')) modelo = 'SM PCATD'
+          else if (bu.includes('COLT')) modelo = 'COLT'
+          else modelo = 'MC01'
+        }
+        return { 
+          ...b, 
+          modeloAeronave: { 
+            ...(b.modeloAeronave || {}), 
+            nome: modelo 
+          } 
+        }
       })
       return true
     })
@@ -937,7 +981,7 @@ function fetchBars() {
 function fetchAeronaves() {
   return api.get('/aeronaves')
     .then(response => {
-      state.AERONAVES = response.data
+      state.AERONAVES = response.data?.data || response.data
       return true
     })
 }
@@ -945,7 +989,7 @@ function fetchAeronaves() {
 function fetchSlots() {
   return api.get('/slots')
     .then(response => {
-      const apiSlots = response.data
+      const apiSlots = response.data?.data || response.data
       const mappedSlots = apiSlots.map(slot => {
         const dt = slot.dataHora ? new Date(slot.dataHora) : new Date()
         const hora = dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
@@ -954,7 +998,6 @@ function fetchSlots() {
         const barraNome = slot.barra?.nome || ''
         const base = getBase(barraNome)
         
-        // Use slot.inva instead of slot.instrutor
         const inva = slot.inva?.nome || ''
         const missao = slot.missao?.nome || ''
         let missaoShort = missao
@@ -963,17 +1006,17 @@ function fetchSlots() {
         const isAnac = inva.toUpperCase().includes('ANDRE OLIVEIRA') || inva.toUpperCase().includes('PISANI')
         const isNavsolo = missaoShort.toUpperCase().includes('NAV SOLO') || missaoShort.toUpperCase().includes('NAV MENTOR')
 
-        // Map to internal structure
         return {
           id: `api-${slot.id}`,
-          barra: barraNome,
+          barra: barraNome.trim(),
           base,
           hora,
-          aluno: slot.aluno?.nome || '',
-          inva: inva, 
-          ae: slot.aeronave?.nome || '',
-          modelo: slot.aeronave?.modeloAeronave?.nome || '',
-          missao: missaoShort,
+          aluno: (slot.aluno?.nome || '').trim(),
+          inva: inva.trim(), 
+          aeronaveId: slot.aeronaveId,
+          ae: (slot.aeronave?.nome || '').trim(),
+          modelo: (slot.aeronave?.modeloAeronave?.nome || '').trim(),
+          missao: missaoShort.trim(),
           st: slot.statusSlot?.nome || 'PENDENTE',
           anac: isAnac,
           navsolo: isNavsolo,
@@ -991,7 +1034,6 @@ function fetchSlots() {
         }
       }
       
-      gerarEditor()
       return true
     })
     .catch(error => {
@@ -1000,14 +1042,22 @@ function fetchSlots() {
     })
 }
 
-function getAeronavesByBarra(barraId) {
-  // Find the bar model
+function getAeronavesByBarra(barraId, currentAe = '') {
+  if (!state.BARRAS || !state.BARRAS.length) return state.AERONAVES
   const barra = state.BARRAS.find(b => b.nome === barraId)
-  if (!barra) return state.AERONAVES
   
-  // Return aircraft that match the bar's aircraft model
-  // Note: Adjust property names based on your actual Aeronave/Barra model if different
-  return state.AERONAVES.filter(a => a.modeloAeronave?.nome === barra.modeloAeronave?.nome)
+  let list = state.AERONAVES
+  if (barra && barra.modeloAeronave?.nome) {
+    const modelName = barra.modeloAeronave.nome.toUpperCase()
+    list = state.AERONAVES.filter(a => (a.modeloAeronave?.nome || '').toUpperCase() === modelName)
+  }
+
+  if (currentAe && !list.find(a => a.nome === currentAe)) {
+    const original = state.AERONAVES.find(a => a.nome === currentAe)
+    if (original) list = [original, ...list]
+  }
+
+  return list
 }
 
 function updateSlotAeronave(id, value) {
@@ -1025,6 +1075,7 @@ export function useCcoStore() {
     logout,
     checkLogin,
     onFile,
+    importScale,
     fetchSlots,
     fetchBars,
     fetchAeronaves,

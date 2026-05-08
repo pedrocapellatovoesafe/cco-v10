@@ -72,7 +72,6 @@
               {{ slot.hora }} <span v-if="!slot.anac" class="drag-indicator">⠿</span>
             </div>
           </div>
-
           <div class="barra-body">
             <div class="brow" v-for="label in rowLabels" :key="label" :style="{ gridTemplateColumns: `110px repeat(${block.slots.length}, 1fr)` }">
               <div class="rl">{{ label }}</div>
@@ -92,12 +91,12 @@
                     </select>
                   </template>
                 </div>
-                <div v-else-if="label === 'AE'" class="sc">
+                <div v-else-if="label === 'Aeronave'" class="sc">
                   <template v-if="slot.anac"><div class="sv">{{ slot.ae }}</div></template>
                   <template v-else>
                     <select class="slot-input" v-model="slot.ae" @change="onAeronaveChange(slot.id, slot.ae)">
                       <option value="">—</option>
-                      <option v-for="aero in store.getAeronavesByBarra(slot.barra)" :key="aero.id" :value="aero.nome">
+                      <option v-for="aero in store.getAeronavesByBarra(slot.barra, slot.ae)" :key="aero.id" :value="aero.nome">
                         {{ aero.nome }}
                       </option>
                     </select>
@@ -118,7 +117,7 @@
                     </select>
                   </template>
                 </div>
-                <div v-else-if="label === 'Base'" class="sc"><div class="sv">{{ block.modelo }}</div></div>
+                <div v-else-if="label === 'Barra'" class="sc"><div class="sv">{{ slot.barra }}</div></div>
               </template>
             </div>
           </div>
@@ -166,12 +165,14 @@ onMounted(async () => {
       store.fetchBars(),
       store.fetchAeronaves()
     ])
+    // Generate editor after all data is available
+    store.generateEditor()
   } finally {
     isLoading.value = false
   }
 })
 const dragSourceId = ref(null)
-const rowLabels = ['Aluno', 'Instrutor', 'AE', 'Missão', 'Status', 'Base']
+const rowLabels = ['Aluno', 'Instrutor', 'Aeronave', 'Missão', 'Status', 'Barra']
 
 const jornadaRows = computed(() => {
   if (!store?.state?.SCH) return []

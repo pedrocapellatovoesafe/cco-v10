@@ -62,8 +62,18 @@
           </div>
 
           <p class="avail-notice">✓ Disponibilidade dos instrutores de solo carregada automaticamente do Calendário.</p>
-          <button class="btn-gerar" :disabled="store.state.btnGerarDisabled" @click="handleGenerateEditor">
-            ⚡ Gerar Editor de Escala
+          
+          <div v-if="store.state.uploadError" class="upload-error">
+            ❌ {{ store.state.uploadError }}
+          </div>
+
+          <button 
+            class="btn-gerar" 
+            :disabled="store.state.btnGerarDisabled || store.state.isUploading" 
+            @click="handleGenerateEditor"
+          >
+            <span v-if="store.state.isUploading">⏳ Enviando para o servidor...</span>
+            <span v-else>⚡ Gerar Editor de Escala</span>
           </button>
         </div>
       </div>
@@ -105,13 +115,27 @@ function handleOpenCalendar() {
   router.push('/calendar')
 }
 
-function handleGenerateEditor() {
-  store.generateEditor()
-  router.push('/editor')
+async function handleGenerateEditor() {
+  const result = await store.importScale()
+  if (result.success) {
+    router.push('/editor')
+  }
 }
 </script>
 
 <style scoped>
+/* ... rest of styles ... */
+.upload-error {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12px;
+  color: #721c24;
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+/* ... existing styles ... */
 .screen-layout {
   min-height: 100vh;
   display: flex;
