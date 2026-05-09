@@ -247,7 +247,6 @@ async function importScale() {
     }
     
     const response = await api.post('/slots/import', payload)
-    console.log(payload)
     await fetchSlots()
     
     return { success: true, data: response.data }
@@ -326,7 +325,8 @@ function gerarEditor() {
         ae: finalAe,
         modelo: existing ? existing.modelo : defaultAe,
         missao: existing ? existing.missao : '',
-        st: existing ? existing.st : ''
+        st: existing ? existing.st : '',
+        obs: existing ? existing.obs : ''
       })
     })
   })
@@ -358,8 +358,71 @@ function hv(hora) {
 }
 
 function getSlotClass(slot) {
-  if (!slot.aluno) return 'sc sc-empty'
-  return stCls(slot.st)
+  const base = 'sc'
+  if (!slot.aluno) return `${base} sc-empty`
+  return `${base} ${stCls(slot.st)}`
+}
+
+function getSlotAlerts(slot) {
+  const alerts = []
+  if (!slot.aluno) return alerts
+
+  // 0. Observações do Slot
+  if (slot.obs && slot.obs.trim()) {
+    alerts.push(`Atente-se às observações do slot!`)
+  }
+
+  // 1. Status da Operação e Impedimentos Técnicos
+  const techImpediments = ['PENDENTE', 'AGUARDANDO CONFIRMAÇÃO', 'REVISÃO', 'OPERAÇÕES', 'METEOROLOGIA', 'MANUTENÇÃO', 'INDISPONIBILIDADE']
+  if (techImpediments.includes(slot.st)) {
+    alerts.push(`Impedimento/Status: ${slot.st}`)
+  }
+
+  // 2. Dados Incompletos
+  if (!slot.inva || !slot.ae) {
+    const missing = []
+    if (!slot.inva) missing.push('Instrutor')
+    if (!slot.ae) missing.push('Aeronave')
+    alerts.push(`Dados Incompletos: Falta preencher ${missing.join(' e ')}.`)
+  }
+
+  if (slot.inva) {
+    const mySlots = state.SCH.filter(s => s.inva === slot.inva && s.aluno).sort((a, b) => hv(a.hora) - hv(b.hora))
+    
+    // 4. Conflito de Horário Simultâneo
+    const simultaneous = mySlots.filter(s => s.hora === slot.hora && s.id !== slot.id)
+    if (simultaneous.length > 0) {
+      alerts.push(`Conflito Simultâneo: Instrutor já alocado em ${simultaneous[0].barra} neste horário.`)
+    }
+
+    // 3. Conflito de Alunos em Sequência
+    const slotTime = hv(slot.hora)
+    // Consideramos consecutivo se a diferença for de 2 horas (padrão da grade 08, 10, 12...)
+    const prev = mySlots.find(s => Math.abs(slotTime - hv(s.hora) - 2) < 0.01)
+    const next = mySlots.find(s => Math.abs(hv(s.hora) - slotTime - 2) < 0.01)
+
+    if (prev && prev.aluno !== slot.aluno) {
+      alerts.push(`Troca de Aluno: Sequência com aluno diferente (${prev.aluno}) às ${prev.hora}.`)
+    }
+    if (next && next.aluno !== slot.aluno) {
+      alerts.push(`Troca de Aluno: Sequência com aluno diferente (${next.aluno}) às ${next.hora}.`)
+    }
+
+    // 5. Violação de Jornada de Trabalho
+    if (mySlots.length > 0) {
+      const times = mySlots.map(s => hv(s.hora))
+      const first = Math.min(...times)
+      const last = Math.max(...times)
+      // Regra: 1h antes do primeiro + 1h30 duração + 30min após o último
+      // Simplificado: (Last + 2) - (First - 1) = Last - First + 3
+      const journey = (last - first) + 3
+      if (journey > 11) {
+        alerts.push(`Jornada Excedida: Total de ${journey.toFixed(1)}h no dia (limite 11h).`)
+      }
+    }
+  }
+
+  return alerts
 }
 
 function stCls(st) {
@@ -608,8 +671,6 @@ function fetchSlots() {
         const missao = slot.missao?.nome || ''
         let missaoShort = missao
         if (missao.includes(' > ')) missaoShort = missao.split(' > ').pop().trim()
-
-        console.log(apiSlots);
         
         return {
           id: `api-${slot.id}`,
@@ -623,7 +684,8 @@ function fetchSlots() {
           modelo: (slot.aeronave?.modeloAeronave?.nome || '').trim(),
           missao: missaoShort.trim(),
           st: slot.statusSlot?.nome || 'PENDENTE',
-          data
+          data,
+          obs: (slot.observacoes || slot.observacao || '').trim()
         }
       })
 
@@ -647,7 +709,12 @@ function fetchSlots() {
 
 function getAeronavesByBarra(barraId, currentAe = '') {
   if (!state.BARRAS || !state.BARRAS.length) return state.AERONAVES
-  const barra = state.BARRAS.find(b => b.nome === barraId)
+  
+  const search = (barraId || '').trim().toUpperCase()
+  const barra = state.BARRAS.find(b => {
+    const nome = (b.nome || '').trim().toUpperCase()
+    return nome === search || search.includes(nome) || nome.includes(search)
+  })
   
   let list = state.AERONAVES
   if (barra && barra.modeloAeronave?.nome) {
@@ -655,12 +722,43 @@ function getAeronavesByBarra(barraId, currentAe = '') {
     list = state.AERONAVES.filter(a => (a.modeloAeronave?.nome || '').toUpperCase() === modelName)
   }
 
-  if (currentAe && !list.find(a => a.nome === currentAe)) {
-    const original = state.AERONAVES.find(a => a.nome === currentAe)
-    if (original) list = [original, ...list]
+  if (currentAe) {
+    const currentAeUpper = currentAe.trim().toUpperCase()
+    if (!list.find(a => (a.nome || '').trim().toUpperCase() === currentAeUpper)) {
+      const original = state.AERONAVES.find(a => (a.nome || '').trim().toUpperCase() === currentAeUpper)
+      if (original) list = [original, ...list]
+    }
   }
 
-  return list
+  return list.length > 0 ? list : state.AERONAVES
+}
+
+function getInvasByBarra(barraId, currentInva = '') {
+  if (!state.BARRAS || !state.BARRAS.length) return state.INVAS
+  
+  const search = (barraId || '').trim().toUpperCase()
+  const barra = state.BARRAS.find(b => {
+    const nome = (b.nome || '').trim().toUpperCase()
+    return nome === search || search.includes(nome) || nome.includes(search)
+  })
+  
+  let list = state.INVAS
+  if (barra && barra.baseId != null) {
+    // Usamos == para permitir comparação entre string e número se necessário
+    list = state.INVAS.filter(i => i.baseId == barra.baseId)
+  }
+
+  // Se o instrutor atual não estiver na lista filtrada (ex: troca de base), garantimos que ele apareça para não bugar o select
+  if (currentInva) {
+    const currentInvaUpper = currentInva.trim().toUpperCase()
+    if (!list.find(i => (i.nome || '').trim().toUpperCase() === currentInvaUpper)) {
+      const original = state.INVAS.find(i => (i.nome || '').trim().toUpperCase() === currentInvaUpper)
+      if (original) list = [original, ...list]
+    }
+  }
+
+  // Fallback: se a lista filtrada estiver vazia (por erro de baseId ou falta de dados), retorna todos os invas
+  return list.length > 0 ? list : state.INVAS
 }
 
 function updateSlotAeronave(id, value) {
@@ -683,6 +781,7 @@ export function useCcoStore() {
     fetchAeronaves,
     fetchInvas,
     getAeronavesByBarra,
+    getInvasByBarra,
     updateSlotAeronave,
     generateEditor: gerarEditor,
     voltarUpload,
@@ -705,6 +804,7 @@ export function useCcoStore() {
     calendarRows,
     calendarDays,
     getSlotClass,
+    getSlotAlerts,
     hv,
     swapSlots,
     activeTab: computed({ get: () => state.activeTab, set: (value) => { state.activeTab = value } }),

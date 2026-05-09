@@ -62,7 +62,7 @@
                 <div v-else-if="label === 'Instrutor'" :class="slotCellClass(slot)">
                   <select class="slot-input" v-model="slot.inva" @change="onInstructorChange(slot.id, slot.inva)">
                     <option value="">—</option>
-                    <option v-for="inva in (store.state.INVAS || [])" :key="inva.id" :value="inva.nome">
+                    <option v-for="inva in (store.getInvasByBarra ? store.getInvasByBarra(slot.barra, slot.inva) : [])" :key="inva.id" :value="inva.nome">
                       {{ inva.nome }}
                     </option>
                   </select>
@@ -99,7 +99,7 @@
             <div class="bl"></div>
             <div v-for="slot in (block.slots || [])" :key="slot.id + '-btn'" class="bcell">
               <div class="btn-container">
-                <button class="btn-cav" :class="buttonClass(slot)">
+                <button class="btn-cav" :class="buttonClass(slot)" @click="handleButtonClick(slot)">
                   {{ buttonLabel(slot) }}
                 </button>
               </div>
@@ -111,6 +111,41 @@
       <div class="footer">
         <span>CCO · Editor de Escala v10 · SAFE Aviation School</span>
         <span class="footer-badge">Node.js</span>
+      </div>
+
+      <!-- Modal de Restrições -->
+      <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>⚠️ Detalhes da Escala</h3>
+            <button class="modal-close" @click="closeModal">×</button>
+          </div>
+          <div class="modal-body">
+            <div class="modal-slot-info">
+              <p><strong>Hora:</strong> {{ selectedSlot?.hora }}</p>
+              <p><strong>Barra:</strong> {{ selectedSlot?.barra }}</p>
+              <p><strong>Aluno:</strong> {{ selectedSlot?.aluno }}</p>
+              <p><strong>Status Atual:</strong> {{ selectedSlot?.st }}</p>
+              <p><strong>Observações: {{ selectedSlot?.obs }}</strong> </p>
+            </div>
+            
+            <div class="modal-alerts-list" v-if="selectedSlot && store.getSlotAlerts(selectedSlot).length > 0">
+              <div v-for="(alert, idx) in store.getSlotAlerts(selectedSlot)" :key="idx" class="modal-alert-item">
+                <span class="alert-icon">⚠️</span>
+                <span class="alert-text">{{ alert }}</span>
+              </div>
+            </div>
+            <div class="modal-placeholder" v-else-if="buttonLabel(selectedSlot) === 'Restrição'">
+              <p>Este slot possui uma restrição operacional ou técnica ({{ selectedSlot?.st }}).</p>
+            </div>
+            <div class="modal-placeholder" v-else>
+              <p>Nenhuma inconsistência detectada.</p>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-modal-ok" @click="closeModal">Entendido</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -142,6 +177,9 @@ onMounted(async () => {
 const dragSourceId = ref(null)
 const rowLabels = ['Aluno', 'Instrutor', 'Aeronave', 'Missão', 'Status', 'Barra']
 
+const isModalOpen = ref(false)
+const selectedSlot = ref(null)
+
 function onInstructorChange(slotId, value) {
   store.updateSlotInstructor(slotId, value)
 }
@@ -160,12 +198,32 @@ function slotCellClass(slot) {
 
 function buttonLabel(slot) {
   if (!slot.aluno) return slot.st || 'Disponível'
-  return slot.st || '✓ OK'
+  
+  const alerts = store.getSlotAlerts(slot)
+  if (alerts.length > 0) return 'Atenção'
+  
+  return 'Ok'
 }
 
 function buttonClass(slot) {
   if (!slot.aluno) return 'btn-disp'
+  const label = buttonLabel(slot)
+  if (label === 'Atenção') return 'btn-mod-wrn'
+  if (label === 'Restrição') return 'btn-mod-err'
   return 'btn-mod-ok'
+}
+
+function handleButtonClick(slot) {
+  const label = buttonLabel(slot)
+  if (label === 'Atenção' || label === 'Restrição') {
+    selectedSlot.value = slot
+    isModalOpen.value = true
+  }
+}
+
+function closeModal() {
+  isModalOpen.value = false
+  selectedSlot.value = null
 }
 
 function onDragStart(id) {
@@ -471,14 +529,21 @@ select.slot-input {
 }
 .btn-cav {
   width: 100%;
-  padding: 10px 8px;
+  height: 36px;
+  padding: 0 10px;
   border: none;
-  border-radius: 10px;
-  font-size: 12px;
+  border-radius: 8px;
+  font-size: 11.5px;
   font-weight: 700;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
 }
 .btn-mod-ok { background: #27ae60; color: #fff; }
+.btn-mod-wrn { background: #f39c12; color: #fff; }
+.btn-mod-err { background: #c0392b; color: #fff; }
 .btn-disp { background: #1d2951; color: #fff; }
 .footer {
   margin-top: 18px;
@@ -498,5 +563,117 @@ select.slot-input {
   padding: 4px 10px;
   border-radius: 999px;
   font-weight: 700;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  backdrop-filter: blur(4px);
+}
+.modal-content {
+  background: #fff;
+  width: 100%;
+  max-width: 450px;
+  border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  animation: modalIn 0.3s ease-out;
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.modal-header {
+  padding: 18px 22px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  color: #1d2951;
+}
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  line-height: 1;
+}
+.modal-close:hover { color: #333; }
+.modal-body {
+  padding: 22px;
+}
+.modal-slot-info {
+  background: #f0f4f8;
+  padding: 14px;
+  border-radius: 10px;
+  margin-bottom: 18px;
+}
+.modal-slot-info p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #444;
+}
+.modal-placeholder {
+  text-align: center;
+  padding: 20px 10px;
+  color: #666;
+  font-style: italic;
+  font-size: 14px;
+}
+.modal-footer {
+  padding: 16px 22px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+}
+.btn-modal-ok {
+  background: #1d2951;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-modal-ok:hover { background: #2a3b59; }
+
+.modal-alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.modal-alert-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #fff9e6;
+  border-left: 4px solid #f39c12;
+  border-radius: 6px;
+}
+.alert-icon {
+  font-size: 16px;
+  margin-top: 2px;
+}
+.alert-text {
+  font-size: 13.5px;
+  color: #5a4b00;
+  line-height: 1.4;
+  font-weight: 500;
 }
 </style>
