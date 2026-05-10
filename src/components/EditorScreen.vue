@@ -1,13 +1,26 @@
 <template>
   <div class="screen-layout">
-    <div v-if="isLoading" class="loading-overlay">
+    <div v-if="isLoading || store.state.globalLoading" class="loading-overlay">
       <div class="loader"></div>
-      <p>Sincronizando dados com o servidor...</p>
+      <p>{{ isLoading ? 'Sincronizando dados com o servidor...' : 'Salvando alterações...' }}</p>
     </div>
     <div id="editor-screen" class="editor-screen" v-else>
       <div class="topbar">
         <img :src="iconUrl" alt="SAFE" style="width:28px;height:28px;border-radius:50%;opacity:.85;" />
         <h1>{{ store.state.editorTitle }}</h1>
+        
+        <div class="date-filters">
+          <div class="filter-field">
+            <label>Início:</label>
+            <input type="date" v-model="store.filterStartDate.value" class="date-input" />
+          </div>
+          <div class="filter-field">
+            <label>Fim:</label>
+            <input type="date" v-model="store.filterEndDate.value" class="date-input" />
+          </div>
+          <button class="btn-filter" @click="handleFilter">🔍 Filtrar</button>
+        </div>
+
         <div class="controls">
           <button class="btn-reset" @click="store.resetSchedule">↺ Reset</button>
           <button class="btn-back" @click="() => router.push('/upload')">📂 Nova escala</button>
@@ -33,6 +46,20 @@
             </div>
           </div>
         </div></div>
+      </div>
+
+      <div class="date-pagination" v-if="store.availableDates.value.length > 0">
+        <div class="pag-label">Escalas disponíveis:</div>
+        <div class="pag-btns">
+          <button 
+            v-for="date in store.availableDates.value" 
+            :key="date"
+            :class="['date-btn', store.currentViewDate.value === date ? 'active' : '']"
+            @click="store.setCurrentViewDate(date)"
+          >
+            {{ date }}
+          </button>
+        </div>
       </div>
 
       <div class="tabs">
@@ -167,7 +194,8 @@ onMounted(async () => {
       store.fetchSlots(),
       store.fetchBars(),
       store.fetchAeronaves(),
-      store.fetchInvas()
+      store.fetchInvas(),
+      store.fetchStatuses()
     ])
     store.generateEditor()
   } finally {
@@ -179,6 +207,16 @@ const rowLabels = ['Aluno', 'Instrutor', 'Aeronave', 'Missão', 'Status', 'Barra
 
 const isModalOpen = ref(false)
 const selectedSlot = ref(null)
+
+async function handleFilter() {
+  isLoading.value = true
+  try {
+    await store.fetchSlots()
+    store.generateEditor()
+  } finally {
+    isLoading.value = false
+  }
+}
 
 function onInstructorChange(slotId, value) {
   store.updateSlotInstructor(slotId, value)
@@ -316,6 +354,89 @@ function handleLogout() {
   color: #1d2951;
   margin: 0;
   letter-spacing: 0.02em;
+}
+.date-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #f8f9fa;
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid #e3e9f0;
+  margin: 0 10px;
+}
+.filter-field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.filter-field label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #5a6370;
+  text-transform: uppercase;
+}
+.date-input {
+  border: 1px solid #d8dee8;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: #1d2951;
+  font-family: inherit;
+}
+.btn-filter {
+  background: #1d2951;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.btn-filter:hover {
+  background: #2a3b59;
+}
+.date-pagination {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 14px 0;
+  padding: 10px 18px;
+  background: #fff;
+  border: 1px solid #dae2ec;
+  border-radius: 14px;
+}
+.pag-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1d2951;
+}
+.pag-btns {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.date-btn {
+  border: 1px solid #dae2ec;
+  background: #fff;
+  color: #5a6370;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.date-btn:hover {
+  border-color: #1d2951;
+  color: #1d2951;
+}
+.date-btn.active {
+  background: #1d2951;
+  color: #fff;
+  border-color: #1d2951;
 }
 .controls {
   display: flex;
