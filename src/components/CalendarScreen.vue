@@ -8,8 +8,7 @@
           <div class="cal-month">{{ store.calendarMonthLabel.value }}</div>
           <button class="btn-nav" @click="store.changeCalendarMonth(1)">▶</button>
         </div>
-        <button class="btn-cal-back" @click="handleBackToUpload">← Voltar</button>
-        <button class="btn-logout-cal" @click="handleLogout">Sair</button>
+        <button class="btn-cal-back" @click="handleBackToEditor">Voltar ao Editor</button>
       </div>
 
       <div class="cal-body">
@@ -278,8 +277,8 @@ onMounted(() => {
   store.openCalendar()
 })
 
-function handleBackToUpload() {
-  router.push('/upload')
+function handleBackToEditor() {
+  router.push('/editor')
 }
 
 function handleLogout() {

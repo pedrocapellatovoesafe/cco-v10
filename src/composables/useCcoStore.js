@@ -19,6 +19,16 @@ const ORDEM_BARRAS = [
 ]
 const BARRAS_CONHECIDAS = [...ORDEM_BARRAS]
 
+const AVAIL_TYPES_MAP = {
+  'disponivel': 1, 'disponível': 1,
+  'folga regular': 2, 'folga social': 3,
+  'sobreaviso': 4, 'treinamento': 5,
+  'férias': 6, 'ferias': 6,
+  'banco de horas': 7, 'operações': 8,
+  'trabalho externo': 9, 'dispensa médica': 10,
+  'não especificado': 11
+}
+
 const state = reactive({
   isAuthenticated: (function() {
     try {
@@ -33,6 +43,9 @@ const state = reactive({
   fileName: '',
   fileOk: false,
   parsedSlots: [],
+  workFileName: '',
+  workFileOk: false,
+  parsedWorkSchedules: [],
   parsedDate: '',
   parsedDayName: '',
   availability: {},
@@ -203,12 +216,134 @@ function parseRows(rows) {
   }
 }
 
+function parseWorkScheduleRows(rows) {
+  state.parsedWorkSchedules = []
+  if (!rows || !rows.length) return
+  
+  console.log('[Store] Processing', rows.length, 'rows.')
+
+  // 1. Delimiter Detection
+  let processedRows = rows
+  if (rows[0] && rows[0].length === 1) {
+    const line = String(rows[0][0])
+    const delim = line.includes(';') ? ';' : line.includes('\t') ? '\t' : line.includes(',') ? ',' : null
+    if (delim) {
+      console.log(`[Store] Delimiter "${delim}" detected. Splitting...`)
+      processedRows = rows.map(r => String(r[0]).split(delim).map(c => c.trim()))
+    }
+  }
+
+  const findIdx = (keywords) => {
+    // Check first 3 rows
+    for (let i = 0; i < Math.min(3, processedRows.length); i++) {
+      const r = processedRows[i].map(c => String(c || '').toLowerCase())
+      const idx = r.findIndex(c => keywords.some(k => c.includes(k)))
+      if (idx >= 0) return idx
+    }
+    return -1
+  }
+
+  let iTipo = findIdx(['tipo'])
+  let iPer = findIdx(['periodo', 'período'])
+  let iDias = findIdx(['dias', 'quantidade'])
+  let iData = findIdx(['data inicial', 'data', 'inicio'])
+  let iFunc = findIdx(['funcionario', 'funcionário', 'instrutor', 'nome'])
+  let iMot = findIdx(['motivo', 'obs'])
+
+  // 2. Positional Fallback if headers fail
+  if (iData === -1 || iFunc === -1) {
+    console.log('[Store] Headers not detected. Using Positional Fallback (1,2,3,4,5,6)')
+    iTipo = 1; iPer = 2; iDias = 3; iData = 4; iFunc = 5; iMot = 6
+  }
+
+  const toDate = (val) => {
+    if (!val) return null
+    if (typeof val === 'number') return new Date(Math.round((val - 25569) * 864e5))
+    let s = String(val).trim()
+    if (s.includes(' ')) s = s.split(' ')[0]
+    if (/^\d{5}$/.test(s)) return new Date(Math.round((parseInt(s, 10) - 25569) * 864e5))
+    if (s.includes('/')) {
+      const p = s.split('/').map(Number)
+      return new Date(p[2] < 100 ? p[2]+2000 : p[2], p[1]-1, p[0])
+    }
+    if (s.includes('-')) {
+      const p = s.split('-')
+      if (p[0].length === 4) return new Date(+p[0], +p[1]-1, +p[2])
+      return new Date(+p[2], +p[1]-1, +p[0])
+    }
+    return null
+  }
+
+  for (let i = 0; i < processedRows.length; i++) {
+    const row = processedRows[i]
+    if (!row || row.length < 2) continue
+
+    const rawDataVal = row[iData]
+    const rawFunc = String(row[iFunc] || '').trim()
+
+    // Skip if it looks like a header
+    if (String(rawDataVal).toLowerCase().includes('data') || rawFunc.toLowerCase().includes('func')) continue
+
+    if (!rawDataVal || !rawFunc) continue
+
+    const baseDate = toDate(rawDataVal)
+    if (!baseDate || isNaN(baseDate.getTime())) continue
+const norm = (str) => String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim()
+
+// Look for instructor in state.INVAS with accent-insensitive matching
+const inva = state.INVAS.find(inv => {
+  const dbNome = norm(inv.nome)
+  const sheetNome = norm(rawFunc)
+  return dbNome === sheetNome || dbNome.includes(sheetNome) || sheetNome.includes(dbNome)
+})
+
+if (!inva) {
+  if (i < 5) console.warn(`[Store] Row ${i}: Instructor "${rawFunc}" not found. DB has ${state.INVAS.length} invas. Example DB name: "${state.INVAS[0]?.nome}"`)
+  continue
+}
+
+    const rawTipo = String(row[iTipo] || '').toLowerCase()
+    let tId = 11
+    for (const [k, v] of Object.entries(AVAIL_TYPES_MAP)) { if (rawTipo.includes(k)) { tId = v; break } }
+
+    const rawPer = String(row[iPer] || '').toLowerCase()
+    let pCode = 'x'
+    if (rawPer.includes('manhã') || rawPer === 'm') pCode = 'm'
+    else if (rawPer.includes('tarde') || rawPer === 't') pCode = 't'
+    else if (rawPer.includes('noite') || rawPer === 'n') pCode = 'n'
+
+    const num = parseInt(row[iDias] || '1', 10) || 1
+    for (let d = 0; d < num; d++) {
+      const dt = new Date(baseDate)
+      dt.setDate(dt.getDate() + d)
+      state.parsedWorkSchedules.push({
+        data: `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`,
+        periodo: pCode,
+        tipoDisponibilidadeId: tId,
+        invaId: inva.id,
+        motivo: String(row[iMot] || '').trim()
+      })
+    }
+  }
+  console.log(`[Store] Parsing complete. Created ${state.parsedWorkSchedules.length} entries.`)
+}
+
 function getBase(barraId) {
   const b = String(barraId || '').toUpperCase()
   if (b.includes('CPQ') || b.includes('COLT') || b.includes('SDAM') || b.includes('SIM AATD CPQ')) return 'CPQ'
   if (b.includes('SJK') || b.includes('SIRA') || b.includes('SM AATD SJK') || b.includes('SBSJ')) return 'SJK'
   if (b.includes('BACKUP')) return 'SJK'
   return 'SJK'
+}
+
+function normalizeInstructorName(nomeXls, inst) {
+  if (!nomeXls) return ''
+  const upper = nomeXls.trim().toUpperCase()
+  if (inst[upper]) return upper
+  for (const nome of Object.keys(inst)) {
+    if (upper.startsWith(`${nome} `) || upper === nome) return nome
+  }
+  return upper
 }
 
 function onFile(file) {
@@ -232,6 +367,27 @@ function onFile(file) {
   reader.readAsArrayBuffer(file)
 }
 
+async function onWorkFile(file) {
+  if (!file) return
+  if (!state.INVAS || state.INVAS.length === 0) await fetchInvas()
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const wb = window.XLSX.read(e.target.result, { type: 'array' })
+      const ws = wb.Sheets[wb.SheetNames[0]]
+      const rows = window.XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })
+      parseWorkScheduleRows(rows)
+      state.workFileName = file.name
+      state.workFileOk = true
+    } catch (err) {
+      state.workFileOk = false
+      console.error('Erro ao ler o arquivo de escala:', err)
+      alert(`Erro ao ler o arquivo de escala: ${err.message}`)
+    }
+  }
+  reader.readAsArrayBuffer(file)
+}
+
 async function importScale() {
   state.isUploading = true
   state.uploadError = null
@@ -242,6 +398,23 @@ async function importScale() {
     return { success: true, data: response.data }
   } catch (err) {
     console.error('Erro ao importar escala:', err)
+    state.uploadError = err.response?.data?.message || err.message
+    return { success: false, error: state.uploadError }
+  } finally {
+    state.isUploading = false
+  }
+}
+
+async function importWorkSchedule() {
+  state.isUploading = true
+  state.uploadError = null
+  try {
+    const payload = { escalas: state.parsedWorkSchedules }
+    const response = await api.post('/escala-trabalhos/import', payload)
+    await fetchInvas()
+    return { success: true, data: response.data }
+  } catch (err) {
+    console.error('Erro ao importar escala de trabalho:', err)
     state.uploadError = err.response?.data?.message || err.message
     return { success: false, error: state.uploadError }
   } finally {
@@ -577,10 +750,15 @@ export function useCcoStore() {
       alerts.push(`Dados Incompletos: Falta preencher ${!slot.inva ? 'Instrutor' : 'Aeronave'}.`)
     }
     
-    // 4. Conflito Simultâneo
-    const sameTime = state.SCH.filter(s => s.inva === slot.inva && s.hora === slot.hora && s.id !== slot.id && s.aluno)
-    if (sameTime.length > 0) {
-      alerts.push(`Conflito Simultâneo: Instrutor já alocado em ${sameTime[0].barra}.`)
+    // 4. Conflito Simultâneo (Instrutor e Aeronave)
+    const sameTimeInva = state.SCH.filter(s => s.inva === slot.inva && s.hora === slot.hora && s.id !== slot.id && s.aluno)
+    if (sameTimeInva.length > 0) {
+      alerts.push(`Conflito Simultâneo: Instrutor já alocado em ${sameTimeInva[0].barra}.`)
+    }
+
+    const sameTimeAe = state.SCH.filter(s => s.ae === slot.ae && s.hora === slot.hora && s.id !== slot.id && s.aluno)
+    if (sameTimeAe.length > 0) {
+      alerts.push(`Conflito de Aeronave: ${slot.ae} já está alocada em ${sameTimeAe[0].barra} neste horário.`)
     }
 
     // 5. Conflito de Disponibilidade (Escala de Trabalho)
@@ -598,19 +776,13 @@ export function useCcoStore() {
           if (!isAvailable) {
             alerts.push(`Indisponibilidade: Instrutor alocado mas consta como "${s.tipoDisponibilidade?.nome || s.tipo}" na escala oficial${s.periodo ? ' (' + s.periodo + ')' : ''}.`)
           } else if (s.periodo && s.periodo.toLowerCase() !== 'x') {
-            // Check Period compatibility (M, T, N)
             const p = s.periodo.toLowerCase()
             const hour = hv(slot.hora)
             let periodError = false
             let periodName = ''
-            
-            if (p === 'm') {
-              if (hour >= 12) { periodError = true; periodName = 'Manhã' }
-            } else if (p === 't') {
-              if (hour < 12 || hour >= 18) { periodError = true; periodName = 'Tarde' }
-            } else if (p === 'n') {
-              if (hour < 18) { periodError = true; periodName = 'Noite' }
-            }
+            if (p === 'm' && hour >= 12) { periodError = true; periodName = 'Manhã' }
+            else if (p === 't' && (hour < 12 || hour >= 18)) { periodError = true; periodName = 'Tarde' }
+            else if (p === 'n' && hour < 18) { periodError = true; periodName = 'Noite' }
 
             if (periodError) {
               alerts.push(`Conflito de Turno: Instrutor alocado às ${slot.hora}, mas sua escala é apenas para o período da ${periodName}.`)
@@ -620,21 +792,20 @@ export function useCcoStore() {
       }
     }
 
-    // 6. Consecutividade de Aluno (Mesmo Instrutor)
+    // 6. Consecutividade de Aluno (Mesmo Instrutor e Aeronave)
     if (slot.aluno) {
       const studentSlotsToday = state.SCH.filter(s => s.aluno === slot.aluno).sort((a, b) => hv(a.hora) - hv(b.hora))
       const myTime = hv(slot.hora)
-      
-      // Check previous and next slots for the same student
       const prevSlot = studentSlotsToday.find(s => Math.abs(myTime - hv(s.hora) - 2) < 0.1)
       const nextSlot = studentSlotsToday.find(s => Math.abs(hv(s.hora) - myTime - 2) < 0.1)
-
-      if (prevSlot && prevSlot.inva && slot.inva && prevSlot.inva !== slot.inva) {
-        alerts.push(`Treinamento em Sequência: Aluno possui slot anterior (${prevSlot.hora}) com instrutor diferente (${prevSlot.inva}).`)
-      }
-      if (nextSlot && nextSlot.inva && slot.inva && nextSlot.inva !== slot.inva) {
-        alerts.push(`Treinamento em Sequência: Aluno possui slot seguinte (${nextSlot.hora}) com instrutor diferente (${nextSlot.inva}).`)
-      }
+      
+      // Instructor check
+      if (prevSlot && prevSlot.inva && slot.inva && prevSlot.inva !== slot.inva) alerts.push(`Treinamento em Sequência: Aluno possui slot anterior (${prevSlot.hora}) com instrutor diferente (${prevSlot.inva}).`)
+      if (nextSlot && nextSlot.inva && slot.inva && nextSlot.inva !== slot.inva) alerts.push(`Treinamento em Sequência: Aluno possui slot seguinte (${nextSlot.hora}) com instrutor diferente (${nextSlot.inva}).`)
+      
+      // Aircraft check
+      if (prevSlot && prevSlot.ae && slot.ae && prevSlot.ae !== slot.ae) alerts.push(`Voo em Sequência: Aluno possui slot anterior (${prevSlot.hora}) com aeronave diferente (${prevSlot.ae}).`)
+      if (nextSlot && nextSlot.ae && slot.ae && nextSlot.ae !== slot.ae) alerts.push(`Voo em Sequência: Aluno possui slot seguinte (${nextSlot.hora}) com aeronave diferente (${nextSlot.ae}).`)
     }
 
     // 7. Descanso CLT com Folgas (Regra 12h + 24h)
@@ -671,19 +842,13 @@ export function useCcoStore() {
 
         if (offDaysCount > 0) {
           const lastFlightDay = offsetDate(slot.data, backOffset)
-          // Look in parsedSlots for history
           const slotsLastDay = state.parsedSlots.filter(s => s.inva === slot.inva && s.data === lastFlightDay && s.aluno)
-          
           if (slotsLastDay.length > 0) {
             const lastStartTime = Math.max(...slotsLastDay.map(s => hv(s.hora)))
-            const journeyEndTime = lastStartTime + 3 // Journey end (standard 3h block)
-            
-            const restBeforeOff = Math.max(0, 24 - journeyEndTime)
-            const restAfterOff = hv(slot.hora)
-            const effectiveRest = restBeforeOff + restAfterOff
-            
+            const restBeforeOff = Math.max(0, 24 - (lastStartTime + 3))
+            const effectiveRest = restBeforeOff + hv(slot.hora)
             if (effectiveRest < 12) {
-              alerts.push(`Jornada CLT (Pós-Folga): Descanso regulamentar insuficiente. O instrutor teve apenas ${effectiveRest.toFixed(1)}h de repouso efetivo (${restBeforeOff.toFixed(1)}h antes da folga + ${restAfterOff.toFixed(1)}h após). É necessário totalizar 12h de descanso além dos dias de folga.`)
+              alerts.push(`Jornada CLT (Pós-Folga): Descanso regulamentar insuficiente. Apenas ${effectiveRest.toFixed(1)}h de repouso efetivo (${restBeforeOff.toFixed(1)}h antes da folga + ${hv(slot.hora).toFixed(1)}h após). É necessário totalizar 12h.`)
             }
           }
         }
@@ -699,21 +864,48 @@ export function useCcoStore() {
 
         if (futureOffDaysCount > 0) {
           const returnDay = offsetDate(slot.data, forwardOffset)
-          // Find if instructor has any flight on the day they return from off-period
           const slotsOnReturnDay = state.parsedSlots.filter(s => s.inva === slot.inva && s.data === returnDay && s.aluno)
-          
           if (slotsOnReturnDay.length > 0) {
             const firstStartTime = Math.min(...slotsOnReturnDay.map(s => hv(s.hora)))
-            const journeyEndTime = hv(slot.hora) + 3
-            
-            const restBeforeOff = Math.max(0, 24 - journeyEndTime)
-            const restAfterOff = firstStartTime
-            const effectiveRest = restBeforeOff + restAfterOff
-            
+            const restBeforeOff = Math.max(0, 24 - (hv(slot.hora) + 3))
+            const effectiveRest = restBeforeOff + firstStartTime
             if (effectiveRest < 12) {
-              alerts.push(`Conflito Regulamentar CLT: Esta jornada termina às ${journeyEndTime.toFixed(1)}h e o instrutor já possui voo às ${firstStartTime.toFixed(1)}h no dia ${returnDay} (após a folga). O repouso efetivo seria de apenas ${effectiveRest.toFixed(1)}h (Mínimo 12h).`)
+              alerts.push(`Conflito Regulamentar CLT: Esta jornada termina às ${(hv(slot.hora)+3).toFixed(1)}h e o instrutor retorna às ${firstStartTime.toFixed(1)}h no dia ${returnDay} (após folga). Repouso efetivo de apenas ${effectiveRest.toFixed(1)}h (Mínimo 12h).`)
             }
           }
+        }
+      }
+    }
+
+    // 8. Limite de Jornada Diária (11h) e Descanso entre Dias Comuns (12h)
+    if (slot.inva && slot.aluno) {
+      const mySlotsToday = state.SCH.filter(s => s.inva === slot.inva && s.aluno).sort((a,b) => hv(a.hora) - hv(b.hora))
+      if (mySlotsToday.length > 0) {
+        const firstTime = Math.min(...mySlotsToday.map(s => hv(s.hora)))
+        const lastTime = Math.max(...mySlotsToday.map(s => hv(s.hora)))
+        const journeyEnd = lastTime + 3
+        const totalJourney = journeyEnd - firstTime
+        if (totalJourney > 11) {
+          alerts.push(`Limite de Jornada: Jornada diária totalizando ${totalJourney.toFixed(1)}h (Início ${firstTime.toFixed(1)}h / Fim ${journeyEnd.toFixed(1)}h). Limite regulamentar é de 11h.`)
+        }
+      }
+
+      // Check standard 12h rest between consecutive working days (No off-day between)
+      const offsetDate = (dateStr, delta) => {
+        const [d, m, y] = dateStr.split('/').map(Number)
+        const dt = new Date(y, m - 1, d)
+        dt.setDate(dt.getDate() + delta)
+        return `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`
+      }
+
+      const yesterday = offsetDate(slot.data, -1)
+      const mySlotsYesterday = state.parsedSlots.filter(s => s.inva === slot.inva && s.data === yesterday && s.aluno)
+      if (mySlotsYesterday.length > 0) {
+        const lastTimeYesterday = Math.max(...mySlotsYesterday.map(s => hv(s.hora))) + 3
+        const firstTimeToday = Math.min(...mySlotsToday.map(s => hv(s.hora)))
+        const rest = (24 - lastTimeYesterday) + firstTimeToday
+        if (rest < 12) {
+          alerts.push(`Descanso Insuficiente: Apenas ${rest.toFixed(1)}h de repouso desde o fim da jornada anterior (Ontem terminou às ${lastTimeYesterday.toFixed(1)}h). Mínimo exigido é de 12h.`)
         }
       }
     }
@@ -733,8 +925,7 @@ export function useCcoStore() {
   })
 
   return {
-    state,
-    login, logout, checkLogin, onFile, importScale, fetchSlots, fetchBars, fetchAeronaves, fetchInvas, fetchStatuses,
+    state, login, logout, checkLogin, onFile, onWorkFile, importScale, importWorkSchedule, fetchSlots, fetchBars, fetchAeronaves, fetchInvas, fetchStatuses,
     setCurrentViewDate: (d) => { state.currentViewDate = d; gerarEditor() },
     generateEditor: gerarEditor,
     voltarUpload: () => { state.fileOk = false; state.parsedSlots = [] },
@@ -756,9 +947,35 @@ export function useCcoStore() {
     getSlotClass: (s) => !s.aluno ? 'sc sc-empty' : `sc ${s.st === 'CONFIRMADO' ? 'sc-filled' : s.st === 'PENDENTE' ? 'sc-st-agua' : 'sc-st-other'}`,
     getSlotAlerts,
     updateSlotChecked: (id, val) => { const s = state.SCH.find(x => x.id === id); if (s) { s.isChecked = val; updateSlot(s) } },
-    updateSlotInstructor: (id, name) => { const s = state.SCH.find(x => x.id === id); if (s) { s.inva = name; s.invaId = state.INVAS.find(i => i.nome === name)?.id; updateSlot(s) } },
+    updateSlotInstructor: (id, name) => { 
+      const s = state.SCH.find(x => x.id === id)
+      if (s) { 
+        if (name === '-') {
+          s.inva = ''
+          s.invaId = null
+        } else {
+          s.inva = name
+          const found = state.INVAS.find(i => i.nome === name)
+          s.invaId = found ? found.id : null
+        }
+        updateSlot(s) 
+      } 
+    },
     updateSlotStatus: (id, st) => { const s = state.SCH.find(x => x.id === id); if (s) { s.st = st; s.statusSlotId = state.STATUSES.find(x => x.nome === st)?.id; updateSlot(s) } },
-    updateSlotAeronave: (id, ae) => { const s = state.SCH.find(x => x.id === id); if (s) { s.ae = ae; s.aeronaveId = state.AERONAVES.find(x => x.nome === ae)?.id; updateSlot(s) } },
+    updateSlotAeronave: (id, ae) => { 
+      const s = state.SCH.find(x => x.id === id)
+      if (s) { 
+        if (ae === '-') {
+          s.ae = ''
+          s.aeronaveId = null
+        } else {
+          s.ae = ae
+          const found = state.AERONAVES.find(x => x.nome === ae)
+          s.aeronaveId = found ? found.id : null
+        }
+        updateSlot(s) 
+      } 
+    },
     availabilityGroups: computed(() => {
       const g = { SJK: { voo: [], solo: [] }, CPQ: { voo: [], solo: [] } }
       state.INVAS.forEach(i => {
@@ -770,9 +987,7 @@ export function useCcoStore() {
       })
       return g
     }),
-    availabilityState,
-    availabilityClass: (n) => availabilityState(n),
-    availabilityLabel,
+    availabilityState, availabilityClass: (n) => availabilityState(n), availabilityLabel,
     filterStartDate: computed({ get: () => state.filterStartDate, set: (v) => { state.filterStartDate = v } }),
     filterEndDate: computed({ get: () => state.filterEndDate, set: (v) => { state.filterEndDate = v } }),
     currentViewDate: computed(() => state.currentViewDate),
@@ -785,73 +1000,49 @@ export function useCcoStore() {
         return b === base
       })
     },
-    getAeronavesByBarra: (barra, curr) => {
-      const bUpper = barra.toUpperCase()
-      return state.AERONAVES.filter(a => {
-        const name = (a.nome || '').toUpperCase()
-        if (bUpper.includes('PCATD') && (name.includes('SIRA') || name.includes('COLT'))) return false
-        return true
-      })
+    getAeronavesByBarra: (barraNome, currentAe) => {
+      const bUpper = (barraNome || '').toUpperCase().trim()
+      // 1. Find the bar object to get its associated model
+      const barraObj = state.BARRAS.find(b => (b.nome || '').toUpperCase().trim() === bUpper)
+      
+      let list = state.AERONAVES
+      if (barraObj && (barraObj.modeloAeronaveId || barraObj.modeloAeronave?.id)) {
+        const mid = barraObj.modeloAeronaveId || barraObj.modeloAeronave?.id
+        list = state.AERONAVES.filter(a => a.modeloAeronaveId == mid || a.modeloAeronave?.id == mid)
+      } else {
+        // Fallback for PCATD simulators or other naming-based logic if ID is missing
+        if (bUpper.includes('PCATD') || bUpper.includes('SM PCATD')) {
+          list = state.AERONAVES.filter(a => (a.nome || '').toUpperCase().includes('PCATD'))
+        } else if (bUpper.includes('SIRA')) {
+          list = state.AERONAVES.filter(a => (a.nome || '').toUpperCase().includes('SIRA'))
+        } else if (bUpper.includes('COLT')) {
+          list = state.AERONAVES.filter(a => (a.nome || '').toUpperCase().includes('COLT'))
+        }
+      }
+
+      // 2. Ensure current aircraft is in the list
+      if (currentAe && !list.find(a => a.nome === currentAe)) {
+        const original = state.AERONAVES.find(a => a.nome === currentAe)
+        if (original) list = [original, ...list]
+      }
+
+      return list.length > 0 ? list : state.AERONAVES
     },
     deleteSlot: async (id) => { state.globalLoading = true; try { await api.delete(`/slots/${id}`); await fetchSlots(); gerarEditor() } finally { state.globalLoading = false } },
-    saveAvailability: async (payload) => {
-      state.globalLoading = true
-      try {
-        const response = await api.post('/escala-trabalhos', payload)
-        await fetchInvas()
-        return { success: true, data: response.data }
-      } catch (error) {
-        console.error('Error creating availability:', error)
-        return { success: false, error: error.response?.data?.message || error.message }
-      } finally {
-        state.globalLoading = false
-      }
-    },
-    updateAvailability: async (id, payload) => {
-      state.globalLoading = true
-      try {
-        const response = await api.put(`/escala-trabalhos/${id}`, payload)
-        await fetchInvas()
-        return { success: true, data: response.data }
-      } catch (error) {
-        console.error('Error updating availability:', error)
-        return { success: false, error: error.response?.data?.message || error.message }
-      } finally {
-        state.globalLoading = false
-      }
-    },
+    saveAvailability: async (p) => { state.globalLoading = true; try { const r = await api.post('/escala-trabalhos', p); await fetchInvas(); return { success: true, data: r.data } } catch (e) { return { success: false, error: e.response?.data?.message || e.message } } finally { state.globalLoading = false } },
+    updateAvailability: async (id, p) => { state.globalLoading = true; try { const r = await api.put(`/escala-trabalhos/${id}`, p); await fetchInvas(); return { success: true, data: r.data } } catch (e) { return { success: false, error: e.response?.data?.message || e.message } } finally { state.globalLoading = false } },
     swapSlots: async (idA, idB) => {
-      const a = state.SCH.find(x => x.id === idA); 
-      const b = state.SCH.find(x => x.id === idB)
+      const a = state.SCH.find(x => x.id === idA); const b = state.SCH.find(x => x.id === idB)
       if (!a || !b) return
-      
-      // Coordinates of slot A
-      const [da, ma, ya] = a.data.split('/')
-      const coordsA = { dataHora: `${ya}-${ma}-${da} ${a.hora}`, barraId: a.barraId }
-      
-      // Coordinates of slot B
-      const [db, mb, yb] = b.data.split('/')
-      const coordsB = { dataHora: `${yb}-${mb}-${db} ${b.hora}`, barraId: b.barraId }
-      
+      const [da, ma, ya] = a.data.split('/'); const coordsA = { dataHora: `${ya}-${ma}-${da} ${a.hora}`, barraId: a.barraId }
+      const [db, mb, yb] = b.data.split('/'); const coordsB = { dataHora: `${yb}-${mb}-${db} ${b.hora}`, barraId: b.barraId }
       state.globalLoading = true
       try {
         const tasks = []
-        // If slot A exists in DB, move it to B's position
         if (a.apiId) tasks.push(api.put(`/slots/${a.apiId}`, buildSlotPayload(a, coordsB)))
-        // If slot B exists in DB, move it to A's position
         if (b.apiId) tasks.push(api.put(`/slots/${b.apiId}`, buildSlotPayload(b, coordsA)))
-
-        if (tasks.length > 0) {
-          await Promise.all(tasks)
-          await fetchSlots()
-          gerarEditor()
-        }
-      } catch (err) {
-        console.error('Error in swapSlots:', err)
-        alert('Erro ao realizar a movimentação no servidor.')
-      } finally {
-        state.globalLoading = false
-      }
+        if (tasks.length > 0) { await Promise.all(tasks); await fetchSlots(); gerarEditor() }
+      } catch (err) { alert('Erro ao realizar a movimentação no servidor.') } finally { state.globalLoading = false }
     }
   }
 }
