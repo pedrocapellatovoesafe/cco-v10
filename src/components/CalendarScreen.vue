@@ -20,7 +20,12 @@
               <thead>
                 <tr>
                   <th class="th-name">Instrutor</th>
-                  <th v-for="day in store.calendarDays.value" :key="day.key" :style="day.isWeekend ? weekendHeaderStyle : null">
+                  <th 
+                    v-for="day in store.calendarDays.value" 
+                    :key="day.key" 
+                    :style="day.isWeekend ? weekendHeaderStyle : null"
+                    :class="{ 'th-today': day.day === new Date().getDate() && store.state.calendarMonthIdx === new Date().getMonth() && store.state.calendarYear === new Date().getFullYear() }"
+                  >
                     {{ day.day }}<br /><span class="day-label">{{ day.weekDay }}</span>
                   </th>
                 </tr>
@@ -56,7 +61,12 @@
               <thead>
                 <tr>
                   <th class="th-name">Instrutor</th>
-                  <th v-for="day in store.calendarDays.value" :key="day.key" :style="day.isWeekend ? weekendHeaderStyle : null">
+                  <th 
+                    v-for="day in store.calendarDays.value" 
+                    :key="day.key" 
+                    :style="day.isWeekend ? weekendHeaderStyle : null"
+                    :class="{ 'th-today': day.day === new Date().getDate() && store.state.calendarMonthIdx === new Date().getMonth() && store.state.calendarYear === new Date().getFullYear() }"
+                  >
                     {{ day.day }}<br /><span class="day-label">{{ day.weekDay }}</span>
                   </th>
                 </tr>
@@ -469,7 +479,28 @@ function handleLogout() {
 .day-cell-static.medica { background: #000000; }
 .day-cell-static.outro { background: #bdc3c7; color: #000; }
 .day-cell-static.weekend { background: #f8fafc; color: #94a3b8; }
-.day-cell-static.today { outline: 2px solid #3b82f6; outline-offset: -2px; }
+.day-cell-static.today { 
+  outline: 3px solid #3b82f6; 
+  outline-offset: -2px; 
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
+  position: relative;
+  z-index: 2;
+  animation: pulse-today 2s infinite;
+}
+
+@keyframes pulse-today {
+  0% { box-shadow: 0 0 0px rgba(59, 130, 246, 0.4); }
+  50% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.7); }
+  100% { box-shadow: 0 0 0px rgba(59, 130, 246, 0.4); }
+}
+
+.th-today {
+  background: #3b82f6 !important;
+  color: #fff !important;
+  transform: scale(1.05);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  z-index: 15;
+}
 
 .cal-legend {
   display: flex;
