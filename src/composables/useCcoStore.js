@@ -597,6 +597,24 @@ export function useCcoStore() {
           
           if (!isAvailable) {
             alerts.push(`Indisponibilidade: Instrutor alocado mas consta como "${s.tipoDisponibilidade?.nome || s.tipo}" na escala oficial${s.periodo ? ' (' + s.periodo + ')' : ''}.`)
+          } else if (s.periodo && s.periodo.toLowerCase() !== 'x') {
+            // Check Period compatibility (M, T, N)
+            const p = s.periodo.toLowerCase()
+            const hour = hv(slot.hora)
+            let periodError = false
+            let periodName = ''
+            
+            if (p === 'm') {
+              if (hour >= 12) { periodError = true; periodName = 'Manhã' }
+            } else if (p === 't') {
+              if (hour < 12 || hour >= 18) { periodError = true; periodName = 'Tarde' }
+            } else if (p === 'n') {
+              if (hour < 18) { periodError = true; periodName = 'Noite' }
+            }
+
+            if (periodError) {
+              alerts.push(`Conflito de Turno: Instrutor alocado às ${slot.hora}, mas sua escala é apenas para o período da ${periodName}.`)
+            }
           }
         }
       }
@@ -616,6 +634,87 @@ export function useCcoStore() {
       }
       if (nextSlot && nextSlot.inva && slot.inva && nextSlot.inva !== slot.inva) {
         alerts.push(`Treinamento em Sequência: Aluno possui slot seguinte (${nextSlot.hora}) com instrutor diferente (${nextSlot.inva}).`)
+      }
+    }
+
+    // 7. Descanso CLT com Folgas (Regra 12h + 24h)
+    if (slot.inva && slot.aluno) {
+      const i = state.INVAS.find(x => x.nome === slot.inva)
+      const sit = String(i?.situacao?.nome || i?.situacao || i?.situacaoInva?.nome || '').toLowerCase()
+      const isClt = sit.includes('clt')
+
+      if (isClt && Array.isArray(i.escalas)) {
+        const offsetDate = (dateStr, delta) => {
+          const [d, m, y] = dateStr.split('/').map(Number)
+          const dt = new Date(y, m - 1, d)
+          dt.setDate(dt.getDate() + delta)
+          return `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`
+        }
+
+        const isFolga = (dateStr) => {
+          const [d, m, y] = dateStr.split('/').map(Number)
+          const target = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+          const s = i.escalas.find(x => x.data.startsWith(target))
+          if (!s) return false
+          const tn = (s.tipoDisponibilidade?.nome || s.tipo || '').toLowerCase()
+          return tn.includes('folga regular') || tn.includes('folga social')
+        }
+
+        // A. Check Looking Back (Insufficient rest after Folga)
+        let backOffset = -1
+        let offDaysCount = 0
+        while (isFolga(offsetDate(slot.data, backOffset))) {
+          offDaysCount++
+          backOffset--
+          if (offDaysCount > 10) break
+        }
+
+        if (offDaysCount > 0) {
+          const lastFlightDay = offsetDate(slot.data, backOffset)
+          // Look in parsedSlots for history
+          const slotsLastDay = state.parsedSlots.filter(s => s.inva === slot.inva && s.data === lastFlightDay && s.aluno)
+          
+          if (slotsLastDay.length > 0) {
+            const lastStartTime = Math.max(...slotsLastDay.map(s => hv(s.hora)))
+            const journeyEndTime = lastStartTime + 3 // Journey end (standard 3h block)
+            
+            const restBeforeOff = Math.max(0, 24 - journeyEndTime)
+            const restAfterOff = hv(slot.hora)
+            const effectiveRest = restBeforeOff + restAfterOff
+            
+            if (effectiveRest < 12) {
+              alerts.push(`Jornada CLT (Pós-Folga): Descanso regulamentar insuficiente. O instrutor teve apenas ${effectiveRest.toFixed(1)}h de repouso efetivo (${restBeforeOff.toFixed(1)}h antes da folga + ${restAfterOff.toFixed(1)}h após). É necessário totalizar 12h de descanso além dos dias de folga.`)
+            }
+          }
+        }
+
+        // B. Check Looking Forward (Potential conflict on return from Folga)
+        let forwardOffset = 1
+        let futureOffDaysCount = 0
+        while (isFolga(offsetDate(slot.data, forwardOffset))) {
+          futureOffDaysCount++
+          forwardOffset++
+          if (futureOffDaysCount > 10) break
+        }
+
+        if (futureOffDaysCount > 0) {
+          const returnDay = offsetDate(slot.data, forwardOffset)
+          // Find if instructor has any flight on the day they return from off-period
+          const slotsOnReturnDay = state.parsedSlots.filter(s => s.inva === slot.inva && s.data === returnDay && s.aluno)
+          
+          if (slotsOnReturnDay.length > 0) {
+            const firstStartTime = Math.min(...slotsOnReturnDay.map(s => hv(s.hora)))
+            const journeyEndTime = hv(slot.hora) + 3
+            
+            const restBeforeOff = Math.max(0, 24 - journeyEndTime)
+            const restAfterOff = firstStartTime
+            const effectiveRest = restBeforeOff + restAfterOff
+            
+            if (effectiveRest < 12) {
+              alerts.push(`Conflito Regulamentar CLT: Esta jornada termina às ${journeyEndTime.toFixed(1)}h e o instrutor já possui voo às ${firstStartTime.toFixed(1)}h no dia ${returnDay} (após a folga). O repouso efetivo seria de apenas ${effectiveRest.toFixed(1)}h (Mínimo 12h).`)
+            }
+          }
+        }
       }
     }
 
@@ -695,14 +794,64 @@ export function useCcoStore() {
       })
     },
     deleteSlot: async (id) => { state.globalLoading = true; try { await api.delete(`/slots/${id}`); await fetchSlots(); gerarEditor() } finally { state.globalLoading = false } },
-    swapSlots: async (idA, idB) => {
-      const a = state.SCH.find(x => x.id === idA); const b = state.SCH.find(x => x.id === idB)
-      if (!a || !b || !a.apiId || !b.apiId) return
-      const [da,ma,ya] = a.data.split('/'); const coordsA = { dataHora: `${ya}-${ma}-${da} ${a.hora}`, barraId: a.barraId }
-      const [db,mb,yb] = b.data.split('/'); const coordsB = { dataHora: `${yb}-${mb}-${db} ${b.hora}`, barraId: b.barraId }
+    saveAvailability: async (payload) => {
       state.globalLoading = true
-      try { await Promise.all([api.put(`/slots/${a.apiId}`, buildSlotPayload(a, coordsB)), api.put(`/slots/${b.apiId}`, buildSlotPayload(b, coordsA))])
-      await fetchSlots(); gerarEditor() } finally { state.globalLoading = false }
+      try {
+        const response = await api.post('/escala-trabalhos', payload)
+        await fetchInvas()
+        return { success: true, data: response.data }
+      } catch (error) {
+        console.error('Error creating availability:', error)
+        return { success: false, error: error.response?.data?.message || error.message }
+      } finally {
+        state.globalLoading = false
+      }
+    },
+    updateAvailability: async (id, payload) => {
+      state.globalLoading = true
+      try {
+        const response = await api.put(`/escala-trabalhos/${id}`, payload)
+        await fetchInvas()
+        return { success: true, data: response.data }
+      } catch (error) {
+        console.error('Error updating availability:', error)
+        return { success: false, error: error.response?.data?.message || error.message }
+      } finally {
+        state.globalLoading = false
+      }
+    },
+    swapSlots: async (idA, idB) => {
+      const a = state.SCH.find(x => x.id === idA); 
+      const b = state.SCH.find(x => x.id === idB)
+      if (!a || !b) return
+      
+      // Coordinates of slot A
+      const [da, ma, ya] = a.data.split('/')
+      const coordsA = { dataHora: `${ya}-${ma}-${da} ${a.hora}`, barraId: a.barraId }
+      
+      // Coordinates of slot B
+      const [db, mb, yb] = b.data.split('/')
+      const coordsB = { dataHora: `${yb}-${mb}-${db} ${b.hora}`, barraId: b.barraId }
+      
+      state.globalLoading = true
+      try {
+        const tasks = []
+        // If slot A exists in DB, move it to B's position
+        if (a.apiId) tasks.push(api.put(`/slots/${a.apiId}`, buildSlotPayload(a, coordsB)))
+        // If slot B exists in DB, move it to A's position
+        if (b.apiId) tasks.push(api.put(`/slots/${b.apiId}`, buildSlotPayload(b, coordsA)))
+
+        if (tasks.length > 0) {
+          await Promise.all(tasks)
+          await fetchSlots()
+          gerarEditor()
+        }
+      } catch (err) {
+        console.error('Error in swapSlots:', err)
+        alert('Erro ao realizar a movimentação no servidor.')
+      } finally {
+        state.globalLoading = false
+      }
     }
   }
 }
