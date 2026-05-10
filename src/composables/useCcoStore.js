@@ -314,12 +314,8 @@ function gerarEditor() {
     const gradeBase = isPcatd ? HORAS_PCATD : HORAS_DEFAULT
     const horasFinais = [...new Set([...gradeBase, ...Object.keys(byHora)])].sort()
     
-    let defaultAe = 'MC01'
-    const bu = barraId.toUpperCase()
-    if (bu.includes('SIRA')) defaultAe = 'SIRA'
-    else if (bu.includes('SM AATD') || bu.includes('SIM AATD')) defaultAe = 'SM AATD'
-    else if (bu.includes('PCATD') || bu.includes('SM PCATD') || bu.includes('SIM PCATD')) defaultAe = 'SM PCATD'
-    else if (bu.includes('COLT')) defaultAe = 'COLT'
+    const barraObj = state.BARRAS.find(b => b.nome === barraId)
+    const numericBarraId = barraObj ? barraObj.id : null
 
     horasFinais.forEach((hora) => {
       const existing = byHora[hora]
@@ -337,7 +333,7 @@ function gerarEditor() {
         id: `s${sid}`,
         apiId: existing ? (typeof existing.id === 'string' && existing.id.startsWith('api-') ? existing.id.replace('api-', '') : existing.id) : null,
         barra: barraId,
-        barraId: existing ? existing.barraId : null,
+        barraId: existing ? existing.barraId : numericBarraId,
         base,
         hora,
         aluno: existing ? existing.aluno : '',
@@ -346,7 +342,7 @@ function gerarEditor() {
         invaId: existing ? existing.invaId : null,
         ae: finalAe,
         aeronaveId: existing ? existing.aeronaveId : null,
-        modelo: existing ? existing.modelo : defaultAe,
+        modelo: existing ? existing.modelo : (barraObj?.modeloAeronave?.nome || 'MC01'),
         missao: existing ? existing.missao : '',
         missaoId: existing ? existing.missaoId : null,
         st: existing ? existing.st : '',
@@ -438,21 +434,16 @@ function getSlotAlerts(slot) {
       const times = mySlotsToday.map(s => hv(s.hora))
       const first = Math.min(...times)
       const last = Math.max(...times)
-      // Regra: 1h antes do primeiro + 1h30 duração + 30min após o último
-      // Simplificado: (Last + 2) - (First - 1) = Last - First + 3
       const journey = (last - first) + 3
       if (journey > 11) {
         alerts.push(`Jornada Excedida: Total de ${journey.toFixed(1)}h no dia (limite 11h).`)
       }
 
-      // 6. Regra de Descanso Interjornada (12h entre dias)
       const allMySlots = state.parsedSlots.filter(s => s.inva === slot.inva && s.aluno)
       const currentDate = getParsedDateObj(slot.data)
       const otherDays = [...new Set(allMySlots.map(s => s.data))].filter(d => d !== slot.data)
-      
       const otherDaysObjs = otherDays.map(d => ({ str: d, obj: getParsedDateObj(d) }))
 
-      // Look Back: Verificação com o dia anterior
       const prevWorkingDay = otherDaysObjs
         .filter(d => d.obj < currentDate)
         .sort((a, b) => b.obj - a.obj)[0]
@@ -470,7 +461,6 @@ function getSlotAlerts(slot) {
         }
       }
 
-      // Look Forward: Verificação com o próximo dia
       const nextWorkingDay = otherDaysObjs
         .filter(d => d.obj > currentDate)
         .sort((a, b) => a.obj - b.obj)[0]
@@ -506,60 +496,70 @@ function toggleDisp(nome) {
   state.INST = buildInst()
 }
 
-async function updateSlot(slot) {
-  console.log('Updating slot:')
-  console.log(slot)
-  state.globalLoading = true
-  try {
-    const numericId = slot.apiId
-    if (!numericId) {
-      console.warn('Cannot update a slot without a valid API ID:', slot.id)
-      return
-    }
+function buildSlotPayload(slot, overrideCoords = null) {
+  const [day, month, year] = slot.data.split('/')
+  const dataHora = overrideCoords ? overrideCoords.dataHora : `${year}-${month}-${day} ${slot.hora}`
+  const barraId = overrideCoords ? overrideCoords.barraId : slot.barraId
 
-    const inva = state.INVAS.find(i => i.nome === slot.inva)
-    const aero = state.AERONAVES.find(a => a.nome === slot.ae)
-    const status = state.STATUSES.find(s => s.nome === slot.st)
-
-    const [day, month, year] = slot.data.split('/')
-    const dataHora = `${year}-${month}-${day} ${slot.hora}`
-
-    const payload = {
-      dataHora: dataHora,
-      statusSlotId: status ? status.id : slot.statusSlotId,
-      aeronaveId: aero ? aero.id : slot.aeronaveId,
-      alunoId: slot.alunoId,
-      invaId: inva ? inva.id : slot.invaId,
-      missaoId: slot.missaoId,
-      barraId: slot.barraId,
-      observacoes: slot.obs
-    }
-
-    await api.put(`/slots/${numericId}`, payload)
-    
-    // Refresh all data from server to ensure consistency
-    await fetchSlots()
-    gerarEditor()
-  } catch (error) {
-    console.error('Error updating slot:', error)
-    alert('Erro ao salvar alteração no servidor. Verifique sua conexão.')
-  } finally {
-    state.globalLoading = false
+  return {
+    dataHora,
+    statusSlotId: slot.statusSlotId,
+    aeronaveId: slot.aeronaveId,
+    alunoId: slot.alunoId,
+    invaId: slot.invaId,
+    missaoId: slot.missaoId,
+    barraId,
+    observacoes: slot.obs || ''
   }
 }
 
-function updateSlotInstructor(id, value) {
+async function updateSlot(slot, refresh = true) {
+  state.globalLoading = true
+  try {
+    const numericId = slot.apiId
+    if (!numericId) return
+
+    const payload = buildSlotPayload(slot)
+    await api.put(`/slots/${numericId}`, payload)
+    
+    if (refresh) {
+      await fetchSlots()
+      gerarEditor()
+    }
+  } catch (error) {
+    console.error('Error updating slot:', error)
+    alert('Erro ao salvar alteração no servidor.')
+  } finally {
+    if (refresh) state.globalLoading = false
+  }
+}
+
+function updateSlotInstructor(id, name) {
   const slot = state.SCH.find((s) => s.id === id)
   if (slot) {
-    slot.inva = value
+    slot.inva = name
+    const found = state.INVAS.find(i => i.nome === name)
+    slot.invaId = found ? found.id : null
     updateSlot(slot)
   }
 }
 
-function updateSlotStatus(id, value) {
+function updateSlotStatus(id, name) {
   const slot = state.SCH.find((s) => s.id === id)
   if (slot) {
-    slot.st = value
+    slot.st = name
+    const found = state.STATUSES.find(s => s.nome === name)
+    slot.statusSlotId = found ? found.id : null
+    updateSlot(slot)
+  }
+}
+
+function updateSlotAeronave(id, name) {
+  const slot = state.SCH.find((s) => s.id === id)
+  if (slot) {
+    slot.ae = name
+    const found = state.AERONAVES.find(a => a.nome === name)
+    slot.aeronaveId = found ? found.id : null
     updateSlot(slot)
   }
 }
@@ -569,13 +569,29 @@ async function swapSlots(idA, idB) {
   const b = state.SCH.find((s) => s.id === idB)
   if (!a || !b) return
 
-  const fields = ['aluno', 'alunoId', 'inva', 'invaId', 'missao', 'missaoId', 'st', 'statusSlotId', 'ae', 'aeronaveId', 'obs']
-  const temp = {}
-  fields.forEach((key) => { temp[key] = a[key] })
-  fields.forEach((key) => { a[key] = b[key] })
-  fields.forEach((key) => { b[key] = temp[key] })
+  const [dayA, monthA, yearA] = a.data.split('/')
+  const coordsA = { dataHora: `${yearA}-${monthA}-${dayA} ${a.hora}`, barraId: a.barraId }
 
-  await Promise.all([updateSlot(a), updateSlot(b)])
+  const [dayB, monthB, yearB] = b.data.split('/')
+  const coordsB = { dataHora: `${yearB}-${monthB}-${dayB} ${b.hora}`, barraId: b.barraId }
+
+  state.globalLoading = true
+  try {
+    const tasks = []
+    if (a.apiId) tasks.push(api.put(`/slots/${a.apiId}`, buildSlotPayload(a, coordsB)))
+    if (b.apiId) tasks.push(api.put(`/slots/${b.apiId}`, buildSlotPayload(b, coordsA)))
+
+    if (tasks.length > 0) {
+      await Promise.all(tasks)
+      await fetchSlots()
+      gerarEditor()
+    }
+  } catch (err) {
+    console.error('Error in swapSlots:', err)
+    alert('Erro ao realizar a troca no servidor.')
+  } finally {
+    state.globalLoading = false
+  }
 }
 
 function getTabBlocks(base) {
@@ -598,7 +614,7 @@ const scheduleBlocks = computed(() => ({
 }))
 
 function formatInstructorLabel(nome) {
-  return nome.split(' ')[0]
+  return nome ? nome.split(' ')[0] : '—'
 }
 
 function buildCalendarKey(instr, year, month, day) {
@@ -796,6 +812,7 @@ function fetchSlots(startDate, endDate) {
         
         return {
           id: `api-${slot.id}`,
+          apiId: slot.id,
           barra: barraNome.trim(),
           barraId: slot.barraId || slot.barra?.id,
           base,
@@ -865,16 +882,13 @@ function getAeronavesByBarra(barraId, currentAe = '') {
   })
   
   let list = state.AERONAVES
-  // Strictly filter by modeloAeronaveId if both barra and aircraft have it
   if (barra && barra.modeloAeronaveId != null) {
     list = state.AERONAVES.filter(a => a.modeloAeronaveId == barra.modeloAeronaveId)
   } else if (barra && barra.modeloAeronave?.nome) {
-    // Fallback to name comparison if IDs are missing
     const modelName = barra.modeloAeronave.nome.toUpperCase()
     list = state.AERONAVES.filter(a => (a.modeloAeronave?.nome || '').toUpperCase() === modelName)
   }
 
-  // Ensure current aircraft is always in the list to prevent empty selections
   if (currentAe) {
     const currentAeUpper = currentAe.trim().toUpperCase()
     if (!list.find(a => (a.nome || '').trim().toUpperCase() === currentAeUpper)) {
@@ -905,14 +919,6 @@ function getInvasByBarra(barraId, currentInva = '') {
     }
   }
   return list.length > 0 ? list : state.INVAS
-}
-
-function updateSlotAeronave(id, value) {
-  const slot = state.SCH.find((s) => s.id === id)
-  if (slot) {
-    slot.ae = value
-    updateSlot(slot)
-  }
 }
 
 export function useCcoStore() {
