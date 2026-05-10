@@ -651,7 +651,7 @@ async function updateSlot(slot, refresh = true) {
   try {
     if (!slot.apiId) return
     await api.put(`/slots/${slot.apiId}`, buildSlotPayload(slot))
-    if (refresh) { await fetchSlots(); gerarEditor() }
+    if (refresh) { await fetchInvas(); fetchSlots() }
   } catch (error) {
     console.error('Error updating slot:', error)
     alert('Erro ao salvar alteração no servidor.')
@@ -898,14 +898,42 @@ export function useCcoStore() {
         return `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`
       }
 
+      const isFolga = (dateStr) => {
+        const i = state.INVAS.find(x => x.nome === slot.inva)
+        if (!i || !Array.isArray(i.escalas)) return false
+        const [d, m, y] = dateStr.split('/').map(Number)
+        const target = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+        const s = i.escalas.find(x => x.data.startsWith(target))
+        if (!s) return false
+        const tn = (s.tipoDisponibilidade?.nome || s.tipo || '').toLowerCase()
+        return tn.includes('folga regular') || tn.includes('folga social')
+      }
+
+      // A. Looking Back (Show alert on Day 11)
       const yesterday = offsetDate(slot.data, -1)
-      const mySlotsYesterday = state.parsedSlots.filter(s => s.inva === slot.inva && s.data === yesterday && s.aluno)
-      if (mySlotsYesterday.length > 0) {
-        const lastTimeYesterday = Math.max(...mySlotsYesterday.map(s => hv(s.hora))) + 3
-        const firstTimeToday = Math.min(...mySlotsToday.map(s => hv(s.hora)))
-        const rest = (24 - lastTimeYesterday) + firstTimeToday
-        if (rest < 12) {
-          alerts.push(`Descanso Insuficiente: Apenas ${rest.toFixed(1)}h de repouso desde o fim da jornada anterior (Ontem terminou às ${lastTimeYesterday.toFixed(1)}h). Mínimo exigido é de 12h.`)
+      if (!isFolga(yesterday)) {
+        const mySlotsYesterday = state.parsedSlots.filter(s => s.inva === slot.inva && s.data === yesterday && s.aluno)
+        if (mySlotsYesterday.length > 0) {
+          const lastTimeYesterday = Math.max(...mySlotsYesterday.map(s => hv(s.hora))) + 3
+          const firstTimeToday = Math.min(...mySlotsToday.map(s => hv(s.hora)))
+          const rest = (24 - lastTimeYesterday) + firstTimeToday
+          if (rest < 12) {
+            alerts.push(`Descanso Insuficiente (Anterior): Apenas ${rest.toFixed(1)}h de repouso desde o fim da jornada anterior (Ontem terminou às ${lastTimeYesterday.toFixed(1)}h). Mínimo 12h.`)
+          }
+        }
+      }
+
+      // B. Looking Forward (Show alert on Day 10)
+      const tomorrow = offsetDate(slot.data, 1)
+      if (!isFolga(tomorrow)) {
+        const mySlotsTomorrow = state.parsedSlots.filter(s => s.inva === slot.inva && s.data === tomorrow && s.aluno)
+        if (mySlotsTomorrow.length > 0) {
+          const firstTimeTomorrow = Math.min(...mySlotsTomorrow.map(s => hv(s.hora)))
+          const lastTimeToday = Math.max(...mySlotsToday.map(s => hv(s.hora))) + 3
+          const rest = (24 - lastTimeToday) + firstTimeTomorrow
+          if (rest < 12) {
+            alerts.push(`Descanso Insuficiente (Próximo): Repouso de apenas ${rest.toFixed(1)}h até o início da próxima jornada (Amanhã inicia às ${firstTimeTomorrow.toFixed(1)}h). Mínimo 12h.`)
+          }
         }
       }
     }
