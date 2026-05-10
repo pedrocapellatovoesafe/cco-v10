@@ -289,33 +289,41 @@ function gerarEditor() {
   state.INST = buildInst()
   const barraMap = {}
   
+  // Group existing slots by barra name
   const slotsForDate = state.parsedSlots.filter(s => s.data === state.currentViewDate)
-
   slotsForDate.forEach((s) => {
-    if (!barraMap[s.barra]) barraMap[s.barra] = { base: s.base, slots: [] }
-    barraMap[s.barra].slots.push(s)
+    if (!barraMap[s.barra]) barraMap[s.barra] = []
+    barraMap[s.barra].push(s)
   })
 
-  const barrasOrdenadas = Object.entries(barraMap)
-    .filter(([id]) => isBarraConhecida(id))
+  // Use BARRAS list to ensure all bars are present, even if empty
+  const barrasParaExibir = state.BARRAS
+    .filter(b => isBarraConhecida(b.nome))
     .sort((a, b) => {
-      if (a[1].base !== b[1].base) return a[1].base === 'SJK' ? -1 : 1
-      return ordemBarra(a[0]) - ordemBarra(b[0])
+      const baseA = getBase(a.nome)
+      const baseB = getBase(b.nome)
+      if (baseA !== baseB) return baseA === 'SJK' ? -1 : 1
+      return ordemBarra(a.nome) - ordemBarra(b.nome)
     })
 
   const schSlots = []
   let sid = 0
-  barrasOrdenadas.forEach(([barraId, { base, slots }]) => {
+
+  barrasParaExibir.forEach((barraObj) => {
+    const barraId = barraObj.nome
+    const base = getBase(barraId)
+    const existingInBarra = barraMap[barraId] || []
+    
     const byHora = {}
-    slots.forEach((s) => {
+    existingInBarra.forEach((s) => {
       if (!byHora[s.hora]) byHora[s.hora] = s
     })
+
     const isPcatd = barraId.toUpperCase().includes('PCATD') || barraId.toUpperCase().includes('SM PCATD')
     const gradeBase = isPcatd ? HORAS_PCATD : HORAS_DEFAULT
     const horasFinais = [...new Set([...gradeBase, ...Object.keys(byHora)])].sort()
     
-    const barraObj = state.BARRAS.find(b => b.nome === barraId)
-    const numericBarraId = barraObj ? barraObj.id : null
+    const numericBarraId = barraObj.id
 
     horasFinais.forEach((hora) => {
       const existing = byHora[hora]
@@ -333,7 +341,7 @@ function gerarEditor() {
         id: `s${sid}`,
         apiId: existing ? (typeof existing.id === 'string' && existing.id.startsWith('api-') ? existing.id.replace('api-', '') : existing.id) : null,
         barra: barraId,
-        barraId: existing ? existing.barraId : numericBarraId,
+        barraId: existing ? (existing.barraId || numericBarraId) : numericBarraId,
         base,
         hora,
         aluno: existing ? existing.aluno : '',
@@ -342,11 +350,12 @@ function gerarEditor() {
         invaId: existing ? existing.invaId : null,
         ae: finalAe,
         aeronaveId: existing ? existing.aeronaveId : null,
-        modelo: existing ? existing.modelo : (barraObj?.modeloAeronave?.nome || 'MC01'),
+        modelo: existing ? existing.modelo : (barraObj.modeloAeronave?.nome || 'MC01'),
         missao: existing ? existing.missao : '',
         missaoId: existing ? existing.missaoId : null,
         st: existing ? existing.st : '',
         statusSlotId: existing ? existing.statusSlotId : null,
+        isChecked: existing ? existing.isChecked : false,
         obs: existing ? existing.obs : '',
         data: state.currentViewDate
       })
@@ -394,17 +403,21 @@ function getParsedDateObj(dateStr) {
 
 function getSlotAlerts(slot) {
   const alerts = []
-  if (!slot.aluno) return alerts
-
-  if (slot.obs && slot.obs.trim()) {
-    alerts.push(`Atente-se às observações do slot!`)
-  }
-
+  
+  // 1. Status da Operação e Impedimentos Técnicos (Check even without student)
   const techImpediments = ['PENDENTE', 'AGUARDANDO CONFIRMAÇÃO', 'REVISÃO', 'OPERAÇÕES', 'METEOROLOGIA', 'MANUTENÇÃO', 'INDISPONIBILIDADE']
   if (techImpediments.includes(slot.st)) {
     alerts.push(`Impedimento/Status: ${slot.st}`)
   }
 
+  // 0. Observações do Slot (Check even without student)
+  if (slot.obs && slot.obs.trim()) {
+    alerts.push(`Atente-se às observações do slot!`)
+  }
+
+  if (!slot.aluno) return alerts
+
+  // 2. Dados Incompletos
   if (!slot.inva || !slot.ae) {
     const missing = []
     if (!slot.inva) missing.push('Instrutor')
@@ -509,6 +522,7 @@ function buildSlotPayload(slot, overrideCoords = null) {
     invaId: slot.invaId,
     missaoId: slot.missaoId,
     barraId,
+    isChecked: !!slot.isChecked,
     observacoes: slot.obs || ''
   }
 }
@@ -531,6 +545,14 @@ async function updateSlot(slot, refresh = true) {
     alert('Erro ao salvar alteração no servidor.')
   } finally {
     if (refresh) state.globalLoading = false
+  }
+}
+
+function updateSlotChecked(id, value) {
+  const slot = state.SCH.find((s) => s.id === id)
+  if (slot) {
+    slot.isChecked = value
+    updateSlot(slot)
   }
 }
 
@@ -826,8 +848,9 @@ function fetchSlots(startDate, endDate) {
           modelo: (slot.aeronave?.modeloAeronave?.nome || '').trim(),
           missao: missaoShort.trim(),
           missaoId: slot.missaoId || slot.missao?.id,
-          st: slot.statusSlot?.nome || 'PENDENTE',
+          st: (slot.statusSlot?.nome || 'PENDENTE').trim().toUpperCase(),
           statusSlotId: slot.statusSlotId || slot.statusSlot?.id,
+          isChecked: !!slot.isChecked,
           data,
           obs: (slot.observacoes || slot.observacao || '').trim()
         }
@@ -921,6 +944,22 @@ function getInvasByBarra(barraId, currentInva = '') {
   return list.length > 0 ? list : state.INVAS
 }
 
+async function deleteSlot(slotId) {
+  state.globalLoading = true
+  try {
+    const numericId = typeof slotId === 'string' && slotId.startsWith('api-') ? slotId.replace('api-', '') : slotId
+    await api.delete(`/slots/${numericId}`)
+    
+    await fetchSlots()
+    gerarEditor()
+  } catch (error) {
+    console.error('Error deleting slot:', error)
+    alert('Erro ao excluir registro no servidor.')
+  } finally {
+    state.globalLoading = false
+  }
+}
+
 export function useCcoStore() {
   return {
     state,
@@ -937,6 +976,8 @@ export function useCcoStore() {
     getAeronavesByBarra,
     getInvasByBarra,
     updateSlotAeronave,
+    updateSlotChecked,
+    deleteSlot,
     setCurrentViewDate,
     generateEditor: gerarEditor,
     voltarUpload,

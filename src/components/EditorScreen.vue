@@ -28,6 +28,20 @@
         </div>
       </div>
 
+      <div class="date-pagination" v-if="store.availableDates.value.length > 0">
+        <div class="pag-label">Escalas disponíveis:</div>
+        <div class="pag-btns">
+          <button 
+            v-for="date in store.availableDates.value" 
+            :key="date"
+            :class="['date-btn', store.currentViewDate.value === date ? 'active' : '']"
+            @click="store.setCurrentViewDate(date)"
+          >
+            {{ date }}
+          </button>
+        </div>
+      </div>
+
       <div class="panels">
         <div class="panel-box"><h3>Disponibilidade</h3><div class="disp-panel">
           <div class="disp-group" v-for="base in ['SJK', 'CPQ']" :key="base">
@@ -46,20 +60,6 @@
             </div>
           </div>
         </div></div>
-      </div>
-
-      <div class="date-pagination" v-if="store.availableDates.value.length > 0">
-        <div class="pag-label">Escalas disponíveis:</div>
-        <div class="pag-btns">
-          <button 
-            v-for="date in store.availableDates.value" 
-            :key="date"
-            :class="['date-btn', store.currentViewDate.value === date ? 'active' : '']"
-            @click="store.setCurrentViewDate(date)"
-          >
-            {{ date }}
-          </button>
-        </div>
       </div>
 
       <div class="tabs">
@@ -85,7 +85,21 @@
             <div class="brow" v-for="label in rowLabels" :key="label" :style="{ gridTemplateColumns: `110px repeat(${(block.slots || []).length}, 1fr)` }">
               <div class="rl">{{ label }}</div>
               <template v-for="slot in (block.slots || [])" :key="slot.id + label">
-                <div v-if="label === 'Aluno'" class="sc" :class="slot.aluno ? '' : 'sc-empty'"><div class="sv">{{ slot.aluno }}</div></div>
+                <div v-if="label === 'Aluno'" class="sc" :class="slot.aluno ? '' : 'sc-empty'">
+                  <button v-if="slot.apiId" class="btn-delete-slot" @click.stop="openDeleteModal(slot)" title="Excluir Registro">×</button>
+                  <div class="sv sv-aluno">
+                    <input 
+                      v-if="slot.apiId"
+                      type="checkbox" 
+                      v-model="slot.isChecked" 
+                      @change="store.updateSlotChecked(slot.id, slot.isChecked)"
+                      class="slot-checkbox"
+                      title="Marcar como conferido"
+                    />
+                    <span v-if="slot.aluno">{{ slot.aluno }}</span>
+                    <span v-else-if="slot.apiId" class="warning-text">ALUNO NÃO INFORMADO</span>
+                  </div>
+                </div>
                 <div v-else-if="label === 'Instrutor'" :class="slotCellClass(slot)">
                   <select class="slot-input" v-model="slot.inva" @change="onInstructorChange(slot.id, slot.inva)">
                     <option value="">—</option>
@@ -104,16 +118,11 @@
                 </div>
                 <div v-else-if="label === 'Missão'" class="sc" :class="slot.missao ? '' : 'sc-empty'"><div class="sv">{{ slot.missao }}</div></div>
                 <div v-else-if="label === 'Status'" class="sc">
-                  <template v-if="slot.aluno">
+                  <template v-if="slot.apiId">
                     <select class="slot-input" v-model="slot.st" @change="onStatusChange(slot.id, slot.st)">
-                      <option value="CONFIRMADO">CONFIRMADO</option>
-                      <option value="PENDENTE">PENDENTE</option>
-                      <option value="AGUARDANDO CONFIRMAÇÃO">AGUARDANDO CONFIRMAÇÃO</option>
-                      <option value="REVISÃO">REVISÃO</option>
-                      <option value="OPERAÇÕES">OPERAÇÕES</option>
-                      <option value="METEOROLOGIA">METEOROLOGIA</option>
-                      <option value="MANUTENÇÃO">MANUTENÇÃO</option>
-                      <option value="INDISPONIBILIDADE">INDISPONIBILIDADE</option>
+                      <option v-for="st in store.state.STATUSES" :key="st.id" :value="st.nome.toUpperCase()">
+                        {{ st.nome.toUpperCase() }}
+                      </option>
                     </select>
                   </template>
                 </div>
@@ -140,7 +149,7 @@
         <span class="footer-badge">Node.js</span>
       </div>
 
-      <!-- Modal de Restrições -->
+      <!-- Modal de Detalhes / Restrições -->
       <div v-if="isModalOpen" class="modal-overlay" @click.self="closeModal">
         <div class="modal-content">
           <div class="modal-header">
@@ -171,6 +180,25 @@
           </div>
           <div class="modal-footer">
             <button class="btn-modal-ok" @click="closeModal">Entendido</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal de Confirmação de Exclusão -->
+      <div v-if="isDeleteModalOpen" class="modal-overlay" @click.self="closeDeleteModal">
+        <div class="modal-content modal-danger">
+          <div class="modal-header">
+            <h3>Excluir Registro</h3>
+            <button class="modal-close" @click="closeDeleteModal">×</button>
+          </div>
+          <div class="modal-body text-center">
+            <div class="danger-icon">🗑️</div>
+            <p>Deseja realmente excluir o registro de <strong>{{ slotToDelete?.aluno }}</strong>?</p>
+            <p class="text-muted">Esta ação não poderá ser desfeita.</p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-cancel" @click="closeDeleteModal">Cancelar</button>
+            <button class="btn-confirm-delete" @click="confirmDeleteSlot">Confirmar Exclusão</button>
           </div>
         </div>
       </div>
@@ -208,6 +236,9 @@ const rowLabels = ['Aluno', 'Instrutor', 'Aeronave', 'Missão', 'Status', 'Barra
 const isModalOpen = ref(false)
 const selectedSlot = ref(null)
 
+const isDeleteModalOpen = ref(false)
+const slotToDelete = ref(null)
+
 async function handleFilter() {
   isLoading.value = true
   try {
@@ -216,6 +247,23 @@ async function handleFilter() {
   } finally {
     isLoading.value = false
   }
+}
+
+function openDeleteModal(slot) {
+  slotToDelete.value = slot
+  isDeleteModalOpen.value = true
+}
+
+function closeDeleteModal() {
+  isDeleteModalOpen.value = false
+  slotToDelete.value = null
+}
+
+async function confirmDeleteSlot() {
+  if (!slotToDelete.value?.apiId) return
+  const id = slotToDelete.value.apiId
+  closeDeleteModal()
+  await store.deleteSlot(id)
 }
 
 function onInstructorChange(slotId, value) {
@@ -235,19 +283,19 @@ function slotCellClass(slot) {
 }
 
 function buttonLabel(slot) {
-  if (!slot.aluno) return slot.st || 'Disponível'
-  
   const alerts = store.getSlotAlerts(slot)
   if (alerts.length > 0) return 'Atenção'
+  
+  if (!slot.aluno) return slot.st || 'Disponível'
   
   return 'Ok'
 }
 
 function buttonClass(slot) {
-  if (!slot.aluno) return 'btn-disp'
   const label = buttonLabel(slot)
   if (label === 'Atenção') return 'btn-mod-wrn'
   if (label === 'Restrição') return 'btn-mod-err'
+  if (!slot.aluno) return 'btn-disp'
   return 'btn-mod-ok'
 }
 
@@ -582,12 +630,14 @@ function handleLogout() {
   justify-content: center;
   overflow: hidden;
   padding: 4px 6px;
+  position: relative;
 }
 .sc:last-child { border-right: none; }
 .sc-empty { background: #fff; }
 .sc-filled { background: #fff; }
 .sc-st-agua { background: #fff; }
 .sc-st-other { background: #fff; }
+
 .slot-input {
   width: 100%;
   height: 36px;
@@ -612,6 +662,87 @@ function handleLogout() {
 .slot-input:hover {
   border-color: #b8c2d1;
 }
+.btn-delete-slot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 18px;
+  height: 18px;
+  background: #ff4d4d;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.4;
+  transition: all 0.2s ease;
+  z-index: 30;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+.sc:hover .btn-delete-slot {
+  opacity: 1;
+  transform: scale(1.1);
+}
+.btn-delete-slot:hover {
+  background: #cc0000;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+.sv-aluno {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.warning-text {
+  color: #ff4d4d;
+  font-weight: 700;
+  font-size: 11px;
+}
+.slot-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+.modal-danger .modal-header {
+  background: #fff5f5;
+}
+.modal-danger h3 {
+  color: #c0392b;
+}
+.text-center { text-align: center; }
+.danger-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+.text-muted {
+  font-size: 12px;
+  color: #888;
+  margin-top: 8px;
+}
+.btn-cancel {
+  background: #eee;
+  color: #333;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-right: 10px;
+}
+.btn-cancel:hover { background: #ddd; }
+.btn-confirm-delete {
+  background: #c0392b;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-confirm-delete:hover { background: #a93226; }
 select.slot-input {
   appearance: none;
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231d2951' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
