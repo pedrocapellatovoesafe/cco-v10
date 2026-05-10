@@ -1,10 +1,12 @@
 <template>
   <div class="screen-layout">
+    <!-- Loading Overlay with Blur -->
     <div v-if="isLoading || store.state.globalLoading" class="loading-overlay">
       <div class="loader"></div>
       <p>{{ isLoading ? 'Sincronizando dados com o servidor...' : 'Salvando alterações...' }}</p>
     </div>
-    <div id="editor-screen" class="editor-screen" v-else>
+
+    <div id="editor-screen" class="editor-screen">
       <div class="topbar">
         <img :src="iconUrl" alt="SAFE" style="width:28px;height:28px;border-radius:50%;opacity:.85;" />
         <h1>{{ store.state.editorTitle }}</h1>
@@ -22,23 +24,8 @@
         </div>
 
         <div class="controls">
-          <button class="btn-reset" @click="store.resetSchedule">↺ Reset</button>
           <button class="btn-back" @click="() => router.push('/upload')">📂 Nova escala</button>
           <button class="btn-logout-editor" @click="handleLogout">Sair</button>
-        </div>
-      </div>
-
-      <div class="date-pagination" v-if="store.availableDates.value.length > 0">
-        <div class="pag-label">Escalas disponíveis:</div>
-        <div class="pag-btns">
-          <button 
-            v-for="date in store.availableDates.value" 
-            :key="date"
-            :class="['date-btn', store.currentViewDate.value === date ? 'active' : '']"
-            @click="store.setCurrentViewDate(date)"
-          >
-            {{ date }}
-          </button>
         </div>
       </div>
 
@@ -60,6 +47,20 @@
             </div>
           </div>
         </div></div>
+      </div>
+
+      <div class="date-pagination" v-if="store.availableDates.value.length > 0">
+        <div class="pag-label">Escalas disponíveis:</div>
+        <div class="pag-btns">
+          <button 
+            v-for="date in store.availableDates.value" 
+            :key="date"
+            :class="['date-btn', store.currentViewDate.value === date ? 'active' : '']"
+            @click="store.setCurrentViewDate(date)"
+          >
+            {{ date }}
+          </button>
+        </div>
       </div>
 
       <div class="tabs">
@@ -92,7 +93,7 @@
                       v-if="slot.apiId"
                       type="checkbox" 
                       v-model="slot.isChecked" 
-                      @change="store.updateSlotChecked(slot.id, slot.isChecked)"
+                      @change="onCheckedChange(slot)"
                       class="slot-checkbox"
                       title="Marcar como conferido"
                     />
@@ -193,7 +194,7 @@
           </div>
           <div class="modal-body text-center">
             <div class="danger-icon">🗑️</div>
-            <p>Deseja realmente excluir o registro de <strong>{{ slotToDelete?.aluno }}</strong>?</p>
+            <p>Deseja realmente excluir o registro de <strong>{{ slotToDelete?.aluno || 'Aluno não informado' }}</strong>?</p>
             <p class="text-muted">Esta ação não poderá ser desfeita.</p>
           </div>
           <div class="modal-footer">
@@ -202,18 +203,39 @@
           </div>
         </div>
       </div>
+
+      <!-- Toast Notifications -->
+      <div v-if="toast.show" :class="['toast-notification', `toast-${toast.type}`]">
+        <span class="toast-icon">{{ toast.type === 'success' ? '✅' : '⚠️' }}</span>
+        <span class="toast-message">{{ toast.message }}</span>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, inject, onMounted } from 'vue'
+import { ref, reactive, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import iconUrl from '../icons/icon-192.png'
 
 const router = useRouter()
 const store = inject('store')
 const isLoading = ref(true)
+
+const toast = reactive({
+  show: false,
+  message: '',
+  type: 'success'
+})
+
+function showToast(message, type = 'success') {
+  toast.message = message
+  toast.type = type
+  toast.show = true
+  setTimeout(() => {
+    toast.show = false
+  }, 3000)
+}
 
 onMounted(async () => {
   isLoading.value = true
@@ -244,6 +266,9 @@ async function handleFilter() {
   try {
     await store.fetchSlots()
     store.generateEditor()
+    showToast('Escala filtrada com sucesso!', 'success')
+  } catch (e) {
+    showToast('Erro ao filtrar escala.', 'danger')
   } finally {
     isLoading.value = false
   }
@@ -263,19 +288,48 @@ async function confirmDeleteSlot() {
   if (!slotToDelete.value?.apiId) return
   const id = slotToDelete.value.apiId
   closeDeleteModal()
-  await store.deleteSlot(id)
+  try {
+    await store.deleteSlot(id)
+    showToast('Registro excluído com sucesso!', 'success')
+  } catch (e) {
+    showToast('Erro ao excluir registro.', 'danger')
+  }
 }
 
-function onInstructorChange(slotId, value) {
-  store.updateSlotInstructor(slotId, value)
+async function onInstructorChange(slotId, value) {
+  try {
+    await store.updateSlotInstructor(slotId, value)
+    showToast('Instrutor atualizado!', 'success')
+  } catch (e) {
+    showToast('Erro ao atualizar instrutor.', 'danger')
+  }
 }
 
-function onAeronaveChange(slotId, value) {
-  store.updateSlotAeronave(slotId, value)
+async function onAeronaveChange(slotId, value) {
+  try {
+    await store.updateSlotAeronave(slotId, value)
+    showToast('Aeronave atualizada!', 'success')
+  } catch (e) {
+    showToast('Erro ao atualizar aeronave.', 'danger')
+  }
 }
 
-function onStatusChange(slotId, value) {
-  store.updateSlotStatus(slotId, value)
+async function onStatusChange(slotId, value) {
+  try {
+    await store.updateSlotStatus(slotId, value)
+    showToast('Status atualizado!', 'success')
+  } catch (e) {
+    showToast('Erro ao atualizar status.', 'danger')
+  }
+}
+
+async function onCheckedChange(slot) {
+  try {
+    await store.updateSlotChecked(slot.id, slot.isChecked)
+    showToast(slot.isChecked ? 'Slot marcado!' : 'Slot desmarcado!', 'success')
+  } catch (e) {
+    showToast('Erro ao atualizar conferência.', 'danger')
+  }
 }
 
 function slotCellClass(slot) {
@@ -328,9 +382,14 @@ function onDragLeave(id) {
   // logic
 }
 
-function onDropSlot(id) {
+async function onDropSlot(id) {
   if (!dragSourceId.value || dragSourceId.value === id) return
-  store.swapSlots(dragSourceId.value, id)
+  try {
+    await store.swapSlots(dragSourceId.value, id)
+    showToast('Troca realizada com sucesso!', 'success')
+  } catch (e) {
+    showToast('Erro ao realizar troca.', 'danger')
+  }
   dragSourceId.value = null
 }
 
@@ -348,18 +407,26 @@ function handleLogout() {
   position: relative;
 }
 .loading-overlay {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(240, 244, 248, 0.8);
+  background: rgba(240, 244, 248, 0.4);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
-  border-radius: 14px;
+  z-index: 5000;
+}
+.loading-overlay p {
+  color: #1d2951;
+  font-weight: 700;
+  font-size: 15px;
+  margin-top: 15px;
+  text-shadow: 0 1px 2px rgba(255,255,255,0.5);
 }
 .loader {
   border: 4px solid #f3f3f3;
@@ -494,7 +561,6 @@ function handleLogout() {
   margin-left: auto;
   flex-wrap: wrap;
 }
-.btn-reset,
 .btn-back,
 .btn-logout-editor {
   border: none;
@@ -508,8 +574,6 @@ function handleLogout() {
   align-items: center;
   gap: 6px;
 }
-.btn-reset { background: #888; color: #fff; }
-.btn-reset:hover { background: #666; transform: translateY(-1px); }
 .btn-back { background: #1d3a52; color: #fff; }
 .btn-back:hover { background: #162e42; transform: translateY(-1px); }
 .btn-logout-editor {
@@ -928,4 +992,38 @@ select.slot-input {
   line-height: 1.4;
   font-weight: 500;
 }
+
+/* Toast Notifications */
+.toast-notification {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 6000;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+  animation: toastIn 0.3s ease-out;
+  min-width: 200px;
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(50px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.toast-success {
+  background: #e6f7ed;
+  color: #000;
+  border: 1px solid #27ae60;
+  border-left: 5px solid #27ae60;
+}
+.toast-danger {
+  background: #fdf2f2;
+  color: #000;
+  border: 1px solid #c0392b;
+  border-left: 5px solid #c0392b;
+}
+.toast-icon { font-size: 16px; }
+.toast-message { font-weight: 600; font-size: 13px; color: #000; }
 </style>
