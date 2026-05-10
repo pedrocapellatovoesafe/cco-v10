@@ -24,7 +24,8 @@
         </div>
 
         <div class="controls">
-          <button class="btn-back" @click="() => router.push('/upload')">📂 Nova escala</button>
+          <button class="btn-back" @click="handleOpenCalendar">📅 Calendário de Instrutores</button>
+          <button class="btn-back" @click="() => router.push('/upload')">📂 Atualizar fonte</button>
           <button class="btn-logout-editor" @click="handleLogout">Sair</button>
         </div>
       </div>
@@ -33,17 +34,36 @@
         <div class="panel-box"><h3>Disponibilidade</h3><div class="disp-panel">
           <div class="disp-group" v-for="base in ['SJK', 'CPQ']" :key="base">
             <div class="disp-group-label">{{ base }}</div>
-            <div class="disp-chips">
-              <span
-                v-for="instr in (store.availabilityGroups?.value?.[base]?.voo || [])"
-                :key="instr.nome"
-                class="ic"
-                :class="store.availabilityClass(instr.nome)"
-                @click="store.toggleDisp(instr.nome)"
-                :title="instr.nome"
-              >
-                {{ instr.nome ? instr.nome.split(' ')[0] : '—' }}
-              </span>
+            <div class="disp-sections">
+              <div class="disp-section">
+                <span class="disp-section-title">Voo:</span>
+                <div class="disp-chips">
+                  <span
+                    v-for="instr in (store.availabilityGroups?.value?.[base]?.voo || [])"
+                    :key="instr.nome"
+                    class="ic"
+                    :class="store.availabilityClass(instr.nome)"
+                    @click="store.toggleDisp(instr.nome)"
+                    :title="instr.nome"
+                  >
+                    {{ instr.nome ? instr.nome.split(' ')[0] : '—' }}
+                  </span>
+                </div>
+              </div>
+              <div class="disp-section">
+                <span class="disp-section-title">Solo:</span>
+                <div class="disp-chips">
+                  <span
+                    v-for="instr in (store.availabilityGroups?.value?.[base]?.solo || [])"
+                    :key="instr.nome"
+                    class="ic ic-static"
+                    :class="store.availabilityClass(instr.nome)"
+                    :title="instr.nome + ' (Escala de Solo)'"
+                  >
+                    {{ instr.nome ? instr.nome.split(' ')[0] : '—' }}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
         </div></div>
@@ -218,6 +238,10 @@ import { ref, reactive, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import iconUrl from '../icons/icon-192.png'
 
+function handleOpenCalendar() {
+  router.push('/calendar')
+}
+
 const router = useRouter()
 const store = inject('store')
 const isLoading = ref(true)
@@ -245,7 +269,8 @@ onMounted(async () => {
       store.fetchBars(),
       store.fetchAeronaves(),
       store.fetchInvas(),
-      store.fetchStatuses()
+      store.fetchStatuses(),
+      store.fetchWorkSchedules()
     ])
     store.generateEditor()
   } finally {
@@ -611,6 +636,9 @@ function handleLogout() {
   letter-spacing: 0.04em;
 }
 .disp-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.disp-sections { display: flex; flex-direction: column; gap: 12px; }
+.disp-section { display: flex; align-items: flex-start; gap: 10px; }
+.disp-section-title { font-size: 10px; font-weight: 800; color: #5a6370; text-transform: uppercase; margin-top: 6px; min-width: 35px; }
 .ic {
   font-size: 10px;
   padding: 5px 8px;
@@ -618,6 +646,7 @@ function handleLogout() {
   font-weight: 700;
   cursor: pointer;
 }
+.ic-static { cursor: default; }
 .ic-ok { background: #d4edda; color: #155724; }
 .ic-folga { background: #fdecea; color: #7b1a19; text-decoration: line-through; }
 .ic-cond { background: #fef9e7; color: #856404; }
