@@ -211,16 +211,6 @@ function getBase(barraId) {
   return 'SJK'
 }
 
-function normalizeInstructorName(nomeXls, inst) {
-  if (!nomeXls) return ''
-  const upper = nomeXls.trim().toUpperCase()
-  if (inst[upper]) return upper
-  for (const nome of Object.keys(inst)) {
-    if (upper.startsWith(`${nome} `) || upper === nome) return nome
-  }
-  return upper
-}
-
 function onFile(file) {
   if (!file) return
   const reader = new FileReader()
@@ -515,28 +505,120 @@ export function useCcoStore() {
   const availabilityState = (n) => {
     const i = state.INVAS.find(x => x.nome === n)
     if (i) {
-      const sitRaw = i.situacao?.nome || i.situacao || i.situacaoInva?.nome || ''
-      const sit = String(sitRaw).toLowerCase()
       const dParts = state.currentViewDate.split('/')
       if (dParts.length === 3) {
         const dStr = `${dParts[2]}-${dParts[1]}-${dParts[0]}`
         const s = Array.isArray(i.escalas) ? i.escalas.find(x => x.data.startsWith(dStr)) : null
         if (s) {
           const tipoNome = (s.tipoDisponibilidade?.nome || s.tipo || '').toLowerCase()
-          if (tipoNome.includes('folga') || tipoNome.includes('indisponivel')) return 'folga'
-          if (tipoNome.includes('condicional')) return 'cond'
+          if (tipoNome.includes('disponivel') || tipoNome.includes('disponível')) return 'avail'
+          if (tipoNome.includes('folga regular')) return 'folga-reg'
+          if (tipoNome.includes('folga social')) return 'folga-soc'
+          if (tipoNome.includes('sobreaviso')) return 'sobreaviso'
+          if (tipoNome.includes('treinamento')) return 'treinamento'
+          if (tipoNome.includes('férias') || tipoNome.includes('ferias')) return 'ferias'
+          if (tipoNome.includes('banco')) return 'banco'
+          if (tipoNome.includes('opera')) return 'operacoes'
+          if (tipoNome.includes('externo')) return 'externo'
+          if (tipoNome.includes('médica') || tipoNome.includes('medica')) return 'medica'
+          return 'outro'
         }
       }
     }
     return state.availability[n] || 'avail'
   }
 
+  const availabilityLabel = (n) => {
+    const i = state.INVAS.find(x => x.nome === n)
+    if (i) {
+      const dParts = state.currentViewDate.split('/')
+      if (dParts.length === 3) {
+        const dStr = `${dParts[2]}-${dParts[1]}-${dParts[0]}`
+        const s = Array.isArray(i.escalas) ? i.escalas.find(x => x.data.startsWith(dStr)) : null
+        if (s) {
+          const tipoNome = (s.tipoDisponibilidade?.nome || s.tipo || '').toLowerCase()
+          let sigla = '?'
+          if (tipoNome.includes('disponivel') || tipoNome.includes('disponível')) sigla = '✓'
+          else if (tipoNome.includes('folga regular')) sigla = 'FR'
+          else if (tipoNome.includes('folga social')) sigla = 'FS'
+          else if (tipoNome.includes('sobreaviso')) sigla = 'SA'
+          else if (tipoNome.includes('treinamento')) sigla = 'TR'
+          else if (tipoNome.includes('férias') || tipoNome.includes('ferias')) sigla = 'FE'
+          else if (tipoNome.includes('banco')) sigla = 'BH'
+          else if (tipoNome.includes('opera')) sigla = 'OP'
+          else if (tipoNome.includes('externo')) sigla = 'TE'
+          else if (tipoNome.includes('médica') || tipoNome.includes('medica')) sigla = 'DM'
+          return `${sigla}${s.periodo ? ' - ' + s.periodo : ''}`
+        }
+      }
+    }
+    const man = state.availability[n] || 'avail'
+    return man === 'avail' ? 'A' : man === 'folga-reg' ? 'FR' : man === 'cond' ? '?' : 'A'
+  }
+
   const getSlotAlerts = (slot) => {
     const alerts = []
+    
+    // 1. Status da Operação e Impedimentos Técnicos
+    const techImpediments = ['REVISÃO', 'OPERAÇÕES', 'METEOROLOGIA', 'MANUTENÇÃO', 'INDISPONIBILIDADE']
+    if (techImpediments.includes(slot.st)) {
+      alerts.push(`Impedimento/Status: ${slot.st}`)
+    }
+
+    // 2. Observações do Slot
+    if (slot.obs && slot.obs.trim()) {
+      alerts.push(`Atente-se às observações do slot!`)
+    }
+
     if (!slot.aluno) return alerts
-    if (!slot.inva || !slot.ae) alerts.push(`Dados Incompletos: Falta preencher ${!slot.inva ? 'Instrutor' : 'Aeronave'}.`)
+
+    // 3. Dados Incompletos
+    if (!slot.inva || !slot.ae) {
+      alerts.push(`Dados Incompletos: Falta preencher ${!slot.inva ? 'Instrutor' : 'Aeronave'}.`)
+    }
+    
+    // 4. Conflito Simultâneo
     const sameTime = state.SCH.filter(s => s.inva === slot.inva && s.hora === slot.hora && s.id !== slot.id && s.aluno)
-    if (sameTime.length > 0) alerts.push(`Conflito Simultâneo: Instrutor já alocado em ${sameTime[0].barra}.`)
+    if (sameTime.length > 0) {
+      alerts.push(`Conflito Simultâneo: Instrutor já alocado em ${sameTime[0].barra}.`)
+    }
+
+    // 5. Conflito de Disponibilidade (Escala de Trabalho)
+    if (slot.inva) {
+      const i = state.INVAS.find(x => x.nome === slot.inva)
+      if (i && Array.isArray(i.escalas)) {
+        const [day, month, year] = slot.data.split('/')
+        const dStr = `${year}-${month}-${day}`
+        const s = i.escalas.find(x => x.data.startsWith(dStr))
+        
+        if (s) {
+          const tipoNome = (s.tipoDisponibilidade?.nome || s.tipo || '').toLowerCase()
+          const isAvailable = tipoNome.includes('disponivel') || tipoNome.includes('disponível')
+          
+          if (!isAvailable) {
+            alerts.push(`Indisponibilidade: Instrutor alocado mas consta como "${s.tipoDisponibilidade?.nome || s.tipo}" na escala oficial${s.periodo ? ' (' + s.periodo + ')' : ''}.`)
+          }
+        }
+      }
+    }
+
+    // 6. Consecutividade de Aluno (Mesmo Instrutor)
+    if (slot.aluno) {
+      const studentSlotsToday = state.SCH.filter(s => s.aluno === slot.aluno).sort((a, b) => hv(a.hora) - hv(b.hora))
+      const myTime = hv(slot.hora)
+      
+      // Check previous and next slots for the same student
+      const prevSlot = studentSlotsToday.find(s => Math.abs(myTime - hv(s.hora) - 2) < 0.1)
+      const nextSlot = studentSlotsToday.find(s => Math.abs(hv(s.hora) - myTime - 2) < 0.1)
+
+      if (prevSlot && prevSlot.inva && slot.inva && prevSlot.inva !== slot.inva) {
+        alerts.push(`Treinamento em Sequência: Aluno possui slot anterior (${prevSlot.hora}) com instrutor diferente (${prevSlot.inva}).`)
+      }
+      if (nextSlot && nextSlot.inva && slot.inva && nextSlot.inva !== slot.inva) {
+        alerts.push(`Treinamento em Sequência: Aluno possui slot seguinte (${nextSlot.hora}) com instrutor diferente (${nextSlot.inva}).`)
+      }
+    }
+
     return alerts
   }
 
@@ -558,7 +640,12 @@ export function useCcoStore() {
     generateEditor: gerarEditor,
     voltarUpload: () => { state.fileOk = false; state.parsedSlots = [] },
     resetSchedule: () => { state.SCH = state.INITIAL.map(s => ({ ...s })) },
-    toggleDisp: (n) => { state.availability[n] = ['avail', 'folga', 'cond'][((['avail', 'folga', 'cond'].indexOf(state.availability[n] || 'avail')) + 1) % 3] },
+    toggleDisp: (n) => { 
+      const current = availabilityState(n)
+      const states = ['avail', 'folga-reg', 'cond'] 
+      const next = states[(states.indexOf(current === 'avail' ? 'avail' : current === 'folga-reg' ? 'folga-reg' : 'cond') + 1) % 3]
+      state.availability[n] = next 
+    },
     openCalendar: () => fetchInvas(),
     changeCalendarMonth: (delta) => {
       state.calendarMonthIdx += delta
@@ -585,7 +672,8 @@ export function useCcoStore() {
       return g
     }),
     availabilityState,
-    availabilityClass: (n) => { const s = availabilityState(n); return s === 'avail' ? 'ic-ok' : s === 'folga' ? 'ic-folga' : 'ic-cond' },
+    availabilityClass: (n) => availabilityState(n),
+    availabilityLabel,
     filterStartDate: computed({ get: () => state.filterStartDate, set: (v) => { state.filterStartDate = v } }),
     filterEndDate: computed({ get: () => state.filterEndDate, set: (v) => { state.filterEndDate = v } }),
     currentViewDate: computed(() => state.currentViewDate),

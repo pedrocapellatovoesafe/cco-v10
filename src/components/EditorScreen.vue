@@ -44,7 +44,7 @@
                     class="ic"
                     :class="store.availabilityClass(instr.nome)"
                     @click="store.toggleDisp(instr.nome)"
-                    :title="instr.nome"
+                    :title="instr.nome + ' (' + store.availabilityLabel(instr.nome) + ')'"
                   >
                     {{ instr.nome ? instr.nome.split(' ')[0] : '—' }}
                   </span>
@@ -58,7 +58,7 @@
                     :key="instr.nome"
                     class="ic ic-static"
                     :class="store.availabilityClass(instr.nome)"
-                    :title="instr.nome + ' (Escala de Solo)'"
+                    :title="instr.nome + ' (' + store.availabilityLabel(instr.nome) + ')'"
                   >
                     {{ instr.nome ? instr.nome.split(' ')[0] : '—' }}
                   </span>
@@ -269,8 +269,7 @@ onMounted(async () => {
       store.fetchBars(),
       store.fetchAeronaves(),
       store.fetchInvas(),
-      store.fetchStatuses(),
-      store.fetchWorkSchedules()
+      store.fetchStatuses()
     ])
     store.generateEditor()
   } finally {
@@ -645,11 +644,21 @@ function handleLogout() {
   border-radius: 999px;
   font-weight: 700;
   cursor: pointer;
+  color: #fff;
 }
 .ic-static { cursor: default; }
-.ic-ok { background: #d4edda; color: #155724; }
-.ic-folga { background: #fdecea; color: #7b1a19; text-decoration: line-through; }
-.ic-cond { background: #fef9e7; color: #856404; }
+/* Availability Status Colors */
+.ic.avail { background: #27ae60; }
+.ic.folga-reg { background: #c0392b; }
+.ic.folga-soc { background: #e67e22; }
+.ic.sobreaviso { background: #f1c40f; color: #000; }
+.ic.treinamento { background: #3498db; }
+.ic.ferias { background: #9b59b6; }
+.ic.banco { background: #1abc9c; }
+.ic.operacoes { background: #34495e; }
+.ic.externo { background: #7f8c8d; }
+.ic.medica { background: #000000; }
+.ic.outro { background: #bdc3c7; color: #000; }
 .tabs {
   display: flex;
   gap: 6px;
