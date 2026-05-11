@@ -479,7 +479,6 @@ function gerarEditor() {
   state.INITIAL = schSlots.map((s) => ({ ...s }))
   state.SCH = schSlots.map((s) => ({ ...s }))
   state.editorTitle = `✈ CCO · Editor de Escala · ${state.currentViewDate}`
-  state.activeTab = 'SJK'
 }
 
 function hv(hora) {
@@ -670,9 +669,14 @@ function fetchSlots(startDate, endDate) {
       const [da,ma,ya] = a.split('/'); const [db,mb,yb] = b.split('/');
       return new Date(ya,ma-1,da) - new Date(yb,mb-1,db)
     })
-    if (state.availableDates.length > 0 && !state.availableDates.includes(state.currentViewDate)) {
-      state.currentViewDate = state.availableDates[0]
+
+    // Auto-select current date if not set or no longer valid
+    if (state.availableDates.length > 0) {
+      if (!state.currentViewDate || !state.availableDates.includes(state.currentViewDate)) {
+        state.currentViewDate = state.availableDates[0]
+      }
     }
+    
     return true
   })
 }
