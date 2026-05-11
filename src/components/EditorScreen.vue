@@ -392,9 +392,14 @@ function slotCellClass(slot) {
 }
 
 function buttonLabel(slot) {
-  if (slot.serverRestrictions && slot.serverRestrictions.length > 0) return '🚫 Restrição'
+  const hasRestrictions = slot.serverRestrictions && slot.serverRestrictions.length > 0
   const alerts = store.getSlotAlerts(slot)
-  if (alerts.length > 0) return '⚠️ Atenção'
+  const hasAlerts = alerts.length > 0
+  const isChecked = !!slot.isChecked
+
+  if (isChecked && (hasRestrictions || hasAlerts)) return '✅ Ok OBS*'
+  if (hasRestrictions) return '🚫 Restrição'
+  if (hasAlerts) return '⚠️ Atenção'
   if (!slot.aluno) return '📅 ' + (slot.st || 'Disponível')
   return '✅ Ok'
 }
@@ -409,7 +414,7 @@ function buttonClass(slot) {
 
 function handleButtonClick(slot) {
   const label = buttonLabel(slot)
-  if (label.includes('Atenção') || label.includes('Restrição')) {
+  if (label.includes('Atenção') || label.includes('Restrição') || label.includes('Ok OBS*')) {
     selectedSlot.value = slot
     isModalOpen.value = true
   }
