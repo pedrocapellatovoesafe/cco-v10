@@ -796,6 +796,9 @@ export function useCcoStore() {
     const hasTechImpediment = techImpediments.includes(slot.st)
     if (hasTechImpediment) {
       alerts.push(`Impedimento/Status: ${slot.st}`)
+      if (slot.inva) {
+        alerts.push(`Ação Requerida: Remova o instrutor deste slot (${slot.st}).`)
+      }
     }
 
     // 2. Observações do Slot
@@ -806,8 +809,13 @@ export function useCcoStore() {
     if (!slot.aluno || hasTechImpediment) return alerts
 
     // 3. Dados Incompletos
-    if (!slot.inva || !slot.ae) {
-      alerts.push(`Dados Incompletos: Falta preencher ${!slot.inva ? 'Instrutor' : 'Aeronave'}.`)
+    if (!slot.inva || !slot.ae || slot.st === 'PENDENTE' || slot.st === 'AGUARDANDO CONFIRMAÇÃO') {
+      const missingFields = []
+      if (!slot.inva) missingFields.push('Instrutor')
+      if (!slot.ae) missingFields.push('Aeronave')
+      if (slot.st === 'PENDENTE' || slot.st === 'AGUARDANDO CONFIRMAÇÃO') missingFields.push('Status Final')
+      
+      alerts.push(`Dados Incompletos: Falta preencher/definir ${missingFields.join(', ')}.`)
     }
     
     // 4. Conflito Simultâneo (Instrutor e Aeronave)

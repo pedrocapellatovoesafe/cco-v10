@@ -51,7 +51,6 @@
                       :key="instr.nome"
                       class="ic"
                       :class="store.availabilityClass(instr.nome)"
-                      @click="store.toggleDisp(instr.nome)"
                       :title="instr.nome + ' (' + store.availabilityLabel(instr.nome) + ')'"
                     >
                       {{ instr.nome ? instr.nome.split(' ')[0] : '—' }}
