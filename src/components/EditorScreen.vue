@@ -471,39 +471,48 @@ function handleLogout() {
 
 .topbar {
   display: flex; flex-flow: row nowrap; align-items: center; justify-content: space-between;
-  gap: 16px; padding: 10px 20px; background: #fff; border: 1px solid #dae2ec; border-radius: 14px;
+  gap: 16px; padding: 10px 18px; background: #fff; border: 1px solid #dae2ec; border-radius: 14px;
   box-shadow: 0 8px 24px rgba(14, 38, 72, 0.06);
 }
-.title-section { display: flex; align-items: center; gap: 10px; flex: 1 1 0; min-width: 0; }
-.title-section img { width: 28px; height: 28px; border-radius: 50%; opacity: 0.9; }
-.topbar h1 { font-size: 14px; font-weight: 700; color: #1d2951; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.title-section { display: flex; align-items: center; gap: 8px; flex: 1; }
+.title-section img { width: 26px; height: 28px; border-radius: 50%; opacity: 0.9; }
+.topbar h1 { font-size: 13.5px; font-weight: 700; color: #1d2951; margin: 0; white-space: nowrap; }
 
 .date-filters {
-  display: flex; align-items: center; gap: 10px; background: #f8f9fa;
-  padding: 5px 12px; border-radius: 10px; border: 1px solid #e3e9f0;
+  display: flex; align-items: center; gap: 8px; background: #f8f9fa;
+  padding: 4px 10px; border-radius: 10px; border: 1px solid #e3e9f0;
+  flex: 0 0 auto;
 }
-.filter-field { display: flex; align-items: center; gap: 6px; }
-.filter-field label { font-size: 11px; font-weight: 700; color: #5a6370; text-transform: uppercase; }
-.date-input { border: 1px solid #d8dee8; border-radius: 6px; padding: 4px 8px; font-size: 12px; color: #1d2951; }
-.btn-filter { background: #1d2951; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+.filter-field { display: flex; align-items: center; gap: 4px; }
+.filter-field label { font-size: 10.5px; font-weight: 700; color: #5a6370; text-transform: uppercase; }
+.date-input { border: 1px solid #d8dee8; border-radius: 6px; padding: 3px 6px; font-size: 11.5px; color: #1d2951; width: 110px; }
+.btn-filter { background: #1d2951; color: #fff; border: none; border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer; }
 
 .date-pagination {
-  display: flex; align-items: center; gap: 12px; margin: 14px 0; padding: 10px 18px;
+  display: flex; align-items: center; gap: 12px; margin: 12px 0; padding: 8px 18px;
   background: #fff; border: 1px solid #dae2ec; border-radius: 14px;
 }
 .pag-label { font-size: 12px; font-weight: 700; color: #1d2951; }
-.pag-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.pag-btns { display: flex; gap: 6px; flex-wrap: wrap; }
 .date-btn {
-  border: 1px solid #dae2ec; background: #fff; color: #5a6370; padding: 6px 14px;
-  border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+  border: 1px solid #dae2ec; background: #fff; color: #5a6370; padding: 5px 12px;
+  border-radius: 8px; font-size: 11.5px; font-weight: 700; cursor: pointer; transition: all 0.2s;
 }
 .date-btn:hover { border-color: #1d2951; color: #1d2951; }
 .date-btn.active { background: #1d2951; color: #fff; border-color: #1d2951; }
 
-.controls { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex: 1 1 0; }
+.controls { 
+  display: flex; 
+  flex-flow: row nowrap; 
+  align-items: center; 
+  justify-content: flex-end; 
+  gap: 5px; 
+  flex: 1; 
+}
 .btn-back, .btn-logout-editor {
-  border: none; border-radius: 8px; padding: 8px 12px; font-size: 11.5px; font-weight: 700;
-  cursor: pointer; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  border: none; border-radius: 8px; padding: 6px 9px; font-size: 10.5px; font-weight: 700;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
+  flex-shrink: 0;
 }
 .btn-back { background: #1d3a52; color: #fff; }
 .btn-logout-editor { background: #c0392b; color: #fff; }
