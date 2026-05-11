@@ -611,6 +611,17 @@ function fetchSlots(startDate, endDate) {
       if (slot.aeronave?.restricoes) raw.push(...slot.aeronave.restricoes)
 
       const filtered = raw.filter(r => {
+        // Special Case: Night Validation (After 17:00) for "Somente Diurna" Aircraft
+        const isNight = dt.getHours() >= 17
+        const isSomenteDiurna = (r.nome || '').toUpperCase().includes('SOMENTE DIURNA') || 
+                               (r.observacao || '').toUpperCase().includes('SOMENTE DIURNA')
+        
+        if (isNight && isSomenteDiurna && (r.isAeronave || r.is_aeronave)) {
+          // If it's night and it's a "Somente Diurna" restriction for this aircraft, 
+          // we force it to show up regardless of other flags (like mission).
+          if (String(getAeId(slot)) == String(getAeId(r))) return true
+        }
+
         // Match ALL active flags (Strict Rules)
         const isA = !!(r.isAluno || r.is_aluno)
         const isI = !!(r.isInva || r.is_inva)
@@ -640,7 +651,26 @@ function fetchSlots(startDate, endDate) {
 
       const unique = []
       const seen = new Set()
-      filtered.forEach(item => { if (!seen.has(item.id)) { seen.add(item.id); unique.push(item) } })
+      filtered.forEach(item => { 
+        if (!seen.has(item.id)) { 
+          seen.add(item.id)
+          
+          // Enhance message for forced night restriction
+          const isNight = dt.getHours() >= 17
+          const isSomenteDiurna = (item.nome || '').toUpperCase().includes('SOMENTE DIURNA') || 
+                                 (item.observacao || '').toUpperCase().includes('SOMENTE DIURNA')
+          
+          if (isNight && isSomenteDiurna) {
+            unique.push({
+              ...item,
+              nome: `🚫 [NOTURNO] ${item.nome}`,
+              observacao: `IMPEDIMENTO: Esta aeronave possui restrição 'Somente Diurna'. Slots a partir das 17:00 são considerados noturnos e proibidos para este prefixo.`
+            })
+          } else {
+            unique.push(item)
+          }
+        } 
+      })
 
       return {
         id: `api-${slot.id}`,
@@ -827,6 +857,21 @@ export function useCcoStore() {
     const sameTimeAe = state.SCH.filter(s => slot.ae && s.ae === slot.ae && s.hora === slot.hora && s.id !== slot.id && s.aluno && !techImpediments.includes(s.st))
     if (sameTimeAe.length > 0) {
       alerts.push(`Conflito de Aeronave: ${slot.ae} já está alocada em ${sameTimeAe[0].barra} neste horário.`)
+    }
+
+    // 4b. Validação Noturna (Somente Diurna)
+    const hour = hv(slot.hora)
+    if (hour >= 17 && slot.aeronaveId) {
+       const aeObj = state.AERONAVES.find(a => a.id == slot.aeronaveId)
+       if (aeObj && aeObj.restricoes) {
+         const isSomenteDiurna = aeObj.restricoes.some(r => 
+           (r.nome || '').toUpperCase().includes('SOMENTE DIURNA') || 
+           (r.observacao || '').toUpperCase().includes('SOMENTE DIURNA')
+         )
+         if (isSomenteDiurna) {
+           alerts.push(`⚠️ ALERTA NOTURNO: Aeronave restrita (Somente Diurna) operando após as 17:00.`)
+         }
+       }
     }
 
     // 5. Conflito de Disponibilidade (Escala de Trabalho)

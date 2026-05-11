@@ -41,3 +41,20 @@ export const EVENTUAL_INSTRUCTOR_ALLOWLIST = {
     authorizedMissions: ['INCENTIVO'] // Apenas Voo de Incentivo
   }
 };
+
+/**
+ * Códigos de Missões para Presets de Aeronave
+ */
+export const AIRCRAFT_PRESET_CODES = {
+  // Preset Somente Diurna: Missões proibidas (Noturnas)
+  DIURNA_ONLY_RESTRICTED: [
+    'NOT01', 'NOT02', 'NOT 01', 'NOT 02', 'NOT 03'
+  ],
+
+  // Preset VFR Only (Não IFR): Missões proibidas (IFR)
+  VFR_ONLY_RESTRICTED: [
+    'IFR 01 - MANOBRAS BÁSICAS', 'IFR 02 - MANOBRAS BÁSICAS', 'IFR 03 - MANOBRAS BÁSICAS',
+    'IFR 04 - NAVEGAÇÃO E PROCEDIMENTOS', 'IFR 05 - NAVEGAÇÃO E PROCEDIMENTOS', 'IFR 06 - NAVEGAÇÃO E PROCEDIMENTOS', 'IFR 07 - NAVEGAÇÃO E PROCEDIMENTOS', 'IFR 08 - NAVEGAÇÃO E PROCEDIMENTOS', 'IFR 09 - NAVEGAÇÃO E PROCEDIMENTOS',
+    'IFR 10 - NAVEGAÇÃO'
+  ]
+};

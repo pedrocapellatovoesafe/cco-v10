@@ -107,17 +107,42 @@
               <h3>🚀 Presets (Modelos Rápidos)</h3>
             </div>
             <div class="card-body">
-              <div class="form-group">
-                <label>Instrutor p/ Preset:</label>
-                <select v-model="presetInvaId" class="form-select">
-                  <option :value="null">Selecione o instrutor...</option>
-                  <option v-for="i in store.state.INVAS" :key="i.id" :value="i.id">{{ i.nome }}</option>
-                </select>
+              <!-- Preset Instrutor -->
+              <div class="preset-section">
+                <div class="form-group">
+                  <label>Instrutor p/ Preset:</label>
+                  <select v-model="presetInvaId" class="form-select">
+                    <option :value="null">Selecione o instrutor...</option>
+                    <option v-for="i in store.state.INVAS" :key="i.id" :value="i.id">{{ i.nome }}</option>
+                  </select>
+                </div>
+                <button class="btn-apply-preset" @click="handleApplyInvaPreset" :disabled="!presetInvaId">
+                  Aplicar Preset: Instrutor Eventual
+                </button>
               </div>
-              <button class="btn-apply-preset" @click="handleApplyPreset" :disabled="!presetInvaId">
-                Aplicar Preset: Instrutor Eventual
-              </button>
-              <p class="preset-help">Gera restrições em lote para todas as missões exceto as autorizadas em allowlist.</p>
+
+              <div class="preset-divider"></div>
+
+              <!-- Preset Aeronave -->
+              <div class="preset-section">
+                <div class="form-group">
+                  <label>Aeronave p/ Preset:</label>
+                  <select v-model="presetAeronaveId" class="form-select">
+                    <option :value="null">Selecione a aeronave...</option>
+                    <option v-for="ae in store.state.AERONAVES" :key="ae.id" :value="ae.id">{{ ae.nome }}</option>
+                  </select>
+                </div>
+                <div class="preset-actions-grid">
+                  <button class="btn-apply-preset secondary" @click="handleApplyAircraftPreset('diurna')" :disabled="!presetAeronaveId">
+                    Somente Diurna
+                  </button>
+                  <button class="btn-apply-preset secondary" @click="handleApplyAircraftPreset('vfr')" :disabled="!presetAeronaveId">
+                    VFR Only (Não IFR)
+                  </button>
+                </div>
+              </div>
+              
+              <p class="preset-help">Gera restrições em lote para todas as missões exceto as autorizadas ou baseadas em regras de segurança.</p>
             </div>
           </div>
         </div>
@@ -234,7 +259,7 @@
 <script setup>
 import { ref, reactive, inject, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { EVENTUAL_INSTRUCTOR_ALLOWLIST } from '../constants/presets'
+import { EVENTUAL_INSTRUCTOR_ALLOWLIST, AIRCRAFT_PRESET_CODES } from '../constants/presets'
 
 const router = useRouter()
 const store = inject('store')
@@ -246,6 +271,7 @@ const editingId = ref(null)
 
 // Batch Presets State
 const presetInvaId = ref(null)
+const presetAeronaveId = ref(null)
 const batchList = ref([])
 const isSavingBatch = ref(false)
 const showConfirmModal = ref(false)
@@ -405,11 +431,66 @@ function applyEventualInstructorPreset(invaId, allMissions) {
   return generated
 }
 
-function handleApplyPreset() {
+/**
+ * Aircraft Preset Logic
+ * Generates restrictions based on mission codes (e.g., NOT01, IFR05)
+ */
+function generateAircraftPreset(type, aircraftId) {
+  const ae = store.state.AERONAVES.find(a => a.id === aircraftId)
+  const aeNome = ae ? ae.nome : 'Aeronave'
+  const generated = []
+  
+  // Define which codes to look for based on preset type
+  const restrictedCodes = type === 'diurna' 
+    ? AIRCRAFT_PRESET_CODES.DIURNA_ONLY_RESTRICTED 
+    : AIRCRAFT_PRESET_CODES.VFR_ONLY_RESTRICTED
+
+  const typeLabel = type === 'diurna' ? 'Somente Diurna' : 'VFR Only'
+
+  store.state.MISSOES.forEach(mission => {
+    const missionName = (mission.nome || '').toUpperCase()
+    
+    // Check if mission name/code contains any of the restricted codes
+    const isRestricted = restrictedCodes.some(code => missionName.includes(code))
+
+    if (isRestricted) {
+      // Avoid duplicates if already in batchList
+      const exists = batchList.value.some(b => b.aeronaveId === aircraftId && b.missaoId === mission.id)
+      if (!exists) {
+        generated.push({
+          nome: `[Preset AE] ${aeNome} - ${typeLabel} (${mission.nome})`,
+          observacao: `Restrição automática (${typeLabel}): Aeronave não homologada/equipada para esta missão.`,
+          aeronaveId: aircraftId,
+          missaoId: mission.id,
+          isAeronave: true,
+          isMissao: true
+        })
+      }
+    }
+  })
+  return generated
+}
+
+function handleApplyInvaPreset() {
   if (!presetInvaId.value) return
   const res = applyEventualInstructorPreset(presetInvaId.value, store.state.MISSOES)
-  batchList.value = res
-  showToast(`${res.length} restrições geradas. Revise a lista à direita.`, 'success')
+  // Merge with existing batch, preventing duplicates
+  const newItems = res.filter(newItem => 
+    !batchList.value.some(oldItem => oldItem.invaId === newItem.invaId && oldItem.missaoId === newItem.missaoId)
+  )
+  batchList.value = [...batchList.value, ...newItems]
+  showToast(`${newItems.length} restrições de instrutor adicionadas ao lote.`, 'success')
+}
+
+function handleApplyAircraftPreset(type) {
+  if (!presetAeronaveId.value) return
+  const res = generateAircraftPreset(type, presetAeronaveId.value)
+  if (res.length === 0) {
+    showToast('Nenhuma missão nova encontrada para este preset.', 'info')
+    return
+  }
+  batchList.value = [...batchList.value, ...res]
+  showToast(`${res.length} restrições de aeronave adicionadas ao lote.`, 'success')
 }
 
 function removeFromBatch(idx) {
@@ -656,11 +737,44 @@ function handleLogout() { store.logout(); router.push('/login') }
 
 /* Preset Card */
 .preset-card { margin-top: 24px; border-left: 6px solid #3b82f6; }
+.preset-section { margin-bottom: 20px; }
+.preset-section:last-child { margin-bottom: 0; }
+.preset-divider {
+  height: 1px;
+  background: #e2e8f0;
+  margin: 20px 0;
+  position: relative;
+}
+.preset-divider::after {
+  content: 'OU';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  padding: 0 10px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
+}
+
+.preset-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
 .btn-apply-preset {
   width: 100%; padding: 12px; background: #3b82f6; color: #fff; border: none;
   border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s;
 }
+.btn-apply-preset.secondary {
+  background: #f1f5f9;
+  color: #1d2951;
+  border: 1px solid #cbd5e1;
+}
 .btn-apply-preset:hover:not(:disabled) { background: #2563eb; transform: translateY(-1px); }
+.btn-apply-preset.secondary:hover:not(:disabled) { background: #e2e8f0; border-color: #94a3b8; }
 .btn-apply-preset:disabled { opacity: 0.5; cursor: not-allowed; }
 .preset-help { margin: 12px 0 0; font-size: 11px; color: #64748b; line-height: 1.4; font-style: italic; }
 
