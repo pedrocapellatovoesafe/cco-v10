@@ -580,8 +580,8 @@ function handleLogout() {
   text-align-last: center;
   transition: all 0.2s ease;
 }
-.sv-aluno { display: flex; align-items: center; gap: 4px; width: 100%; justify-content: flex-start; padding-left: 4px; }
-.slot-checkbox { cursor: pointer; margin: 0; flex-shrink: 0; }
+.sv-aluno { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; position: relative; }
+.slot-checkbox { position: absolute; left: 4px; cursor: pointer; margin: 0; flex-shrink: 0; }
 .warning-text { color: #c0392b; font-weight: 800; font-size: 10px; }
 
 /* Modal Styles Refinement */

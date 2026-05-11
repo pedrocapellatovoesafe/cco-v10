@@ -503,7 +503,7 @@ function fetchAlunos() {
   return api.get('/alunos').then(r => { state.ALUNOS = r.data?.data || r.data; return true })
 }
 function fetchModelos() {
-  return api.get('/modelos-aeronave').then(r => { state.MODELOS = r.data?.data || r.data; return true })
+  return api.get('/modelo-aeronaves').then(r => { state.MODELOS = r.data?.data || r.data; return true })
 }
 function fetchMissoes() {
   return api.get('/missoes').then(r => { state.MISSOES = r.data?.data || r.data; return true })
@@ -580,8 +580,33 @@ function getWorkScheduleRows(situations, calDays) {
 }
 
 function fetchBars() { return api.get('/barras').then(r => { state.BARRAS = r.data?.data || r.data; return true }) }
-function fetchAeronaves() { return api.get('/aeronaves').then(r => { state.AERONAVES = r.data?.data || r.data; return true }) }
-function fetchStatuses() { return api.get('/status-slots').then(r => { state.STATUSES = r.data?.data || r.data; return true }) }
+
+function fetchAeronaves() {
+  return api.get('/aeronaves').then(r => { 
+    state.AERONAVES = r.data?.data || r.data; 
+    return true 
+  })
+}
+
+async function updateAeronave(id, p) {
+  state.globalLoading = true
+  try {
+    const r = await api.put(`/aeronaves/${id}`, p)
+    await fetchAeronaves()
+    return { success: true, data: r.data }
+  } catch (e) {
+    return { success: false, error: e.response?.data?.message || e.message }
+  } finally {
+    state.globalLoading = false
+  }
+}
+
+function fetchStatuses() { 
+  return api.get('/status-slots').then(r => { 
+    state.STATUSES = r.data?.data || r.data; 
+    return true 
+  }) 
+}
 
 function fetchSlots(startDate, endDate) {
   const sDate = startDate || (state.filterStartDate?.value || state.filterStartDate)
@@ -1033,7 +1058,7 @@ export function useCcoStore() {
   })
 
   return {
-    state, login, logout, checkLogin, onFile, onWorkFile, importScale, importWorkSchedule, fetchSlots, fetchBars, fetchAeronaves, fetchInvas, fetchStatuses,
+    state, login, logout, checkLogin, onFile, onWorkFile, importScale, importWorkSchedule, fetchSlots, fetchBars, fetchAeronaves, updateAeronave, fetchInvas, fetchStatuses,
     fetchAlunos, fetchModelos, fetchMissoes, fetchRestricoes,
     setCurrentViewDate: (d) => { state.currentViewDate = d; gerarEditor() },
     generateEditor: gerarEditor,
