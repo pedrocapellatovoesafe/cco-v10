@@ -147,6 +147,14 @@
                       {{ aero.nome }}
                     </option>
                   </select>
+                  <span 
+                    v-if="slot.ae && store.aeronaveStats.value && store.aeronaveStats.value[slot.id] !== undefined"
+                    class="ae-hours-predict"
+                    :class="store.getAeronaveHoursClass(store.aeronaveStats.value[slot.id])"
+                    :title="'Previsão de horas após este voo: ' + store.aeronaveStats.value[slot.id].toFixed(1) + 'h'"
+                  >
+                    {{ store.aeronaveStats.value[slot.id].toFixed(1) }}h
+                  </span>
                 </div>
                 <div v-else-if="label === 'Missão'" class="sc" :class="slot.missao ? '' : 'sc-empty'"><div class="sv">{{ slot.missao }}</div></div>
                 <div v-else-if="label === 'Status'" class="sc">
@@ -583,6 +591,22 @@ function handleLogout() {
 .sv-aluno { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; position: relative; }
 .slot-checkbox { position: absolute; left: 4px; cursor: pointer; margin: 0; flex-shrink: 0; }
 .warning-text { color: #c0392b; font-weight: 800; font-size: 10px; }
+
+.ae-hours-predict {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  font-size: 8.5px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-weight: 800;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 5;
+  pointer-events: none;
+}
+.ae-hours-predict.high { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+.ae-hours-predict.mid { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+.ae-hours-predict.low { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
 /* Modal Styles Refinement */
 .btn-delete-slot { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; background: #ff4d4d; color: white; border-radius: 50%; border: none; cursor: pointer; z-index: 30; }

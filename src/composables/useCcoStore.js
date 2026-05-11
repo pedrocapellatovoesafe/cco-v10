@@ -843,6 +843,26 @@ export function useCcoStore() {
     return man === 'avail' ? 'A' : man === 'folga-reg' ? 'FR' : man === 'cond' ? '?' : 'A'
   }
 
+  const aeronaveStats = computed(() => {
+    const stats = {}
+    const usage = {}
+    const sorted = [...state.SCH].sort((a, b) => hv(a.hora) - hv(b.hora))
+    sorted.forEach(s => {
+      if (s.ae && s.aeronaveId) {
+        const ae = state.AERONAVES.find(a => a.id == s.aeronaveId)
+        if (ae) {
+          const modNome = (ae.modeloAeronave?.nome || '').toUpperCase()
+          const isSim = modNome.includes('SM PCATD') || modNome.includes('SM AATD') || modNome.includes('SM PCTAD')
+          if (!isSim) {
+            usage[s.aeronaveId] = (usage[s.aeronaveId] || 0) + 1
+            stats[s.id] = parseFloat(ae.horasDisponiveis || 0) - (usage[s.aeronaveId] * 1.5)
+          }
+        }
+      }
+    })
+    return stats
+  })
+
   const getSlotAlerts = (slot) => {
     const alerts = []
     
@@ -897,6 +917,13 @@ export function useCcoStore() {
            alerts.push(`⚠️ ALERTA NOTURNO: Aeronave restrita (Somente Diurna) operando após as 17:00.`)
          }
        }
+    }
+
+    // 4c. Alerta de Manutenção Predisposto
+    if (slot.ae && aeronaveStats.value[slot.id] !== undefined) {
+      if (aeronaveStats.value[slot.id] < 10) {
+        alerts.push(`Coordenar parada para manutenção (Previsão: ${aeronaveStats.value[slot.id].toFixed(1)}h).`)
+      }
     }
 
     // 5. Conflito de Disponibilidade (Escala de Trabalho)
@@ -1057,6 +1084,13 @@ export function useCcoStore() {
     return g
   })
 
+  const getAeronaveHoursClass = (hours) => {
+    const h = parseFloat(hours || 0)
+    if (h <= 5) return 'low'
+    if (h <= 15) return 'mid'
+    return 'high'
+  }
+
   return {
     state, login, logout, checkLogin, onFile, onWorkFile, importScale, importWorkSchedule, fetchSlots, fetchBars, fetchAeronaves, updateAeronave, fetchInvas, fetchStatuses,
     fetchAlunos, fetchModelos, fetchMissoes, fetchRestricoes,
@@ -1079,6 +1113,8 @@ export function useCcoStore() {
     calendarMonthLabel, calendarFlightRows, calendarSoloRows, calendarDays,
     getSlotClass: (s) => !s.aluno ? 'sc sc-empty' : `sc ${s.st === 'CONFIRMADO' ? 'sc-filled' : s.st === 'PENDENTE' ? 'sc-st-agua' : 'sc-st-other'}`,
     getSlotAlerts,
+    aeronaveStats,
+    getAeronaveHoursClass,
     updateSlotChecked: (id, val) => { const s = state.SCH.find(x => x.id === id); if (s) { s.isChecked = val; updateSlot(s) } },
     updateSlotInstructor: (id, name) => { 
       const s = state.SCH.find(x => x.id === id)
