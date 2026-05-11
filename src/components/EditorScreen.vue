@@ -575,8 +575,20 @@ function handleLogout() {
   text-align-last: center;
   transition: all 0.2s ease;
 }
+.sv-aluno { display: flex; align-items: center; gap: 4px; width: 100%; justify-content: flex-start; padding-left: 4px; }
+.slot-checkbox { cursor: pointer; margin: 0; flex-shrink: 0; }
+.warning-text { color: #c0392b; font-weight: 800; font-size: 10px; }
+
+/* Modal Styles Refinement */
 .btn-delete-slot { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; background: #ff4d4d; color: white; border-radius: 50%; border: none; cursor: pointer; z-index: 30; }
 .btn-row { display: grid; background: #f5f8fc; border-top: 1px solid #dde4ef; }
+
+.modal-danger .modal-header { background: #fee2e2; color: #991b1b; }
+.danger-icon { font-size: 40px; margin-bottom: 15px; color: #c0392b; }
+.text-center { text-align: center; }
+.text-muted { color: #64748b; font-size: 12px; margin-top: 8px; }
+.btn-cancel { background: #e2e8f0; color: #475569; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; margin-right: 10px; }
+.btn-confirm-delete { background: #c0392b; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; }
 .bcell { padding: 8px 4px; display: flex; justify-content: center; }
 .btn-container { width: 100%; display: flex; justify-content: center; }
 .btn-cav { 
