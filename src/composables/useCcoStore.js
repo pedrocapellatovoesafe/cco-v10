@@ -791,7 +791,8 @@ export function useCcoStore() {
     
     // 1. Status da Operação e Impedimentos Técnicos
     const techImpediments = ['REVISÃO', 'OPERAÇÕES', 'METEOROLOGIA', 'MANUTENÇÃO', 'INDISPONIBILIDADE']
-    if (techImpediments.includes(slot.st)) {
+    const hasTechImpediment = techImpediments.includes(slot.st)
+    if (hasTechImpediment) {
       alerts.push(`Impedimento/Status: ${slot.st}`)
     }
 
@@ -800,7 +801,7 @@ export function useCcoStore() {
       alerts.push(`Atente-se às observações do slot!`)
     }
 
-    if (!slot.aluno) return alerts
+    if (!slot.aluno || hasTechImpediment) return alerts
 
     // 3. Dados Incompletos
     if (!slot.inva || !slot.ae) {
@@ -808,12 +809,12 @@ export function useCcoStore() {
     }
     
     // 4. Conflito Simultâneo (Instrutor e Aeronave)
-    const sameTimeInva = state.SCH.filter(s => s.inva === slot.inva && s.hora === slot.hora && s.id !== slot.id && s.aluno)
+    const sameTimeInva = state.SCH.filter(s => slot.inva && s.inva === slot.inva && s.hora === slot.hora && s.id !== slot.id && s.aluno && !techImpediments.includes(s.st))
     if (sameTimeInva.length > 0) {
       alerts.push(`Conflito Simultâneo: Instrutor já alocado em ${sameTimeInva[0].barra}.`)
     }
 
-    const sameTimeAe = state.SCH.filter(s => s.ae === slot.ae && s.hora === slot.hora && s.id !== slot.id && s.aluno)
+    const sameTimeAe = state.SCH.filter(s => slot.ae && s.ae === slot.ae && s.hora === slot.hora && s.id !== slot.id && s.aluno && !techImpediments.includes(s.st))
     if (sameTimeAe.length > 0) {
       alerts.push(`Conflito de Aeronave: ${slot.ae} já está alocada em ${sameTimeAe[0].barra} neste horário.`)
     }
