@@ -297,8 +297,13 @@ onMounted(async () => {
       store.fetchMissoes(),
       store.fetchStatuses()
     ])
-    store.generateEditor()
+    if (store.currentViewDate.value) {
+      store.setCurrentViewDate(store.currentViewDate.value)
+    } else {
+      store.generateEditor()
+    }
   } finally {
+    store.generateEditor()
     isLoading.value = false
   }
 })

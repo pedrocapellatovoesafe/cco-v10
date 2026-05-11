@@ -584,7 +584,9 @@ function fetchAeronaves() { return api.get('/aeronaves').then(r => { state.AERON
 function fetchStatuses() { return api.get('/status-slots').then(r => { state.STATUSES = r.data?.data || r.data; return true }) }
 
 function fetchSlots(startDate, endDate) {
-  const params = { startDate: startDate || state.filterStartDate, endDate: endDate || state.filterEndDate }
+  const sDate = startDate || (state.filterStartDate?.value || state.filterStartDate)
+  const eDate = endDate || (state.filterEndDate?.value || state.filterEndDate)
+  const params = { startDate: sDate, endDate: eDate }
   return api.get('/slots', { params }).then(response => {
     const apiSlots = response.data?.data || response.data || []
     
@@ -938,7 +940,7 @@ export function useCcoStore() {
         }
       }
       const tomorrow = offsetDate(slot.data, 1)
-      if (!isFolga(tomorrow)) {
+      if (tomorrow && !isFolga(tomorrow)) {
         const slotsTomorrow = state.parsedSlots.filter(s => s.inva === slot.inva && s.data === tomorrow && s.aluno)
         if (slotsTomorrow.length > 0) {
           const firstTimeTomorrow = Math.min(...slotsTomorrow.map(s => hv(s.hora)))
@@ -947,6 +949,22 @@ export function useCcoStore() {
         }
       }
     }
+
+    // 9. Consecutividade de Instrutor (Diferentes Alunos)
+    if (slot.inva && slot.aluno) {
+      const myTime = hv(slot.hora)
+      const instructorSlotsToday = state.SCH.filter(s => s.inva === slot.inva && s.id !== slot.id && s.aluno && !techImpediments.includes(s.st))
+      const prevSlot = instructorSlotsToday.find(s => Math.abs(myTime - hv(s.hora) - 2) < 0.1)
+      const nextSlot = instructorSlotsToday.find(s => Math.abs(hv(s.hora) - myTime - 2) < 0.1)
+
+      if (prevSlot && prevSlot.aluno !== slot.aluno) {
+        alerts.push(`Troca de Aluno em Sequência: Instrutor possui slot anterior (${prevSlot.hora}) com aluno diferente (${prevSlot.aluno}).`)
+      }
+      if (nextSlot && nextSlot.aluno !== slot.aluno) {
+        alerts.push(`Troca de Aluno em Sequência: Instrutor possui slot seguinte (${nextSlot.hora}) com aluno diferente (${nextSlot.aluno}).`)
+      }
+    }
+    
     return alerts
   }
 
