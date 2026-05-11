@@ -467,7 +467,7 @@ function gerarEditor() {
         missao: existing ? existing.missao : '',
         missaoId: existing ? existing.missaoId : null,
         st: existing ? existing.st : '',
-        statusSlotId: existing ? existing.statusSlotId : null,
+        statusSlotId: existing ? (existing.statusSlotId || existing.status_slot_id) : null,
         isChecked: existing ? existing.isChecked : false,
         obs: existing ? existing.obs : '',
         data: state.currentViewDate,
@@ -609,7 +609,7 @@ function fetchSlots(startDate, endDate) {
       if (slot.aeronave?.restricoes) raw.push(...slot.aeronave.restricoes)
 
       const filtered = raw.filter(r => {
-        // Truthy check for flags (handles 1/0 or true/false, camel and snake)
+        // Match ALL active flags (Strict Rules)
         const isA = !!(r.isAluno || r.is_aluno)
         const isI = !!(r.isInva || r.is_inva)
         const isAI = !!(r.isAlunoInva || r.is_aluno_inva)
@@ -659,6 +659,7 @@ function fetchSlots(startDate, endDate) {
         missao: (slot.missao?.nome || '').split(' > ').pop(),
         missaoId: getMissaoId(slot),
         st: (slot.statusSlot?.nome || 'PENDENTE').toUpperCase(),
+        statusSlotId: getVal(slot, 'statusSlotId') || slot.statusSlot?.id || null,
         isChecked: !!slot.isChecked,
         obs: slot.observacoes || '',
         serverRestrictions: unique
@@ -670,7 +671,6 @@ function fetchSlots(startDate, endDate) {
       return new Date(ya,ma-1,da) - new Date(yb,mb-1,db)
     })
 
-    // Auto-select current date if not set or no longer valid
     if (state.availableDates.length > 0) {
       if (!state.currentViewDate || !state.availableDates.includes(state.currentViewDate)) {
         state.currentViewDate = state.availableDates[0]
@@ -702,7 +702,8 @@ async function updateSlot(slot, refresh = true) {
   state.globalLoading = true
   try {
     if (!slot.apiId) return
-    await api.put(`/slots/${slot.apiId}`, buildSlotPayload(slot))
+    const payload = buildSlotPayload(slot)
+    await api.put(`/slots/${slot.apiId}`, payload)
     if (refresh) { 
       await fetchInvas()
       await fetchSlots()
@@ -985,17 +986,24 @@ export function useCcoStore() {
     updateSlotInstructor: (id, name) => { 
       const s = state.SCH.find(x => x.id === id)
       if (s) { 
-        if (name === '-') { s.inva = ''; s.invaId = null } 
-        else { s.inva = name; s.invaId = state.INVAS.find(i => i.nome === name)?.id }
+        if (!name || name === '-' || name === '—') { s.inva = ''; s.invaId = null } 
+        else { s.inva = name; s.invaId = state.INVAS.find(i => i.nome === name)?.id || null }
         updateSlot(s) 
       } 
     },
-    updateSlotStatus: (id, st) => { const s = state.SCH.find(x => x.id === id); if (s) { s.st = st; s.statusSlotId = state.STATUSES.find(x => x.nome === st)?.id; updateSlot(s) } },
+    updateSlotStatus: (id, st) => { 
+      const s = state.SCH.find(x => x.id === id)
+      if (s) { 
+        if (!st || st === '-' || st === '—') { s.st = ''; s.statusSlotId = null }
+        else { s.st = st; s.statusSlotId = state.STATUSES.find(x => x.nome.toUpperCase() === st.toUpperCase())?.id || null }
+        updateSlot(s) 
+      } 
+    },
     updateSlotAeronave: (id, ae) => { 
       const s = state.SCH.find(x => x.id === id)
       if (s) { 
-        if (ae === '-') { s.ae = ''; s.aeronaveId = null } 
-        else { s.ae = ae; s.aeronaveId = state.AERONAVES.find(x => x.nome === ae)?.id }
+        if (!ae || ae === '-' || ae === '—') { s.ae = ''; s.aeronaveId = null } 
+        else { s.ae = ae; s.aeronaveId = state.AERONAVES.find(x => x.nome === ae)?.id || null }
         updateSlot(s) 
       } 
     },

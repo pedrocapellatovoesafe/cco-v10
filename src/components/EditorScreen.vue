@@ -153,6 +153,7 @@
                 <div v-else-if="label === 'Status'" class="sc">
                   <template v-if="slot.apiId">
                     <select class="slot-input" v-model="slot.st" @change="onStatusChange(slot.id, slot.st)">
+                      <option value="">—</option>
                       <option v-for="st in store.state.STATUSES" :key="st.id" :value="st.nome.toUpperCase()">
                         {{ st.nome.toUpperCase() }}
                       </option>
