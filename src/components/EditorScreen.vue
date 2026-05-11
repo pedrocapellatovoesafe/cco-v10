@@ -17,11 +17,11 @@
         <div class="date-filters">
           <div class="filter-field">
             <label>Início:</label>
-            <input type="date" v-model="store.filterStartDate.value" class="date-input" />
+            <input type="date" v-model="store.filterStartDate" class="date-input" />
           </div>
           <div class="filter-field">
             <label>Fim:</label>
-            <input type="date" v-model="store.filterEndDate.value" class="date-input" />
+            <input type="date" v-model="store.filterEndDate" class="date-input" />
           </div>
           <button class="btn-filter" @click="handleFilter">🔍 Filtrar</button>
         </div>
@@ -148,12 +148,12 @@
                     </option>
                   </select>
                   <span 
-                    v-if="slot.ae && store.aeronaveStats.value && store.aeronaveStats.value[slot.id] !== undefined"
+                    v-if="slot.ae && store.getAeronaveHours(slot) != null"
                     class="ae-hours-predict"
-                    :class="store.getAeronaveHoursClass(store.aeronaveStats.value[slot.id])"
-                    :title="'Previsão de horas após este voo: ' + store.aeronaveStats.value[slot.id].toFixed(1) + 'h'"
+                    :class="store.getAeronaveHoursClass(store.getAeronaveHours(slot))"
+                    :title="'Previsão de horas após este voo: ' + store.getAeronaveHours(slot).toFixed(1) + 'h'"
                   >
-                    {{ store.aeronaveStats.value[slot.id].toFixed(1) }}h
+                    {{ store.getAeronaveHours(slot).toFixed(1) }}h
                   </span>
                 </div>
                 <div v-else-if="label === 'Missão'" class="sc" :class="slot.missao ? '' : 'sc-empty'"><div class="sv">{{ slot.missao }}</div></div>

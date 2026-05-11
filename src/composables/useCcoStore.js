@@ -843,25 +843,42 @@ export function useCcoStore() {
     return man === 'avail' ? 'A' : man === 'folga-reg' ? 'FR' : man === 'cond' ? '?' : 'A'
   }
 
+  function getTimestamp(data, hora) {
+    if (!data || !hora) return 0
+    const [d, m, y] = data.split('/').map(Number)
+    const [h, min] = hora.split(':').map(Number)
+    return new Date(y, m - 1, d, h, min).getTime()
+  }
+
   const aeronaveStats = computed(() => {
     const stats = {}
     const usage = {}
-    const sorted = [...state.SCH].sort((a, b) => hv(a.hora) - hv(b.hora))
-    sorted.forEach(s => {
-      if (s.ae && s.aeronaveId) {
-        const ae = state.AERONAVES.find(a => a.id == s.aeronaveId)
-        if (ae) {
-          const modNome = (ae.modeloAeronave?.nome || '').toUpperCase()
-          const isSim = modNome.includes('SM PCATD') || modNome.includes('SM AATD') || modNome.includes('SM PCTAD')
-          if (!isSim) {
-            usage[s.aeronaveId] = (usage[s.aeronaveId] || 0) + 1
-            stats[s.id] = parseFloat(ae.horasDisponiveis || 0) - (usage[s.aeronaveId] * 1.5)
-          }
+    
+    const allSlots = [...state.parsedSlots]
+      .filter(s => s.ae && s.aeronaveId)
+      .sort((a, b) => getTimestamp(a.data, a.hora) - getTimestamp(b.data, b.hora))
+
+    allSlots.forEach(s => {
+      const ae = state.AERONAVES.find(a => a.id == s.aeronaveId)
+      if (ae) {
+        const modNome = (ae.modeloAeronave?.nome || '').toUpperCase()
+        const isSim = modNome.includes('SM PCATD') || modNome.includes('SM AATD') || modNome.includes('SM PCTAD')
+        if (!isSim) {
+          usage[s.aeronaveId] = (usage[s.aeronaveId] || 0) + 1
+          const val = parseFloat(ae.horasDisponiveis || 0) - (usage[s.aeronaveId] * 1.5)
+          const key = s.apiId || `${s.barra}|${s.data}|${s.hora}`
+          stats[key] = val
         }
       }
     })
     return stats
   })
+
+  const getAeronaveHours = (slot) => {
+    if (!slot.ae) return null
+    const key = slot.apiId || `${slot.barra}|${slot.data}|${slot.hora}`
+    return aeronaveStats.value[key]
+  }
 
   const getSlotAlerts = (slot) => {
     const alerts = []
@@ -920,9 +937,10 @@ export function useCcoStore() {
     }
 
     // 4c. Alerta de Manutenção Predisposto
-    if (slot.ae && aeronaveStats.value[slot.id] !== undefined) {
-      if (aeronaveStats.value[slot.id] < 10) {
-        alerts.push(`Coordenar parada para manutenção (Previsão: ${aeronaveStats.value[slot.id].toFixed(1)}h).`)
+    if (slot.ae) {
+      const pred = getAeronaveHours(slot)
+      if (pred !== null && pred < 10) {
+        alerts.push(`Coordenar parada para manutenção (Previsão: ${pred.toFixed(1)}h).`)
       }
     }
 
@@ -1142,6 +1160,7 @@ export function useCcoStore() {
     getSlotClass: (s) => !s.aluno ? 'sc sc-empty' : `sc ${s.st === 'CONFIRMADO' ? 'sc-filled' : s.st === 'PENDENTE' ? 'sc-st-agua' : 'sc-st-other'}`,
     getSlotAlerts,
     aeronaveStats,
+    getAeronaveHours,
     getAeronaveHoursClass,
     updateSlotChecked: (id, val) => { const s = state.SCH.find(x => x.id === id); if (s) { s.isChecked = val; updateSlot(s) } },
     updateSlotInstructor: (id, name) => { 
