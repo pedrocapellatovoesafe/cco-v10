@@ -13,89 +13,111 @@
       </div>
 
       <div class="rest-grid">
-        <!-- Formulário de Nova/Editar Restrição -->
-        <div class="rest-card form-card">
-          <div class="card-header">
-            <h3>{{ isEditing ? '✏️ Editar Restrição' : '🆕 Nova Restrição' }}</h3>
-          </div>
-          <div class="card-body">
-            <div class="form-group">
-              <label>Título da Restrição:</label>
-              <input type="text" v-model="form.nome" placeholder="Ex: Instrutor s/ Habilitação p/ Missão" class="form-input" />
+        <div class="form-column">
+          <!-- Formulário de Nova/Editar Restrição -->
+          <div class="rest-card form-card">
+            <div class="card-header">
+              <h3>{{ isEditing ? '✏️ Editar Restrição' : '🆕 Nova Restrição' }}</h3>
             </div>
-
-            <div class="form-group">
-              <label>Tipo de Cruzamento:</label>
-              <select v-model="selectedType" class="form-select" :disabled="isEditing">
-                <option value="">Selecione o tipo...</option>
-                <option value="aluno_inva">Aluno x Instrutor (Interpessoal)</option>
-                <option value="ae_missao">Aeronave x Missão</option>
-                <option value="inva_missao">Instrutor x Missão</option>
-                <option value="mod_missao">Modelo de Aeronave x Missão</option>
-                <option value="inva_only">Restrição de Instrutor (Geral)</option>
-                <option value="aluno_only">Restrição de Aluno (Geral)</option>
-              </select>
-            </div>
-
-            <!-- Campos Dinâmicos -->
-            <transition name="fade">
-              <div class="dynamic-fields" v-if="selectedType">
-                
-                <div class="form-group" v-if="['aluno_inva', 'aluno_only'].includes(selectedType)">
-                  <label>Aluno:</label>
-                  <select v-model="form.alunoId" class="form-select">
-                    <option :value="null">Selecione o aluno...</option>
-                    <option v-for="a in store.state.ALUNOS" :key="a.id" :value="a.id">{{ a.nome }}</option>
-                  </select>
-                </div>
-
-                <div class="form-group" v-if="['aluno_inva', 'inva_missao', 'inva_only'].includes(selectedType)">
-                  <label>Instrutor (INVA):</label>
-                  <select v-model="form.invaId" class="form-select">
-                    <option :value="null">Selecione o instrutor...</option>
-                    <option v-for="i in store.state.INVAS" :key="i.id" :value="i.id">{{ i.nome }}</option>
-                  </select>
-                </div>
-
-                <div class="form-group" v-if="['ae_missao'].includes(selectedType)">
-                  <label>Aeronave:</label>
-                  <select v-model="form.aeronaveId" class="form-select">
-                    <option :value="null">Selecione a aeronave...</option>
-                    <option v-for="ae in store.state.AERONAVES" :key="ae.id" :value="ae.id">{{ ae.nome }}</option>
-                  </select>
-                </div>
-
-                <div class="form-group" v-if="['mod_missao'].includes(selectedType)">
-                  <label>Modelo de Aeronave:</label>
-                  <select v-model="form.modeloAeronaveId" class="form-select">
-                    <option :value="null">Selecione o modelo...</option>
-                    <option v-for="m in store.state.MODELOS" :key="m.id" :value="m.id">{{ m.nome }}</option>
-                  </select>
-                </div>
-
-                <div class="form-group" v-if="['ae_missao', 'inva_missao', 'mod_missao'].includes(selectedType)">
-                  <label>Missão:</label>
-                  <select v-model="form.missaoId" class="form-select">
-                    <option :value="null">Selecione a missão...</option>
-                    <option v-for="ms in store.state.MISSOES" :key="ms.id" :value="ms.id">{{ ms.nome }}</option>
-                  </select>
-                </div>
-
+            <div class="card-body">
+              <div class="form-group">
+                <label>Título da Restrição:</label>
+                <input type="text" v-model="form.nome" placeholder="Ex: Instrutor s/ Habilitação p/ Missão" class="form-input" />
               </div>
-            </transition>
 
-            <div class="form-group">
-              <label>Observação (Mensagem do Alerta):</label>
-              <textarea v-model="form.observacao" placeholder="Descreva o motivo da restrição..." class="form-textarea"></textarea>
+              <div class="form-group">
+                <label>Tipo de Cruzamento:</label>
+                <select v-model="selectedType" class="form-select" :disabled="isEditing">
+                  <option value="">Selecione o tipo...</option>
+                  <option value="aluno_inva">Aluno x Instrutor (Interpessoal)</option>
+                  <option value="ae_missao">Aeronave x Missão</option>
+                  <option value="inva_missao">Instrutor x Missão</option>
+                  <option value="mod_missao">Modelo de Aeronave x Missão</option>
+                  <option value="inva_only">Restrição de Instrutor (Geral)</option>
+                  <option value="aluno_only">Restrição de Aluno (Geral)</option>
+                </select>
+              </div>
+
+              <!-- Campos Dinâmicos -->
+              <transition name="fade">
+                <div class="dynamic-fields" v-if="selectedType">
+                  
+                  <div class="form-group" v-if="['aluno_inva', 'aluno_only'].includes(selectedType)">
+                    <label>Aluno:</label>
+                    <select v-model="form.alunoId" class="form-select">
+                      <option :value="null">Selecione o aluno...</option>
+                      <option v-for="a in store.state.ALUNOS" :key="a.id" :value="a.id">{{ a.nome }}</option>
+                    </select>
+                  </div>
+
+                  <div class="form-group" v-if="['aluno_inva', 'inva_missao', 'inva_only'].includes(selectedType)">
+                    <label>Instrutor (INVA):</label>
+                    <select v-model="form.invaId" class="form-select">
+                      <option :value="null">Selecione o instrutor...</option>
+                      <option v-for="i in store.state.INVAS" :key="i.id" :value="i.id">{{ i.nome }}</option>
+                    </select>
+                  </div>
+
+                  <div class="form-group" v-if="['ae_missao'].includes(selectedType)">
+                    <label>Aeronave:</label>
+                    <select v-model="form.aeronaveId" class="form-select">
+                      <option :value="null">Selecione a aeronave...</option>
+                      <option v-for="ae in store.state.AERONAVES" :key="ae.id" :value="ae.id">{{ ae.nome }}</option>
+                    </select>
+                  </div>
+
+                  <div class="form-group" v-if="['mod_missao'].includes(selectedType)">
+                    <label>Modelo de Aeronave:</label>
+                    <select v-model="form.modeloAeronaveId" class="form-select">
+                      <option :value="null">Selecione o modelo...</option>
+                      <option v-for="m in store.state.MODELOS" :key="m.id" :value="m.id">{{ m.nome }}</option>
+                    </select>
+                  </div>
+
+                  <div class="form-group" v-if="['ae_missao', 'inva_missao', 'mod_missao'].includes(selectedType)">
+                    <label>Missão:</label>
+                    <select v-model="form.missaoId" class="form-select">
+                      <option :value="null">Selecione a missão...</option>
+                      <option v-for="ms in store.state.MISSOES" :key="ms.id" :value="ms.id">{{ ms.nome }}</option>
+                    </select>
+                  </div>
+
+                </div>
+              </transition>
+
+              <div class="form-group">
+                <label>Observação (Mensagem do Alerta):</label>
+                <textarea v-model="form.observacao" placeholder="Descreva o motivo da restrição..." class="form-textarea"></textarea>
+              </div>
+
+              <div class="form-actions">
+                <button class="btn-save" @click="handleSave" :disabled="isSaving || !selectedType || !form.nome">
+                  {{ isSaving ? 'Processando...' : (isEditing ? 'Atualizar Restrição' : 'Criar Regra de Restrição') }}
+                </button>
+                <button v-if="isEditing" class="btn-cancel-edit" @click="resetForm" :disabled="isSaving">
+                  Cancelar
+                </button>
+              </div>
             </div>
+          </div>
 
-            <div class="form-actions">
-              <button class="btn-save" @click="handleSave" :disabled="isSaving || !selectedType || !form.nome">
-                {{ isSaving ? 'Processando...' : (isEditing ? 'Atualizar Restrição' : 'Criar Regra de Restrição') }}
+          <!-- Presets de Restrição -->
+          <div class="rest-card preset-card">
+            <div class="card-header">
+              <h3>🚀 Presets (Modelos Rápidos)</h3>
+            </div>
+            <div class="card-body">
+              <div class="form-group">
+                <label>Instrutor p/ Preset:</label>
+                <select v-model="presetInvaId" class="form-select">
+                  <option :value="null">Selecione o instrutor...</option>
+                  <option v-for="i in store.state.INVAS" :key="i.id" :value="i.id">{{ i.nome }}</option>
+                </select>
+              </div>
+              <button class="btn-apply-preset" @click="handleApplyPreset" :disabled="!presetInvaId">
+                Aplicar Preset: Instrutor Eventual
               </button>
-              <button v-if="isEditing" class="btn-cancel-edit" @click="resetForm" :disabled="isSaving">
-                Cancelar
-              </button>
+              <p class="preset-help">Gera restrições em lote para todas as missões exceto as autorizadas em allowlist.</p>
             </div>
           </div>
         </div>
@@ -134,7 +156,27 @@
           </div>
 
           <div class="card-body scrollable">
-            <div v-if="filteredRestricts.length === 0" class="empty-list">
+            <!-- Review de Batch se existir -->
+            <div v-if="batchList.length > 0" class="batch-review-area">
+              <div class="batch-header">
+                <h4>⚠️ Revisão de Lote ({{ batchList.length }} itens)</h4>
+                <p>Remova os itens que NÃO deseja restringir antes de salvar.</p>
+              </div>
+              <div class="batch-items">
+                <div v-for="(b, idx) in batchList" :key="idx" class="batch-item">
+                  <span class="batch-text">{{ b.nome }}</span>
+                  <button class="btn-remove-batch" @click="removeFromBatch(idx)">✕</button>
+                </div>
+              </div>
+              <div class="batch-footer">
+                <button class="btn-save-batch" @click="saveBatch" :disabled="isSavingBatch">
+                  {{ isSavingBatch ? 'Processando Lote...' : 'Confirmar e Salvar Tudo' }}
+                </button>
+                <button class="btn-cancel-batch" @click="batchList = []">Cancelar Lote</button>
+              </div>
+            </div>
+
+            <div v-if="filteredRestricts.length === 0 && batchList.length === 0" class="empty-list">
               Nenhuma restrição encontrada para os filtros selecionados.
             </div>
             <div v-for="r in filteredRestricts" :key="r.id" class="restrict-item">
@@ -166,6 +208,25 @@
         <span class="toast-message">{{ toast.message }}</span>
       </div>
 
+      <!-- Custom Confirmation Modal -->
+      <transition name="fade">
+        <div v-if="showConfirmModal" class="modal-overlay" @click.self="showConfirmModal = false">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>⚠️ Confirmar Salvamento em Lote</h3>
+            </div>
+            <div class="modal-body">
+              <p>Você está prestes a salvar <strong>{{ batchList.length }}</strong> restrições de uma vez.</p>
+              <p>Deseja continuar com esta operação?</p>
+            </div>
+            <div class="modal-footer">
+              <button class="btn-modal-cancel" @click="showConfirmModal = false">Cancelar</button>
+              <button class="btn-modal-confirm" @click="confirmSaveBatch">Sim, Salvar Tudo</button>
+            </div>
+          </div>
+        </div>
+      </transition>
+
     </div>
   </div>
 </template>
@@ -173,6 +234,7 @@
 <script setup>
 import { ref, reactive, inject, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { EVENTUAL_INSTRUCTOR_ALLOWLIST } from '../constants/presets'
 
 const router = useRouter()
 const store = inject('store')
@@ -181,6 +243,12 @@ const selectedType = ref('')
 const isSaving = ref(false)
 const isEditing = ref(false)
 const editingId = ref(null)
+
+// Batch Presets State
+const presetInvaId = ref(null)
+const batchList = ref([])
+const isSavingBatch = ref(false)
+const showConfirmModal = ref(false)
 
 const filters = reactive({
   type: '',
@@ -283,6 +351,94 @@ function handleEdit(r) {
   else selectedType.value = ''
   
   window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+/**
+ * Preset Logic: Instrutor Eventual
+ * Filters all missions and identifies which ones should be restricted (not in allowlist).
+ */
+function applyEventualInstructorPreset(invaId, allMissions) {
+  const inva = store.state.INVAS.find(i => i.id === invaId)
+  const invaNome = inva ? inva.nome : 'Instrutor'
+  const generated = []
+
+  allMissions.forEach(mission => {
+    let isAuthorized = false
+    const missionName = (mission.nome || '').toUpperCase()
+    const courseName = (mission.curso?.nome || '').toUpperCase()
+
+    // 1. PPA Logic
+    if (EVENTUAL_INSTRUCTOR_ALLOWLIST.PPA.keywords.some(k => courseName.includes(k))) {
+      isAuthorized = EVENTUAL_INSTRUCTOR_ALLOWLIST.PPA.authorizedMissions.some(code => missionName.includes(code))
+    }
+    // 2. PCA Logic
+    else if (EVENTUAL_INSTRUCTOR_ALLOWLIST.PCA.keywords.some(k => courseName.includes(k))) {
+      const isAllowed = EVENTUAL_INSTRUCTOR_ALLOWLIST.PCA.authorizedMissions.some(code => missionName.includes(code))
+      const isExcluded = EVENTUAL_INSTRUCTOR_ALLOWLIST.PCA.excludedMissions?.some(code => missionName.includes(code))
+      isAuthorized = isAllowed && !isExcluded
+    }
+    // 3. INVA/CFI Logic
+    else if (EVENTUAL_INSTRUCTOR_ALLOWLIST.INVA_CFI.keywords.some(k => courseName.includes(k))) {
+      isAuthorized = false
+    }
+    // 4. Aperfeiçoamento Contínuo Logic
+    else if (EVENTUAL_INSTRUCTOR_ALLOWLIST.APERFEICOAMENTO.keywords.some(k => courseName.includes(k))) {
+      const isEval = EVENTUAL_INSTRUCTOR_ALLOWLIST.APERFEICOAMENTO.evaluationKeywords.some(k => missionName.includes(k))
+      isAuthorized = !isEval
+    }
+    // 5. Voos Administrativos Logic
+    else if (EVENTUAL_INSTRUCTOR_ALLOWLIST.ADMIN.keywords.some(k => courseName.includes(k))) {
+      isAuthorized = EVENTUAL_INSTRUCTOR_ALLOWLIST.ADMIN.authorizedMissions.some(code => missionName.includes(code))
+    }
+
+    if (!isAuthorized) {
+      generated.push({
+        nome: `[Preset] ${invaNome} - Restrição ${mission.nome}`,
+        observacao: `Restrição automática (Preset Instrutor Eventual): Não autorizado para missão ${mission.nome}`,
+        invaId: invaId,
+        missaoId: mission.id,
+        isInva: true,
+        isMissao: true
+      })
+    }
+  })
+  return generated
+}
+
+function handleApplyPreset() {
+  if (!presetInvaId.value) return
+  const res = applyEventualInstructorPreset(presetInvaId.value, store.state.MISSOES)
+  batchList.value = res
+  showToast(`${res.length} restrições geradas. Revise a lista à direita.`, 'success')
+}
+
+function removeFromBatch(idx) {
+  batchList.value.splice(idx, 1)
+}
+
+async function saveBatch() {
+  if (batchList.value.length === 0) return
+  showConfirmModal.value = true
+}
+
+async function confirmSaveBatch() {
+  showConfirmModal.value = false
+  isSavingBatch.value = true
+  
+  try {
+    const res = await store.importRestrictions(batchList.value)
+    if (res.success) {
+      showToast(`Processamento concluído: ${batchList.value.length} restrições importadas com sucesso!`, 'success')
+      batchList.value = []
+      presetInvaId.value = null
+    } else {
+      showToast(res.error || 'Erro ao importar restrições em lote', 'danger')
+    }
+  } catch (e) {
+    showToast('Erro técnico ao processar lote.', 'danger')
+  } finally {
+    isSavingBatch.value = false
+  }
 }
 
 async function handleSave() {
@@ -497,6 +653,90 @@ function handleLogout() { store.logout(); router.push('/login') }
 
 .fade-enter-active, .fade-leave-active { transition: opacity 0.3s; }
 .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+/* Preset Card */
+.preset-card { margin-top: 24px; border-left: 6px solid #3b82f6; }
+.btn-apply-preset {
+  width: 100%; padding: 12px; background: #3b82f6; color: #fff; border: none;
+  border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s;
+}
+.btn-apply-preset:hover:not(:disabled) { background: #2563eb; transform: translateY(-1px); }
+.btn-apply-preset:disabled { opacity: 0.5; cursor: not-allowed; }
+.preset-help { margin: 12px 0 0; font-size: 11px; color: #64748b; line-height: 1.4; font-style: italic; }
+
+/* Batch Review Area */
+.batch-review-area {
+  background: #fffbeb;
+  border: 2px dashed #f59e0b;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+.batch-header h4 { margin: 0 0 4px; color: #92400e; font-size: 14px; font-weight: 800; }
+.batch-header p { margin: 0 0 12px; color: #b45309; font-size: 12px; }
+
+.batch-items {
+  max-height: 200px;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.batch-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: #fff;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  font-size: 11px;
+}
+.batch-text { color: #1d2951; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+.btn-remove-batch {
+  background: none; border: none; color: #ef4444; cursor: pointer; font-size: 12px; padding: 0 4px;
+}
+
+.batch-footer { display: flex; gap: 10px; }
+.btn-save-batch {
+  flex: 2; padding: 10px; background: #059669; color: #fff; border: none;
+  border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer;
+}
+.btn-cancel-batch {
+  flex: 1; padding: 10px; background: #e2e8f0; color: #475569; border: none;
+  border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer;
+}
+
+/* Modal Confirmation */
+.modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+  z-index: 7000; backdrop-filter: blur(4px);
+}
+.modal-content {
+  background: #fff; width: 100%; max-width: 450px; border-radius: 20px;
+  overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+}
+.modal-header { padding: 20px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+.modal-header h3 { margin: 0; font-size: 17px; color: #1d2951; font-weight: 800; }
+.modal-body { padding: 24px; text-align: center; }
+.modal-body p { margin: 0 0 12px; color: #475569; font-size: 15px; line-height: 1.5; }
+.modal-body strong { color: #1d2951; }
+.modal-footer { padding: 20px 24px; display: flex; gap: 12px; background: #f8fafc; }
+.btn-modal-cancel {
+  flex: 1; padding: 12px; background: #fff; color: #64748b; border: 1px solid #cbd5e1;
+  border-radius: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+}
+.btn-modal-cancel:hover { background: #f1f5f9; color: #1d2951; }
+.btn-modal-confirm {
+  flex: 1; padding: 12px; background: #1d2951; color: #fff; border: none;
+  border-radius: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s;
+}
+.btn-modal-confirm:hover { background: #2a3b59; transform: translateY(-1px); }
 
 /* Toast */
 .toast-notification {

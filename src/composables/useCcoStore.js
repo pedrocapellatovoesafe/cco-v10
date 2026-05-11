@@ -1072,6 +1072,18 @@ export function useCcoStore() {
     saveAvailability: async (p) => { state.globalLoading = true; try { const r = await api.post('/escala-trabalhos', p); await fetchInvas(); return { success: true, data: r.data } } catch (e) { return { success: false, error: e.response?.data?.message || e.message } } finally { state.globalLoading = false } },
     updateAvailability: async (id, p) => { state.globalLoading = true; try { const r = await api.put(`/escala-trabalhos/${id}`, p); await fetchInvas(); return { success: true, data: r.data } } catch (e) { return { success: false, error: e.response?.data?.message || e.message } } finally { state.globalLoading = false } },
     saveRestriction: async (p) => { state.globalLoading = true; try { const r = await api.post('/restricoes', p); await fetchRestricoes(); return { success: true, data: r.data } } catch (e) { return { success: false, error: e.response?.data?.message || e.message } } finally { state.globalLoading = false } },
+    importRestrictions: async (restricoes) => {
+      state.globalLoading = true
+      try {
+        const r = await api.post('/restricoes/import', { restricoes })
+        await fetchRestricoes()
+        return { success: true, data: r.data }
+      } catch (e) {
+        return { success: false, error: e.response?.data?.message || e.message }
+      } finally {
+        state.globalLoading = false
+      }
+    },
     updateRestriction: async (id, p) => { state.globalLoading = true; try { const r = await api.put(`/restricoes/${id}`, p); await fetchRestricoes(); return { success: true, data: r.data } } catch (e) { return { success: false, error: e.response?.data?.message || e.message } } finally { state.globalLoading = false } },
     deleteRestriction: async (id) => { state.globalLoading = true; try { await api.delete(`/restricoes/${id}`); await fetchRestricoes(); return { success: true } } catch (e) { return { success: false, error: e.message } } finally { state.globalLoading = false } },
     swapSlots: async (idA, idB) => {
