@@ -43,6 +43,16 @@ export const EVENTUAL_INSTRUCTOR_ALLOWLIST = {
 };
 
 /**
+ * Allowlist para Preset: Instrutor de Solo
+ */
+export const GROUND_INSTRUCTOR_ALLOWLIST = [
+  'MOCKUP 01', 'MOCKUP 02', 'MOCKUP 03',
+  'MOCKUP 04 - PCATD',
+  'MONITORIA NAV VFR',
+  'NAV SOLO'
+];
+
+/**
  * Códigos de Missões para Presets de Aeronave
  */
 export const AIRCRAFT_PRESET_CODES = {

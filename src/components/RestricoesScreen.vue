@@ -116,9 +116,14 @@
                     <option v-for="i in store.state.INVAS" :key="i.id" :value="i.id">{{ i.nome }}</option>
                   </select>
                 </div>
-                <button class="btn-apply-preset" @click="handleApplyInvaPreset" :disabled="!presetInvaId">
-                  Aplicar Preset: Instrutor Eventual
-                </button>
+                <div class="preset-actions-grid">
+                  <button class="btn-apply-preset" @click="handleApplyInvaPreset" :disabled="!presetInvaId">
+                    Instrutor Eventual
+                  </button>
+                  <button class="btn-apply-preset" @click="handleApplyGroundPreset" :disabled="!presetInvaId">
+                    Instrutor de Solo
+                  </button>
+                </div>
               </div>
 
               <div class="preset-divider"></div>
@@ -259,7 +264,7 @@
 <script setup>
 import { ref, reactive, inject, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { EVENTUAL_INSTRUCTOR_ALLOWLIST, AIRCRAFT_PRESET_CODES } from '../constants/presets'
+import { EVENTUAL_INSTRUCTOR_ALLOWLIST, GROUND_INSTRUCTOR_ALLOWLIST, AIRCRAFT_PRESET_CODES } from '../constants/presets'
 
 const router = useRouter()
 const store = inject('store')
@@ -432,6 +437,35 @@ function applyEventualInstructorPreset(invaId, allMissions) {
 }
 
 /**
+ * Preset Logic: Instrutor de Solo
+ * Authorized missions: Mockups, Monitoring, Nav Solo. All others restricted.
+ */
+function applyGroundInstructorPreset(invaId, allMissions) {
+  const inva = store.state.INVAS.find(i => i.id === invaId)
+  const invaNome = inva ? inva.nome : 'Instrutor'
+  const generated = []
+
+  allMissions.forEach(mission => {
+    const mName = (mission.nome || '').toUpperCase()
+    
+    // Check if mission matches any authorized pattern
+    const isAuthorized = GROUND_INSTRUCTOR_ALLOWLIST.some(pattern => mName.includes(pattern))
+
+    if (!isAuthorized) {
+      generated.push({
+        nome: `Restrição automática: Instrutor de Solo (${mission.nome})`,
+        observacao: `Instrutor de Solo autorizado apenas para Mockups, Monitorias e Navegações Solo. Missão "${mission.nome}" bloqueada.`,
+        invaId: invaId,
+        missaoId: mission.id,
+        isInva: true,
+        isMissao: true
+      })
+    }
+  })
+  return generated
+}
+
+/**
  * Aircraft Preset Logic
  * Generates restrictions based on mission codes (e.g., NOT01, IFR05)
  */
@@ -480,6 +514,17 @@ function handleApplyInvaPreset() {
   )
   batchList.value = [...batchList.value, ...newItems]
   showToast(`${newItems.length} restrições de instrutor adicionadas ao lote.`, 'success')
+}
+
+function handleApplyGroundPreset() {
+  if (!presetInvaId.value) return
+  const res = applyGroundInstructorPreset(presetInvaId.value, store.state.MISSOES)
+  // Merge with existing batch, preventing duplicates
+  const newItems = res.filter(newItem => 
+    !batchList.value.some(oldItem => oldItem.invaId === newItem.invaId && oldItem.missaoId === newItem.missaoId)
+  )
+  batchList.value = [...batchList.value, ...newItems]
+  showToast(`${newItems.length} restrições de instrutor de solo adicionadas ao lote.`, 'success')
 }
 
 function handleApplyAircraftPreset(type) {
