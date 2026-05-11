@@ -105,16 +105,44 @@
           <div class="card-header">
             <h3>📋 Regras Ativas</h3>
           </div>
-          <div class="card-body scrollable">
-            <div v-if="store.state.RESTRICTS.length === 0" class="empty-list">
-              Nenhuma restrição cadastrada.
+          
+          <!-- Filtros de Busca -->
+          <div class="list-filters">
+            <div class="filter-row">
+              <select v-model="filters.type" class="filter-select mini">
+                <option value="">Todos os Tipos</option>
+                <option value="aluno_inva">Aluno x INVA</option>
+                <option value="ae_missao">AE x Missão</option>
+                <option value="inva_missao">INVA x Missão</option>
+                <option value="mod_missao">Modelo x Missão</option>
+                <option value="inva_only">INVA</option>
+                <option value="aluno_only">Aluno</option>
+              </select>
+              
+              <select v-model="filters.alunoId" class="filter-select">
+                <option :value="null">Todos os Alunos</option>
+                <option v-for="a in store.state.ALUNOS" :key="a.id" :value="a.id">{{ a.nome }}</option>
+              </select>
+
+              <select v-model="filters.invaId" class="filter-select">
+                <option :value="null">Todos os INVAs</option>
+                <option v-for="i in store.state.INVAS" :key="i.id" :value="i.id">{{ i.nome }}</option>
+              </select>
+              
+              <button class="btn-clear-filters" @click="clearFilters" title="Limpar Filtros">✕</button>
             </div>
-            <div v-for="r in store.state.RESTRICTS" :key="r.id" class="restrict-item">
+          </div>
+
+          <div class="card-body scrollable">
+            <div v-if="filteredRestricts.length === 0" class="empty-list">
+              Nenhuma restrição encontrada para os filtros selecionados.
+            </div>
+            <div v-for="r in filteredRestricts" :key="r.id" class="restrict-item">
               <div class="restrict-info">
                 <h4>{{ r.nome }}</h4>
                 <p class="restrict-obs">{{ r.observacao }}</p>
                 <div class="restrict-tags">
-                  <span v-if="r.isAlunoInva" class="tag tag-blue">Aluno x INVA</span>
+                  <span v-if="r.is_aluno_inva || r.isAlunoInva" class="tag tag-blue">Aluno x INVA</span>
                   <span v-else-if="r.isAeronave && r.isMissao" class="tag tag-orange">AE x Missão</span>
                   <span v-else-if="r.isInva && r.isMissao" class="tag tag-purple">INVA x Missão</span>
                   <span v-else-if="r.isModelo && r.isMissao" class="tag tag-teal">Modelo x Missão</span>
@@ -143,7 +171,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, inject, onMounted } from 'vue'
+import { ref, reactive, inject, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -154,6 +182,12 @@ const isSaving = ref(false)
 const isEditing = ref(false)
 const editingId = ref(null)
 
+const filters = reactive({
+  type: '',
+  alunoId: null,
+  invaId: null
+})
+
 const form = reactive({
   nome: '',
   observacao: '',
@@ -163,6 +197,40 @@ const form = reactive({
   modeloAeronaveId: null,
   missaoId: null,
 })
+
+const filteredRestricts = computed(() => {
+  return store.state.RESTRICTS.filter(r => {
+    // Filter by Type
+    if (filters.type) {
+      if (filters.type === 'aluno_inva' && !(r.isAlunoInva || r.is_aluno_inva)) return false
+      if (filters.type === 'ae_missao' && !(r.isAeronave && r.isMissao)) return false
+      if (filters.type === 'inva_missao' && !(r.isInva && r.isMissao)) return false
+      if (filters.type === 'mod_missao' && !(r.isModelo && r.isMissao)) return false
+      if (filters.type === 'inva_only' && !(r.isInva && !r.isMissao && !r.isAlunoInva)) return false
+      if (filters.type === 'aluno_only' && !(r.isAluno && !r.isAlunoInva)) return false
+    }
+    
+    // Filter by Aluno
+    if (filters.alunoId) {
+      const rid = r.alunoId || r.aluno_id
+      if (rid != filters.alunoId) return false
+    }
+
+    // Filter by INVA
+    if (filters.invaId) {
+      const rid = r.invaId || r.inva_id
+      if (rid != filters.invaId) return false
+    }
+
+    return true
+  })
+})
+
+function clearFilters() {
+  filters.type = ''
+  filters.alunoId = null
+  filters.invaId = null
+}
 
 const toast = reactive({ show: false, message: '', type: 'success' })
 function showToast(msg, type = 'success') {
@@ -338,6 +406,49 @@ function handleLogout() { store.logout(); router.push('/login') }
   border-bottom: 1px solid #dae2ec;
 }
 .card-header h3 { margin: 0; font-size: 15px; color: #1d2951; font-weight: 800; }
+.list-card {
+  display: flex;
+  flex-direction: column;
+}
+.list-filters {
+  padding: 12px 22px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #dae2ec;
+}
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.filter-select {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #d8dee8;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #1d2951;
+  background: #fff;
+  outline: none;
+}
+.filter-select.mini {
+  flex: 0 0 130px;
+}
+.btn-clear-filters {
+  background: #e2e8f0;
+  color: #64748b;
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  transition: all 0.2s;
+}
+.btn-clear-filters:hover { background: #cbd5e1; color: #1d2951; }
+
 .card-body { padding: 22px; }
 .card-body.scrollable { max-height: calc(100vh - 250px); overflow-y: auto; }
 
