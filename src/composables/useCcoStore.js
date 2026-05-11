@@ -64,6 +64,10 @@ const state = reactive({
   AERONAVES: [],
   BARRAS: [],
   INVAS: [],
+  ALUNOS: [],
+  MODELOS: [],
+  MISSOES: [],
+  RESTRICTS: [],
   STATUSES: [],
   highlighted: new Set(),
   globalLoading: false,
@@ -220,21 +224,16 @@ function parseWorkScheduleRows(rows) {
   state.parsedWorkSchedules = []
   if (!rows || !rows.length) return
   
-  console.log('[Store] Processing', rows.length, 'rows.')
-
-  // 1. Delimiter Detection
   let processedRows = rows
   if (rows[0] && rows[0].length === 1) {
     const line = String(rows[0][0])
     const delim = line.includes(';') ? ';' : line.includes('\t') ? '\t' : line.includes(',') ? ',' : null
     if (delim) {
-      console.log(`[Store] Delimiter "${delim}" detected. Splitting...`)
       processedRows = rows.map(r => String(r[0]).split(delim).map(c => c.trim()))
     }
   }
 
   const findIdx = (keywords) => {
-    // Check first 3 rows
     for (let i = 0; i < Math.min(3, processedRows.length); i++) {
       const r = processedRows[i].map(c => String(c || '').toLowerCase())
       const idx = r.findIndex(c => keywords.some(k => c.includes(k)))
@@ -250,9 +249,7 @@ function parseWorkScheduleRows(rows) {
   let iFunc = findIdx(['funcionario', 'funcionário', 'instrutor', 'nome'])
   let iMot = findIdx(['motivo', 'obs'])
 
-  // 2. Positional Fallback if headers fail
   if (iData === -1 || iFunc === -1) {
-    console.log('[Store] Headers not detected. Using Positional Fallback (1,2,3,4,5,6)')
     iTipo = 1; iPer = 2; iDias = 3; iData = 4; iFunc = 5; iMot = 6
   }
 
@@ -274,33 +271,27 @@ function parseWorkScheduleRows(rows) {
     return null
   }
 
-  for (let i = 0; i < processedRows.length; i++) {
+  const startIdx = (iData === 4 && !processedRows[0][4]?.toLowerCase().includes('data')) ? 0 : 1
+
+  for (let i = startIdx; i < processedRows.length; i++) {
     const row = processedRows[i]
     if (!row || row.length < 2) continue
-
     const rawDataVal = row[iData]
     const rawFunc = String(row[iFunc] || '').trim()
-
-    // Skip if it looks like a header
     if (String(rawDataVal).toLowerCase().includes('data') || rawFunc.toLowerCase().includes('func')) continue
-
     if (!rawDataVal || !rawFunc) continue
 
     const baseDate = toDate(rawDataVal)
     if (!baseDate || isNaN(baseDate.getTime())) continue
-const norm = (str) => String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim()
 
-// Look for instructor in state.INVAS with accent-insensitive matching
-const inva = state.INVAS.find(inv => {
-  const dbNome = norm(inv.nome)
-  const sheetNome = norm(rawFunc)
-  return dbNome === sheetNome || dbNome.includes(sheetNome) || sheetNome.includes(dbNome)
-})
-
-if (!inva) {
-  if (i < 5) console.warn(`[Store] Row ${i}: Instructor "${rawFunc}" not found. DB has ${state.INVAS.length} invas. Example DB name: "${state.INVAS[0]?.nome}"`)
-  continue
-}
+    const norm = (str) => String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim()
+    const inva = state.INVAS.find(inv => {
+      const db = norm(inv.nome)
+      const sh = norm(rawFunc)
+      return db === sh || db.includes(sh) || sh.includes(db)
+    })
+    
+    if (!inva) continue
 
     const rawTipo = String(row[iTipo] || '').toLowerCase()
     let tId = 11
@@ -325,7 +316,6 @@ if (!inva) {
       })
     }
   }
-  console.log(`[Store] Parsing complete. Created ${state.parsedWorkSchedules.length} entries.`)
 }
 
 function getBase(barraId) {
@@ -334,16 +324,6 @@ function getBase(barraId) {
   if (b.includes('SJK') || b.includes('SIRA') || b.includes('SM AATD SJK') || b.includes('SBSJ')) return 'SJK'
   if (b.includes('BACKUP')) return 'SJK'
   return 'SJK'
-}
-
-function normalizeInstructorName(nomeXls, inst) {
-  if (!nomeXls) return ''
-  const upper = nomeXls.trim().toUpperCase()
-  if (inst[upper]) return upper
-  for (const nome of Object.keys(inst)) {
-    if (upper.startsWith(`${nome} `) || upper === nome) return nome
-  }
-  return upper
 }
 
 function onFile(file) {
@@ -360,7 +340,6 @@ function onFile(file) {
       state.btnGerarDisabled = false
     } catch (err) {
       state.fileOk = false
-      console.error('Erro ao ler o arquivo:', err)
       alert(`Erro ao ler o arquivo: ${err.message}`)
     }
   }
@@ -381,7 +360,6 @@ async function onWorkFile(file) {
       state.workFileOk = true
     } catch (err) {
       state.workFileOk = false
-      console.error('Erro ao ler o arquivo de escala:', err)
       alert(`Erro ao ler o arquivo de escala: ${err.message}`)
     }
   }
@@ -397,7 +375,6 @@ async function importScale() {
     await fetchSlots()
     return { success: true, data: response.data }
   } catch (err) {
-    console.error('Erro ao importar escala:', err)
     state.uploadError = err.response?.data?.message || err.message
     return { success: false, error: state.uploadError }
   } finally {
@@ -414,7 +391,6 @@ async function importWorkSchedule() {
     await fetchInvas()
     return { success: true, data: response.data }
   } catch (err) {
-    console.error('Erro ao importar escala de trabalho:', err)
     state.uploadError = err.response?.data?.message || err.message
     return { success: false, error: state.uploadError }
   } finally {
@@ -482,6 +458,7 @@ function gerarEditor() {
         base,
         hora,
         aluno: existing ? existing.aluno : '',
+        alunoId: existing ? existing.alunoId : null,
         inva: existing ? existing.inva : '',
         invaId: existing ? existing.invaId : null,
         ae: existing ? existing.ae : '',
@@ -493,7 +470,8 @@ function gerarEditor() {
         statusSlotId: existing ? existing.statusSlotId : null,
         isChecked: existing ? existing.isChecked : false,
         obs: existing ? existing.obs : '',
-        data: state.currentViewDate
+        data: state.currentViewDate,
+        serverRestrictions: existing ? existing.serverRestrictions : []
       })
     })
   })
@@ -520,6 +498,19 @@ function fetchInvas() {
       console.error('Error fetching invas:', error)
       return false
     })
+}
+
+function fetchAlunos() {
+  return api.get('/alunos').then(r => { state.ALUNOS = r.data?.data || r.data; return true })
+}
+function fetchModelos() {
+  return api.get('/modelos-aeronave').then(r => { state.MODELOS = r.data?.data || r.data; return true })
+}
+function fetchMissoes() {
+  return api.get('/missoes').then(r => { state.MISSOES = r.data?.data || r.data; return true })
+}
+function fetchRestricoes() {
+  return api.get('/restricoes').then(r => { state.RESTRICTS = r.data?.data || r.data; return true })
 }
 
 function getWorkScheduleRows(situations, calDays) {
@@ -597,8 +588,59 @@ function fetchSlots(startDate, endDate) {
   const params = { startDate: startDate || state.filterStartDate, endDate: endDate || state.filterEndDate }
   return api.get('/slots', { params }).then(response => {
     const apiSlots = response.data?.data || response.data || []
+    
+    // Robust ID Extraction Helper
+    const getVal = (o, k) => {
+      if (!o) return null
+      return o[k] ?? o[k.replace(/[A-Z]/g, l => `_${l.toLowerCase()}`)] ?? o[k.toLowerCase()] ?? null
+    }
+    const getInvaId = (o) => getVal(o, 'invaId') || o.inva?.id || null
+    const getAlunoId = (o) => getVal(o, 'alunoId') || o.aluno?.id || null
+    const getMissaoId = (o) => getVal(o, 'missaoId') || o.missao?.id || null
+    const getAeId = (o) => getVal(o, 'aeronaveId') || o.aeronave?.id || null
+    const getModId = (o) => getVal(o, 'modeloAeronaveId') || o.modeloAeronave?.id || o.aeronave?.modeloAeronaveId || o.aeronave?.modeloAeronave?.id || null
+
     state.parsedSlots = apiSlots.map(slot => {
       const dt = slot.dataHora ? new Date(slot.dataHora) : new Date()
+      
+      const raw = []
+      if (slot.aluno?.restricoes) raw.push(...slot.aluno.restricoes)
+      if (slot.inva?.restricoes) raw.push(...slot.inva.restricoes)
+      if (slot.missao?.restricoes) raw.push(...slot.missao.restricoes)
+      if (slot.aeronave?.restricoes) raw.push(...slot.aeronave.restricoes)
+
+      const filtered = raw.filter(r => {
+        // Truthy check for flags (handles 1/0 or true/false, camel and snake)
+        const isA = !!(r.isAluno || r.is_aluno)
+        const isI = !!(r.isInva || r.is_inva)
+        const isAI = !!(r.isAlunoInva || r.is_aluno_inva)
+        const isM = !!(r.isMissao || r.is_missao)
+        const isAe = !!(r.isAeronave || r.is_aeronave)
+        const isMod = !!(r.isModelo || r.is_modelo)
+
+        // Case A: Mandatory Pairing (isAlunoInva)
+        // Student A MUST be with INVA B. Alert if Student matches but INVA is WRONG.
+        if (isAI) {
+          if (String(getAlunoId(slot)) != String(getAlunoId(r))) return false
+          if (String(getInvaId(slot)) == String(getInvaId(r))) return false
+          return true
+        }
+
+        // Case B: Prohibitions (Entity matches ALL specified flags)
+        // Rule applies if ALL active flags match the slot entities.
+        if (isA && String(getAlunoId(slot)) != String(getAlunoId(r))) return false
+        if (isI && String(getInvaId(slot)) != String(getInvaId(r))) return false
+        if (isM && String(getMissaoId(slot)) != String(getMissaoId(r))) return false
+        if (isAe && String(getAeId(slot)) != String(getAeId(r))) return false
+        if (isMod && String(getModId(slot)) != String(getModId(r))) return false
+
+        return true
+      })
+
+      const unique = []
+      const seen = new Set()
+      filtered.forEach(item => { if (!seen.has(item.id)) { seen.add(item.id); unique.push(item) } })
+
       return {
         id: `api-${slot.id}`,
         apiId: slot.id,
@@ -608,16 +650,22 @@ function fetchSlots(startDate, endDate) {
         hora: dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
         data: dt.toLocaleDateString('pt-BR'),
         aluno: slot.aluno?.nome || '',
+        alunoId: getAlunoId(slot),
         inva: slot.inva?.nome || '',
-        invaId: slot.invaId || slot.inva?.id,
+        invaId: getInvaId(slot),
         ae: slot.aeronave?.nome || '',
+        aeronaveId: getAeId(slot),
         modelo: slot.aeronave?.modeloAeronave?.nome || '',
+        modeloId: getModId(slot),
         missao: (slot.missao?.nome || '').split(' > ').pop(),
+        missaoId: getMissaoId(slot),
         st: (slot.statusSlot?.nome || 'PENDENTE').toUpperCase(),
         isChecked: !!slot.isChecked,
-        obs: slot.observacoes || ''
+        obs: slot.observacoes || '',
+        serverRestrictions: unique
       }
     })
+
     state.availableDates = [...new Set(state.parsedSlots.map(s => s.data))].sort((a,b) => {
       const [da,ma,ya] = a.split('/'); const [db,mb,yb] = b.split('/');
       return new Date(ya,ma-1,da) - new Date(yb,mb-1,db)
@@ -651,7 +699,11 @@ async function updateSlot(slot, refresh = true) {
   try {
     if (!slot.apiId) return
     await api.put(`/slots/${slot.apiId}`, buildSlotPayload(slot))
-    if (refresh) { await fetchInvas(); fetchSlots() }
+    if (refresh) { 
+      await fetchInvas()
+      await fetchSlots()
+      gerarEditor()
+    }
   } catch (error) {
     console.error('Error updating slot:', error)
     alert('Erro ao salvar alteração no servidor.')
@@ -799,11 +851,8 @@ export function useCcoStore() {
       const prevSlot = studentSlotsToday.find(s => Math.abs(myTime - hv(s.hora) - 2) < 0.1)
       const nextSlot = studentSlotsToday.find(s => Math.abs(hv(s.hora) - myTime - 2) < 0.1)
       
-      // Instructor check
       if (prevSlot && prevSlot.inva && slot.inva && prevSlot.inva !== slot.inva) alerts.push(`Treinamento em Sequência: Aluno possui slot anterior (${prevSlot.hora}) com instrutor diferente (${prevSlot.inva}).`)
       if (nextSlot && nextSlot.inva && slot.inva && nextSlot.inva !== slot.inva) alerts.push(`Treinamento em Sequência: Aluno possui slot seguinte (${nextSlot.hora}) com instrutor diferente (${nextSlot.inva}).`)
-      
-      // Aircraft check
       if (prevSlot && prevSlot.ae && slot.ae && prevSlot.ae !== slot.ae) alerts.push(`Voo em Sequência: Aluno possui slot anterior (${prevSlot.hora}) com aeronave diferente (${prevSlot.ae}).`)
       if (nextSlot && nextSlot.ae && slot.ae && nextSlot.ae !== slot.ae) alerts.push(`Voo em Sequência: Aluno possui slot seguinte (${nextSlot.hora}) com aeronave diferente (${nextSlot.ae}).`)
     }
@@ -812,16 +861,13 @@ export function useCcoStore() {
     if (slot.inva && slot.aluno) {
       const i = state.INVAS.find(x => x.nome === slot.inva)
       const sit = String(i?.situacao?.nome || i?.situacao || i?.situacaoInva?.nome || '').toLowerCase()
-      const isClt = sit.includes('clt')
-
-      if (isClt && Array.isArray(i.escalas)) {
+      if (sit.includes('clt') && Array.isArray(i.escalas)) {
         const offsetDate = (dateStr, delta) => {
           const [d, m, y] = dateStr.split('/').map(Number)
           const dt = new Date(y, m - 1, d)
           dt.setDate(dt.getDate() + delta)
           return `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`
         }
-
         const isFolga = (dateStr) => {
           const [d, m, y] = dateStr.split('/').map(Number)
           const target = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
@@ -830,16 +876,8 @@ export function useCcoStore() {
           const tn = (s.tipoDisponibilidade?.nome || s.tipo || '').toLowerCase()
           return tn.includes('folga regular') || tn.includes('folga social')
         }
-
-        // A. Check Looking Back (Insufficient rest after Folga)
-        let backOffset = -1
-        let offDaysCount = 0
-        while (isFolga(offsetDate(slot.data, backOffset))) {
-          offDaysCount++
-          backOffset--
-          if (offDaysCount > 10) break
-        }
-
+        let backOffset = -1; let offDaysCount = 0
+        while (isFolga(offsetDate(slot.data, backOffset))) { offDaysCount++; backOffset--; if (offDaysCount > 10) break }
         if (offDaysCount > 0) {
           const lastFlightDay = offsetDate(slot.data, backOffset)
           const slotsLastDay = state.parsedSlots.filter(s => s.inva === slot.inva && s.data === lastFlightDay && s.aluno)
@@ -847,31 +885,18 @@ export function useCcoStore() {
             const lastStartTime = Math.max(...slotsLastDay.map(s => hv(s.hora)))
             const restBeforeOff = Math.max(0, 24 - (lastStartTime + 3))
             const effectiveRest = restBeforeOff + hv(slot.hora)
-            if (effectiveRest < 12) {
-              alerts.push(`Jornada CLT (Pós-Folga): Descanso regulamentar insuficiente. Apenas ${effectiveRest.toFixed(1)}h de repouso efetivo (${restBeforeOff.toFixed(1)}h antes da folga + ${hv(slot.hora).toFixed(1)}h após). É necessário totalizar 12h.`)
-            }
+            if (effectiveRest < 12) alerts.push(`Jornada CLT (Pós-Folga): Descanso regulamentar insuficiente. Apenas ${effectiveRest.toFixed(1)}h de repouso efetivo. Requerido 12h totais além das folgas.`)
           }
         }
-
-        // B. Check Looking Forward (Potential conflict on return from Folga)
-        let forwardOffset = 1
-        let futureOffDaysCount = 0
-        while (isFolga(offsetDate(slot.data, forwardOffset))) {
-          futureOffDaysCount++
-          forwardOffset++
-          if (futureOffDaysCount > 10) break
-        }
-
+        let forwardOffset = 1; let futureOffDaysCount = 0
+        while (isFolga(offsetDate(slot.data, forwardOffset))) { futureOffDaysCount++; forwardOffset++; if (futureOffDaysCount > 10) break }
         if (futureOffDaysCount > 0) {
           const returnDay = offsetDate(slot.data, forwardOffset)
           const slotsOnReturnDay = state.parsedSlots.filter(s => s.inva === slot.inva && s.data === returnDay && s.aluno)
           if (slotsOnReturnDay.length > 0) {
             const firstStartTime = Math.min(...slotsOnReturnDay.map(s => hv(s.hora)))
-            const restBeforeOff = Math.max(0, 24 - (hv(slot.hora) + 3))
-            const effectiveRest = restBeforeOff + firstStartTime
-            if (effectiveRest < 12) {
-              alerts.push(`Conflito Regulamentar CLT: Esta jornada termina às ${(hv(slot.hora)+3).toFixed(1)}h e o instrutor retorna às ${firstStartTime.toFixed(1)}h no dia ${returnDay} (após folga). Repouso efetivo de apenas ${effectiveRest.toFixed(1)}h (Mínimo 12h).`)
-            }
+            const effectiveRest = Math.max(0, 24 - (hv(slot.hora) + 3)) + firstStartTime
+            if (effectiveRest < 12) alerts.push(`Conflito Regulamentar CLT: Esta jornada termina às ${(hv(slot.hora)+3).toFixed(1)}h e o instrutor retorna às ${firstStartTime.toFixed(1)}h no dia ${returnDay}. Repouso de apenas ${effectiveRest.toFixed(1)}h (Mínimo 12h).`)
           }
         }
       }
@@ -885,59 +910,37 @@ export function useCcoStore() {
         const lastTime = Math.max(...mySlotsToday.map(s => hv(s.hora)))
         const journeyEnd = lastTime + 3
         const totalJourney = journeyEnd - firstTime
-        if (totalJourney > 11) {
-          alerts.push(`Limite de Jornada: Jornada diária totalizando ${totalJourney.toFixed(1)}h (Início ${firstTime.toFixed(1)}h / Fim ${journeyEnd.toFixed(1)}h). Limite regulamentar é de 11h.`)
-        }
+        if (totalJourney > 11) alerts.push(`Limite de Jornada: Jornada diária totalizando ${totalJourney.toFixed(1)}h (Limite 11h).`)
       }
-
-      // Check standard 12h rest between consecutive working days (No off-day between)
       const offsetDate = (dateStr, delta) => {
-        const [d, m, y] = dateStr.split('/').map(Number)
-        const dt = new Date(y, m - 1, d)
-        dt.setDate(dt.getDate() + delta)
+        const [d, m, y] = dateStr.split('/').map(Number); const dt = new Date(y, m - 1, d); dt.setDate(dt.getDate() + delta)
         return `${String(dt.getDate()).padStart(2, '0')}/${String(dt.getMonth() + 1).padStart(2, '0')}/${dt.getFullYear()}`
       }
-
       const isFolga = (dateStr) => {
-        const i = state.INVAS.find(x => x.nome === slot.inva)
-        if (!i || !Array.isArray(i.escalas)) return false
-        const [d, m, y] = dateStr.split('/').map(Number)
-        const target = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
-        const s = i.escalas.find(x => x.data.startsWith(target))
-        if (!s) return false
-        const tn = (s.tipoDisponibilidade?.nome || s.tipo || '').toLowerCase()
-        return tn.includes('folga regular') || tn.includes('folga social')
+        const i = state.INVAS.find(x => x.nome === slot.inva); if (!i || !Array.isArray(i.escalas)) return false
+        const [d, m, y] = dateStr.split('/').map(Number); const target = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+        const s = i.escalas.find(x => x.data.startsWith(target)); if (!s) return false
+        return (s.tipoDisponibilidade?.nome || s.tipo || '').toLowerCase().includes('folga')
       }
-
-      // A. Looking Back (Show alert on Day 11)
       const yesterday = offsetDate(slot.data, -1)
       if (!isFolga(yesterday)) {
-        const mySlotsYesterday = state.parsedSlots.filter(s => s.inva === slot.inva && s.data === yesterday && s.aluno)
-        if (mySlotsYesterday.length > 0) {
-          const lastTimeYesterday = Math.max(...mySlotsYesterday.map(s => hv(s.hora))) + 3
-          const firstTimeToday = Math.min(...mySlotsToday.map(s => hv(s.hora)))
-          const rest = (24 - lastTimeYesterday) + firstTimeToday
-          if (rest < 12) {
-            alerts.push(`Descanso Insuficiente (Anterior): Apenas ${rest.toFixed(1)}h de repouso desde o fim da jornada anterior (Ontem terminou às ${lastTimeYesterday.toFixed(1)}h). Mínimo 12h.`)
-          }
+        const slotsYesterday = state.parsedSlots.filter(s => s.inva === slot.inva && s.data === yesterday && s.aluno)
+        if (slotsYesterday.length > 0) {
+          const lastTimeYesterday = Math.max(...slotsYesterday.map(s => hv(s.hora))) + 3
+          const rest = (24 - lastTimeYesterday) + Math.min(...mySlotsToday.map(s => hv(s.hora)))
+          if (rest < 12) alerts.push(`Descanso Insuficiente (Anterior): Apenas ${rest.toFixed(1)}h de repouso desde ontem.`)
         }
       }
-
-      // B. Looking Forward (Show alert on Day 10)
       const tomorrow = offsetDate(slot.data, 1)
       if (!isFolga(tomorrow)) {
-        const mySlotsTomorrow = state.parsedSlots.filter(s => s.inva === slot.inva && s.data === tomorrow && s.aluno)
-        if (mySlotsTomorrow.length > 0) {
-          const firstTimeTomorrow = Math.min(...mySlotsTomorrow.map(s => hv(s.hora)))
-          const lastTimeToday = Math.max(...mySlotsToday.map(s => hv(s.hora))) + 3
-          const rest = (24 - lastTimeToday) + firstTimeTomorrow
-          if (rest < 12) {
-            alerts.push(`Descanso Insuficiente (Próximo): Repouso de apenas ${rest.toFixed(1)}h até o início da próxima jornada (Amanhã inicia às ${firstTimeTomorrow.toFixed(1)}h). Mínimo 12h.`)
-          }
+        const slotsTomorrow = state.parsedSlots.filter(s => s.inva === slot.inva && s.data === tomorrow && s.aluno)
+        if (slotsTomorrow.length > 0) {
+          const firstTimeTomorrow = Math.min(...slotsTomorrow.map(s => hv(s.hora)))
+          const rest = (24 - (Math.max(...mySlotsToday.map(s => hv(s.hora))) + 3)) + firstTimeTomorrow
+          if (rest < 12) alerts.push(`Descanso Insuficiente (Próximo): Apenas ${rest.toFixed(1)}h de repouso até amanhã.`)
         }
       }
     }
-
     return alerts
   }
 
@@ -954,13 +957,13 @@ export function useCcoStore() {
 
   return {
     state, login, logout, checkLogin, onFile, onWorkFile, importScale, importWorkSchedule, fetchSlots, fetchBars, fetchAeronaves, fetchInvas, fetchStatuses,
+    fetchAlunos, fetchModelos, fetchMissoes, fetchRestricoes,
     setCurrentViewDate: (d) => { state.currentViewDate = d; gerarEditor() },
     generateEditor: gerarEditor,
     voltarUpload: () => { state.fileOk = false; state.parsedSlots = [] },
     resetSchedule: () => { state.SCH = state.INITIAL.map(s => ({ ...s })) },
     toggleDisp: (n) => { 
-      const current = availabilityState(n)
-      const states = ['avail', 'folga-reg', 'cond'] 
+      const current = availabilityState(n); const states = ['avail', 'folga-reg', 'cond'] 
       const next = states[(states.indexOf(current === 'avail' ? 'avail' : current === 'folga-reg' ? 'folga-reg' : 'cond') + 1) % 3]
       state.availability[n] = next 
     },
@@ -978,14 +981,8 @@ export function useCcoStore() {
     updateSlotInstructor: (id, name) => { 
       const s = state.SCH.find(x => x.id === id)
       if (s) { 
-        if (name === '-') {
-          s.inva = ''
-          s.invaId = null
-        } else {
-          s.inva = name
-          const found = state.INVAS.find(i => i.nome === name)
-          s.invaId = found ? found.id : null
-        }
+        if (name === '-') { s.inva = ''; s.invaId = null } 
+        else { s.inva = name; s.invaId = state.INVAS.find(i => i.nome === name)?.id }
         updateSlot(s) 
       } 
     },
@@ -993,14 +990,8 @@ export function useCcoStore() {
     updateSlotAeronave: (id, ae) => { 
       const s = state.SCH.find(x => x.id === id)
       if (s) { 
-        if (ae === '-') {
-          s.ae = ''
-          s.aeronaveId = null
-        } else {
-          s.ae = ae
-          const found = state.AERONAVES.find(x => x.nome === ae)
-          s.aeronaveId = found ? found.id : null
-        }
+        if (ae === '-') { s.ae = ''; s.aeronaveId = null } 
+        else { s.ae = ae; s.aeronaveId = state.AERONAVES.find(x => x.nome === ae)?.id }
         updateSlot(s) 
       } 
     },
@@ -1021,44 +1012,29 @@ export function useCcoStore() {
     currentViewDate: computed(() => state.currentViewDate),
     availableDates: computed(() => state.availableDates),
     scheduleBlocks,
-    getInvasByBarra: (barra, curr) => {
-      const base = getBase(barra)
-      return state.INVAS.filter(i => {
-        const b = getBase(i.base?.nome || i.base)
-        return b === base
-      })
-    },
+    getInvasByBarra: (barra) => state.INVAS.filter(i => getBase(i.base?.nome || i.base) === getBase(barra)),
     getAeronavesByBarra: (barraNome, currentAe) => {
-      const bUpper = (barraNome || '').toUpperCase().trim()
-      // 1. Find the bar object to get its associated model
-      const barraObj = state.BARRAS.find(b => (b.nome || '').toUpperCase().trim() === bUpper)
-      
+      const bUpper = (barraNome || '').toUpperCase().trim(); const barraObj = state.BARRAS.find(b => (b.nome || '').toUpperCase().trim() === bUpper)
       let list = state.AERONAVES
       if (barraObj && (barraObj.modeloAeronaveId || barraObj.modeloAeronave?.id)) {
         const mid = barraObj.modeloAeronaveId || barraObj.modeloAeronave?.id
         list = state.AERONAVES.filter(a => a.modeloAeronaveId == mid || a.modeloAeronave?.id == mid)
       } else {
-        // Fallback for PCATD simulators or other naming-based logic if ID is missing
-        if (bUpper.includes('PCATD') || bUpper.includes('SM PCATD')) {
-          list = state.AERONAVES.filter(a => (a.nome || '').toUpperCase().includes('PCATD'))
-        } else if (bUpper.includes('SIRA')) {
-          list = state.AERONAVES.filter(a => (a.nome || '').toUpperCase().includes('SIRA'))
-        } else if (bUpper.includes('COLT')) {
-          list = state.AERONAVES.filter(a => (a.nome || '').toUpperCase().includes('COLT'))
-        }
+        if (bUpper.includes('PCATD')) list = state.AERONAVES.filter(a => (a.nome || '').toUpperCase().includes('PCATD'))
+        else if (bUpper.includes('SIRA')) list = state.AERONAVES.filter(a => (a.nome || '').toUpperCase().includes('SIRA'))
+        else if (bUpper.includes('COLT')) list = state.AERONAVES.filter(a => (a.nome || '').toUpperCase().includes('COLT'))
       }
-
-      // 2. Ensure current aircraft is in the list
       if (currentAe && !list.find(a => a.nome === currentAe)) {
-        const original = state.AERONAVES.find(a => a.nome === currentAe)
-        if (original) list = [original, ...list]
+        const original = state.AERONAVES.find(a => a.nome === currentAe); if (original) list = [original, ...list]
       }
-
-      return list.length > 0 ? list : state.AERONAVES
+      return list
     },
     deleteSlot: async (id) => { state.globalLoading = true; try { await api.delete(`/slots/${id}`); await fetchSlots(); gerarEditor() } finally { state.globalLoading = false } },
     saveAvailability: async (p) => { state.globalLoading = true; try { const r = await api.post('/escala-trabalhos', p); await fetchInvas(); return { success: true, data: r.data } } catch (e) { return { success: false, error: e.response?.data?.message || e.message } } finally { state.globalLoading = false } },
     updateAvailability: async (id, p) => { state.globalLoading = true; try { const r = await api.put(`/escala-trabalhos/${id}`, p); await fetchInvas(); return { success: true, data: r.data } } catch (e) { return { success: false, error: e.response?.data?.message || e.message } } finally { state.globalLoading = false } },
+    saveRestriction: async (p) => { state.globalLoading = true; try { const r = await api.post('/restricoes', p); await fetchRestricoes(); return { success: true, data: r.data } } catch (e) { return { success: false, error: e.response?.data?.message || e.message } } finally { state.globalLoading = false } },
+    updateRestriction: async (id, p) => { state.globalLoading = true; try { const r = await api.put(`/restricoes/${id}`, p); await fetchRestricoes(); return { success: true, data: r.data } } catch (e) { return { success: false, error: e.response?.data?.message || e.message } } finally { state.globalLoading = false } },
+    deleteRestriction: async (id) => { state.globalLoading = true; try { await api.delete(`/restricoes/${id}`); await fetchRestricoes(); return { success: true } } catch (e) { return { success: false, error: e.message } } finally { state.globalLoading = false } },
     swapSlots: async (idA, idB) => {
       const a = state.SCH.find(x => x.id === idA); const b = state.SCH.find(x => x.id === idB)
       if (!a || !b) return

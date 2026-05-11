@@ -4,6 +4,7 @@ const LoginScreen = () => import('../components/LoginScreen.vue')
 const UploadScreen = () => import('../components/UploadScreen.vue')
 const EditorScreen = () => import('../components/EditorScreen.vue')
 const CalendarScreen = () => import('../components/CalendarScreen.vue')
+const RestricoesScreen = () => import('../components/RestricoesScreen.vue')
 const UnauthorizedScreen = () => import('../components/UnauthorizedScreen.vue')
 
 const SESSION_KEY = 'cco_auth'
@@ -38,6 +39,12 @@ const routes = [
     path: '/calendar',
     name: 'Calendar',
     component: CalendarScreen,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/restricoes',
+    name: 'Restricoes',
+    component: RestricoesScreen,
     meta: { requiresAuth: true }
   },
   {

@@ -579,7 +579,25 @@ function handleLogout() {
   display: flex; align-items: center; justify-content: space-between;
 }
 .modal-header h3 { margin: 0; font-size: 16px; color: #1d2951; }
-.modal-close { background: none; border: none; font-size: 24px; color: #999; cursor: pointer; line-height: 1; }
+.modal-close {
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 20px;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: all 0.2s ease;
+}
+.modal-close:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #1d2951;
+}
 .modal-body { padding: 22px; }
 .modal-date-info { margin-bottom: 18px; font-size: 14px; color: #444; }
 .form-group { margin-bottom: 16px; }

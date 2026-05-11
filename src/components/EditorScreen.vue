@@ -7,9 +7,12 @@
     </div>
 
     <div id="editor-screen" class="editor-screen">
+      <!-- Topbar with Título, Filtros e Controles inline -->
       <div class="topbar">
-        <img :src="iconUrl" alt="SAFE" style="width:28px;height:28px;border-radius:50%;opacity:.85;" />
-        <h1>{{ store.state.editorTitle }}</h1>
+        <div class="title-section">
+          <img :src="iconUrl" alt="SAFE" />
+          <h1>{{ store.state.editorTitle }}</h1>
+        </div>
         
         <div class="date-filters">
           <div class="filter-field">
@@ -24,51 +27,57 @@
         </div>
 
         <div class="controls">
-          <button class="btn-back" @click="handleOpenCalendar">📅 Calendário de Instrutores</button>
-          <button class="btn-back" @click="() => router.push('/upload')">📂 Atualizar fonte</button>
+          <button class="btn-back" @click="handleOpenCalendar">📅 Calendário</button>
+          <button class="btn-back" @click="() => router.push('/restricoes')">🛠️ Restrições</button>
+          <button class="btn-back" @click="() => router.push('/upload')">📂 Base de dados</button>
           <button class="btn-logout-editor" @click="handleLogout">Sair</button>
         </div>
       </div>
 
+      <!-- Disponibilidade Panel -->
       <div class="panels">
-        <div class="panel-box"><h3>Disponibilidade</h3><div class="disp-panel">
-          <div class="disp-group" v-for="base in ['SJK', 'CPQ']" :key="base">
-            <div class="disp-group-label">{{ base }}</div>
-            <div class="disp-sections">
-              <div class="disp-section">
-                <span class="disp-section-title">Voo:</span>
-                <div class="disp-chips">
-                  <span
-                    v-for="instr in (store.availabilityGroups?.value?.[base]?.voo || [])"
-                    :key="instr.nome"
-                    class="ic"
-                    :class="store.availabilityClass(instr.nome)"
-                    @click="store.toggleDisp(instr.nome)"
-                    :title="instr.nome + ' (' + store.availabilityLabel(instr.nome) + ')'"
-                  >
-                    {{ instr.nome ? instr.nome.split(' ')[0] : '—' }}
-                  </span>
+        <div class="panel-box">
+          <h3>Disponibilidade</h3>
+          <div class="disp-panel">
+            <div class="disp-group" v-for="base in ['SJK', 'CPQ']" :key="base">
+              <div class="disp-group-label">{{ base }}</div>
+              <div class="disp-sections">
+                <div class="disp-section">
+                  <span class="disp-section-title">Voo:</span>
+                  <div class="disp-chips">
+                    <span
+                      v-for="instr in (store.availabilityGroups?.value?.[base]?.voo || [])"
+                      :key="instr.nome"
+                      class="ic"
+                      :class="store.availabilityClass(instr.nome)"
+                      @click="store.toggleDisp(instr.nome)"
+                      :title="instr.nome + ' (' + store.availabilityLabel(instr.nome) + ')'"
+                    >
+                      {{ instr.nome ? instr.nome.split(' ')[0] : '—' }}
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div class="disp-section">
-                <span class="disp-section-title">Solo:</span>
-                <div class="disp-chips">
-                  <span
-                    v-for="instr in (store.availabilityGroups?.value?.[base]?.solo || [])"
-                    :key="instr.nome"
-                    class="ic ic-static"
-                    :class="store.availabilityClass(instr.nome)"
-                    :title="instr.nome + ' (' + store.availabilityLabel(instr.nome) + ')'"
-                  >
-                    {{ instr.nome ? instr.nome.split(' ')[0] : '—' }}
-                  </span>
+                <div class="disp-section">
+                  <span class="disp-section-title">Solo:</span>
+                  <div class="disp-chips">
+                    <span
+                      v-for="instr in (store.availabilityGroups?.value?.[base]?.solo || [])"
+                      :key="instr.nome"
+                      class="ic ic-static"
+                      :class="store.availabilityClass(instr.nome)"
+                      :title="instr.nome + ' (' + store.availabilityLabel(instr.nome) + ')'"
+                    >
+                      {{ instr.nome ? instr.nome.split(' ')[0] : '—' }}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div></div>
+        </div>
       </div>
 
+      <!-- Date Pagination (Escalas Disponíveis) -->
       <div class="date-pagination" v-if="store.availableDates.value.length > 0">
         <div class="pag-label">Escalas disponíveis:</div>
         <div class="pag-btns">
@@ -83,11 +92,13 @@
         </div>
       </div>
 
+      <!-- Tabs Base -->
       <div class="tabs">
         <button :class="['tab-btn', store.state.activeTab === 'SJK' ? 't-sjk' : '']" @click="store.state.activeTab = 'SJK'">✈ SJK</button>
         <button :class="['tab-btn', store.state.activeTab === 'CPQ' ? 't-cpq' : '']" @click="store.state.activeTab = 'CPQ'">✈ CPQ</button>
       </div>
 
+      <!-- Editor Grid -->
       <div class="tab-panel active">
         <div v-for="block in (store.scheduleBlocks?.value?.[store.state.activeTab] || [])" :key="block.id" class="barra-bloco">
           <div class="bh" :style="{ gridTemplateColumns: `110px repeat(${block.slots.length}, 1fr)` }">
@@ -183,11 +194,21 @@
               <p><strong>Barra:</strong> {{ selectedSlot?.barra }}</p>
               <p><strong>Aluno:</strong> {{ selectedSlot?.aluno }}</p>
               <p><strong>Status Atual:</strong> {{ selectedSlot?.st }}</p>
-              <p><strong>Observações: {{ selectedSlot?.obs }}</strong> </p>
+              <p><strong>Observações:</strong> {{ selectedSlot?.obs }}</p>
             </div>
             
+            <div class="modal-restrictions-list" v-if="selectedSlot && selectedSlot.serverRestrictions && selectedSlot.serverRestrictions.length > 0">
+              <div v-for="(rest, idx) in selectedSlot.serverRestrictions" :key="'res-' + idx" class="modal-restrict-item">
+                <span class="restrict-icon">🚫</span>
+                <div class="restrict-content">
+                  <span class="restrict-title">{{ rest.nome }}</span>
+                  <p class="restrict-desc">{{ rest.observacao }}</p>
+                </div>
+              </div>
+            </div>
+
             <div class="modal-alerts-list" v-if="selectedSlot && store.getSlotAlerts(selectedSlot).length > 0">
-              <div v-for="(alert, idx) in store.getSlotAlerts(selectedSlot)" :key="idx" class="modal-alert-item">
+              <div v-for="(alert, idx) in store.getSlotAlerts(selectedSlot)" :key="'alt-' + idx" class="modal-alert-item">
                 <span class="alert-icon">⚠️</span>
                 <span class="alert-text">{{ alert }}</span>
               </div>
@@ -238,10 +259,6 @@ import { ref, reactive, inject, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import iconUrl from '../icons/icon-192.png'
 
-function handleOpenCalendar() {
-  router.push('/calendar')
-}
-
 const router = useRouter()
 const store = inject('store')
 const isLoading = ref(true)
@@ -261,6 +278,10 @@ function showToast(message, type = 'success') {
   }, 3000)
 }
 
+function handleOpenCalendar() {
+  router.push('/calendar')
+}
+
 onMounted(async () => {
   isLoading.value = true
   try {
@@ -269,6 +290,9 @@ onMounted(async () => {
       store.fetchBars(),
       store.fetchAeronaves(),
       store.fetchInvas(),
+      store.fetchAlunos(),
+      store.fetchModelos(),
+      store.fetchMissoes(),
       store.fetchStatuses()
     ])
     store.generateEditor()
@@ -276,6 +300,7 @@ onMounted(async () => {
     isLoading.value = false
   }
 })
+
 const dragSourceId = ref(null)
 const rowLabels = ['Aluno', 'Instrutor', 'Aeronave', 'Missão', 'Status', 'Barra']
 
@@ -361,18 +386,17 @@ function slotCellClass(slot) {
 }
 
 function buttonLabel(slot) {
+  if (slot.serverRestrictions && slot.serverRestrictions.length > 0) return 'Restrição'
   const alerts = store.getSlotAlerts(slot)
   if (alerts.length > 0) return 'Atenção'
-  
   if (!slot.aluno) return slot.st || 'Disponível'
-  
   return 'Ok'
 }
 
 function buttonClass(slot) {
   const label = buttonLabel(slot)
-  if (label === 'Atenção') return 'btn-mod-wrn'
   if (label === 'Restrição') return 'btn-mod-err'
+  if (label === 'Atenção') return 'btn-mod-wrn'
   if (!slot.aluno) return 'btn-disp'
   return 'btn-mod-ok'
 }
@@ -398,13 +422,8 @@ function onDragEnd() {
   dragSourceId.value = null
 }
 
-function onDragOver(id) {
-  // logic to allow drop
-}
-
-function onDragLeave(id) {
-  // logic
-}
+function onDragOver(id) {}
+function onDragLeave(id) {}
 
 async function onDropSlot(id) {
   if (!dragSourceId.value || dragSourceId.value === id) return
@@ -432,222 +451,72 @@ function handleLogout() {
 }
 .loading-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(240, 244, 248, 0.4);
   backdrop-filter: blur(5px);
-  -webkit-backdrop-filter: blur(5px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
   z-index: 5000;
-}
-.loading-overlay p {
-  color: #1d2951;
-  font-weight: 700;
-  font-size: 15px;
-  margin-top: 15px;
-  text-shadow: 0 1px 2px rgba(255,255,255,0.5);
 }
 .loader {
   border: 4px solid #f3f3f3;
   border-top: 4px solid #1d2951;
   border-radius: 50%;
-  width: 40px;
-  height: 40px;
+  width: 40px; height: 40px;
   animation: spin 1s linear infinite;
-  margin-bottom: 15px;
 }
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-.editor-screen {
-  width: 100%;
-  max-width: 1380px;
-  margin: 0 auto;
-}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+.editor-screen { width: 100%; max-width: 1380px; margin: 0 auto; }
+
 .topbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 12px;
-  padding: 18px 22px;
-  background: #fff;
-  border: 1px solid #dae2ec;
-  border-radius: 14px;
-  box-shadow: 0 16px 32px rgba(14, 38, 72, 0.08);
+  display: flex; flex-flow: row nowrap; align-items: center; justify-content: space-between;
+  gap: 16px; padding: 10px 20px; background: #fff; border: 1px solid #dae2ec; border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(14, 38, 72, 0.06);
 }
-.topbar img {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  opacity: 0.9;
-}
-.topbar h1 {
-  font-size: 17px;
-  font-weight: 700;
-  color: #1d2951;
-  margin: 0;
-  letter-spacing: 0.02em;
-}
+.title-section { display: flex; align-items: center; gap: 10px; flex: 1 1 0; min-width: 0; }
+.title-section img { width: 28px; height: 28px; border-radius: 50%; opacity: 0.9; }
+.topbar h1 { font-size: 14px; font-weight: 700; color: #1d2951; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
 .date-filters {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: #f8f9fa;
-  padding: 6px 12px;
-  border-radius: 10px;
-  border: 1px solid #e3e9f0;
-  margin: 0 10px;
+  display: flex; align-items: center; gap: 10px; background: #f8f9fa;
+  padding: 5px 12px; border-radius: 10px; border: 1px solid #e3e9f0;
 }
-.filter-field {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.filter-field label {
-  font-size: 11px;
-  font-weight: 700;
-  color: #5a6370;
-  text-transform: uppercase;
-}
-.date-input {
-  border: 1px solid #d8dee8;
-  border-radius: 6px;
-  padding: 4px 8px;
-  font-size: 12px;
-  color: #1d2951;
-  font-family: inherit;
-}
-.btn-filter {
-  background: #1d2951;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-.btn-filter:hover {
-  background: #2a3b59;
-}
+.filter-field { display: flex; align-items: center; gap: 6px; }
+.filter-field label { font-size: 11px; font-weight: 700; color: #5a6370; text-transform: uppercase; }
+.date-input { border: 1px solid #d8dee8; border-radius: 6px; padding: 4px 8px; font-size: 12px; color: #1d2951; }
+.btn-filter { background: #1d2951; color: #fff; border: none; border-radius: 6px; padding: 6px 12px; font-size: 12px; font-weight: 700; cursor: pointer; }
+
 .date-pagination {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 14px 0;
-  padding: 10px 18px;
-  background: #fff;
-  border: 1px solid #dae2ec;
-  border-radius: 14px;
+  display: flex; align-items: center; gap: 12px; margin: 14px 0; padding: 10px 18px;
+  background: #fff; border: 1px solid #dae2ec; border-radius: 14px;
 }
-.pag-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: #1d2951;
-}
-.pag-btns {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
+.pag-label { font-size: 12px; font-weight: 700; color: #1d2951; }
+.pag-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .date-btn {
-  border: 1px solid #dae2ec;
-  background: #fff;
-  color: #5a6370;
-  padding: 6px 14px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  border: 1px solid #dae2ec; background: #fff; color: #5a6370; padding: 6px 14px;
+  border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s;
 }
-.date-btn:hover {
-  border-color: #1d2951;
-  color: #1d2951;
-}
-.date-btn.active {
-  background: #1d2951;
-  color: #fff;
-  border-color: #1d2951;
-}
-.controls {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-left: auto;
-  flex-wrap: wrap;
-}
-.btn-back,
-.btn-logout-editor {
-  border: none;
-  border-radius: 10px;
-  padding: 10px 16px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.date-btn:hover { border-color: #1d2951; color: #1d2951; }
+.date-btn.active { background: #1d2951; color: #fff; border-color: #1d2951; }
+
+.controls { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex: 1 1 0; }
+.btn-back, .btn-logout-editor {
+  border: none; border-radius: 8px; padding: 8px 12px; font-size: 11.5px; font-weight: 700;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
 }
 .btn-back { background: #1d3a52; color: #fff; }
-.btn-back:hover { background: #162e42; transform: translateY(-1px); }
-.btn-logout-editor {
-  background: #c0392b;
-  color: #fff;
-}
-.btn-logout-editor:hover { background: #a93226; transform: translateY(-1px); }
-.panels {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 14px;
-  margin-bottom: 16px;
-}
-.panel-box {
-  padding: 18px 18px 16px;
-  background: #fff;
-  border: 1px solid #dae2ec;
-  border-radius: 16px;
-}
-.panel-box h3 {
-  margin: 0 0 14px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #1d2951;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-.disp-group { margin-bottom: 18px; }
-.disp-group-label {
-  display: inline-block;
-  margin-bottom: 10px;
-  font-size: 11px;
-  font-weight: 700;
-  color: #1d2951;
-  letter-spacing: 0.04em;
-}
+.btn-logout-editor { background: #c0392b; color: #fff; }
+
+.panels { margin-bottom: 16px; }
+.panel-box { padding: 18px; background: #fff; border: 1px solid #dae2ec; border-radius: 16px; }
+.panel-box h3 { margin: 0 0 14px; font-size: 12px; font-weight: 700; color: #1d2951; text-transform: uppercase; }
+.disp-group-label { display: inline-block; margin-bottom: 10px; font-size: 11px; font-weight: 700; color: #1d2951; }
 .disp-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .disp-sections { display: flex; flex-direction: column; gap: 12px; }
 .disp-section { display: flex; align-items: flex-start; gap: 10px; }
 .disp-section-title { font-size: 10px; font-weight: 800; color: #5a6370; text-transform: uppercase; margin-top: 6px; min-width: 35px; }
-.ic {
-  font-size: 10px;
-  padding: 5px 8px;
-  border-radius: 999px;
-  font-weight: 700;
-  cursor: pointer;
-  color: #fff;
-}
+.ic { font-size: 10px; padding: 5px 8px; border-radius: 999px; font-weight: 700; cursor: pointer; color: #fff; }
 .ic-static { cursor: default; }
-/* Availability Status Colors */
 .ic.avail { background: #27ae60; }
 .ic.folga-reg { background: #c0392b; }
 .ic.folga-soc { background: #e67e22; }
@@ -659,93 +528,28 @@ function handleLogout() {
 .ic.externo { background: #7f8c8d; }
 .ic.medica { background: #000000; }
 .ic.outro { background: #bdc3c7; color: #000; }
-.tabs {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 14px;
-}
-.tab-btn {
-  padding: 10px 22px;
-  font-size: 13px;
-  font-weight: 700;
-  border: none;
-  border-radius: 999px;
-  background: #d4d4d4;
-  color: #1b1b1b;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
+
+.tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.tab-btn { padding: 10px 22px; font-size: 13px; font-weight: 700; border: none; border-radius: 999px; background: #d4d4d4; cursor: pointer; }
 .tab-btn.t-sjk { background: #1d2951; color: #fff; }
 .tab-btn.t-cpq { background: #1d3a52; color: #fff; }
-.tab-panel.active { display: block; }
-.barra-bloco {
-  border-radius: 18px;
-  overflow: hidden;
-  box-shadow: 0 16px 30px rgba(14, 38, 72, 0.08);
-  margin-bottom: 18px;
-}
-.bh {
-  display: grid;
-  background: #1d2951;
-  color: #fff;
-  font-weight: 700;
-  font-size: 13px;
-}
-.bh .hd {
-  padding: 14px 16px;
-  min-width: 110px;
-}
-.bh .d1 { font-size: 14px; }
-.bh .d2 { font-size: 12px; opacity: 0.9; }
-.hh {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px 6px;
-  border-left: 1px solid rgba(255, 255, 255, 0.16);
-  font-size: 13px;
-}
-.drag-indicator { opacity: 0.45; font-size: 10px; margin-left: 6px; }
+
+.barra-bloco { border-radius: 18px; overflow: hidden; box-shadow: 0 16px 30px rgba(14, 38, 72, 0.08); margin-bottom: 18px; }
+.bh { display: grid; background: #1d2951; color: #fff; font-weight: 700; }
+.hd { padding: 14px 16px; min-width: 110px; }
+.hh { display: flex; align-items: center; justify-content: center; padding: 14px 6px; border-left: 1px solid rgba(255, 255, 255, 0.16); font-size: 13px; }
 .barra-body { background: #fff; }
-.brow {
-  display: grid;
-  min-height: 48px;
-  border-bottom: 1px solid #e3e9f0;
-  align-items: stretch;
-}
-.brow:last-child { border-bottom: none; }
-.rl {
-  padding: 14px 12px;
-  background: #f6f8fb;
-  font-size: 12px;
-  font-weight: 700;
-  color: #2a3b59;
-  border-right: 1px solid #dde4ef;
-  display: flex;
-  align-items: center;
-}
-.sc {
-  border-right: 1px solid #dde4ef;
-  min-height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  padding: 4px 6px;
-  position: relative;
-}
-.sc:last-child { border-right: none; }
-.sc-empty { background: #fff; }
-.sc-filled { background: #fff; }
-.sc-st-agua { background: #fff; }
-.sc-st-other { background: #fff; }
+.brow { display: grid; min-height: 48px; border-bottom: 1px solid #e3e9f0; }
+.rl { padding: 14px 12px; background: #f6f8fb; font-size: 12px; font-weight: 700; color: #2a3b59; border-right: 1px solid #dde4ef; display: flex; align-items: center; }
+.sc { border-right: 1px solid #dde4ef; display: flex; align-items: center; justify-content: center; padding: 4px 6px; position: relative; }
+.sc-empty, .sc-filled, .sc-st-agua, .sc-st-other { background: #fff !important; }
 
 .slot-input {
   width: 100%;
   height: 36px;
   border: 1px solid #d8dee8;
   border-radius: 8px;
-  background: #fdfdfd;
+  background: #fff !important;
   font-size: 11.5px;
   font-family: inherit;
   padding: 0 10px;
@@ -756,312 +560,67 @@ function handleLogout() {
   text-align-last: center;
   transition: all 0.2s ease;
 }
-.slot-input:focus {
-  border-color: #5baee2;
-  background: #f5fbff;
-  box-shadow: 0 0 0 3px rgba(91, 174, 226, 0.15);
-}
-.slot-input:hover {
-  border-color: #b8c2d1;
-}
-.btn-delete-slot {
-  position: absolute;
-  top: 3px;
-  right: 3px;
-  width: 18px;
-  height: 18px;
-  background: #ff4d4d;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.4;
-  transition: all 0.2s ease;
-  z-index: 30;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-}
-.sc:hover .btn-delete-slot {
-  opacity: 1;
-  transform: scale(1.1);
-}
-.btn-delete-slot:hover {
-  background: #cc0000;
-  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-}
-.sv-aluno {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.warning-text {
-  color: #ff4d4d;
-  font-weight: 700;
-  font-size: 11px;
-}
-.slot-checkbox {
-  width: 16px;
-  height: 16px;
-  cursor: pointer;
-}
-.modal-danger .modal-header {
-  background: #fff5f5;
-}
-.modal-danger h3 {
-  color: #c0392b;
-}
-.text-center { text-align: center; }
-.danger-icon {
-  font-size: 48px;
-  margin-bottom: 16px;
-}
-.text-muted {
-  font-size: 12px;
-  color: #888;
-  margin-top: 8px;
-}
-.btn-cancel {
-  background: #eee;
-  color: #333;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 700;
-  cursor: pointer;
-  margin-right: 10px;
-}
-.btn-cancel:hover { background: #ddd; }
-.btn-confirm-delete {
-  background: #c0392b;
-  color: #fff;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.btn-confirm-delete:hover { background: #a93226; }
-select.slot-input {
-  appearance: none;
-  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231d2951' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
-  background-repeat: no-repeat;
-  background-position: right 8px center;
-  background-size: 14px;
-  padding-right: 28px;
-}
-.sv {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  font-size: 12px;
-  padding: 10px 8px;
-  width: 100%;
-  line-height: 1.3;
-  word-break: break-word;
-}
-.locked {
-  color: #1a4a80;
-  font-weight: 700;
-  font-size: 11px;
-}
-.btn-row {
-  display: grid;
-  background: #f5f8fc;
-  border-top: 1px solid #dde4ef;
-}
-.bl { min-height: 4px; }
-.bcell {
-  padding: 8px 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.btn-cav {
-  width: 100%;
-  height: 36px;
-  padding: 0 10px;
-  border: none;
-  border-radius: 8px;
-  font-size: 11.5px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-}
-.btn-mod-ok { background: #27ae60; color: #fff; }
-.btn-mod-wrn { background: #f39c12; color: #fff; }
-.btn-mod-err { background: #c0392b; color: #fff; }
-.btn-disp { background: #1d2951; color: #fff; }
-.footer {
-  margin-top: 18px;
-  font-size: 11px;
-  color: #5a6370;
-  border-top: 1px solid #dde4ef;
-  padding-top: 14px;
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-.footer-badge {
-  background: #1d2951;
-  color: #fff;
-  font-size: 10px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-weight: 700;
-}
+.btn-delete-slot { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; background: #ff4d4d; color: white; border-radius: 50%; border: none; cursor: pointer; z-index: 30; }
+.btn-row { display: grid; background: #f5f8fc; border-top: 1px solid #dde4ef; }
+.bcell { padding: 8px 6px; }
+.btn-cav { width: 100%; height: 36px; border: none; border-radius: 8px; font-size: 11.5px; font-weight: 700; cursor: pointer; color: #fff !important; }
+.btn-mod-ok { background: #27ae60; }
+.btn-mod-wrn { background: #f1c40f; color: #fff !important; }
+.btn-mod-err { background: #c0392b; }
+.btn-disp { background: #1d2951; }
 
-/* Modal Styles */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+.footer { margin-top: 18px; font-size: 11px; color: #5a6370; border-top: 1px solid #dde4ef; padding-top: 14px; display: flex; justify-content: space-between; }
+.footer-badge { background: #1d2951; color: #fff; font-size: 10px; padding: 4px 10px; border-radius: 999px; }
+
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 3000; backdrop-filter: blur(4px); }
+.modal-content { background: #fff; width: 100%; max-width: 450px; border-radius: 16px; overflow: hidden; }
+.modal-header { padding: 18px 22px; background: #f8f9fa; display: flex; align-items: center; justify-content: space-between; }
+.modal-close {
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-size: 20px;
+  color: #666;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 3000;
-  backdrop-filter: blur(4px);
+  line-height: 1;
+  transition: all 0.2s ease;
 }
-.modal-content {
-  background: #fff;
-  width: 100%;
-  max-width: 450px;
-  border-radius: 16px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-  overflow: hidden;
-  animation: modalIn 0.3s ease-out;
-}
-@keyframes modalIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.modal-header {
-  padding: 18px 22px;
-  background: #f8f9fa;
-  border-bottom: 1px solid #eee;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.modal-header h3 {
-  margin: 0;
-  font-size: 16px;
+.modal-close:hover {
+  background: rgba(0, 0, 0, 0.1);
   color: #1d2951;
 }
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #999;
-  cursor: pointer;
-  line-height: 1;
-}
-.modal-close:hover { color: #333; }
-.modal-body {
-  padding: 22px;
-}
+.modal-body { padding: 22px; }
 .modal-slot-info {
   background: #f0f4f8;
-  padding: 14px;
-  border-radius: 10px;
-  margin-bottom: 18px;
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 20px;
 }
 .modal-slot-info p {
-  margin: 4px 0;
-  font-size: 13px;
-  color: #444;
+  margin: 6px 0;
+  font-size: 13.5px;
+  color: #334155;
+  line-height: 1.4;
 }
-.modal-placeholder {
-  text-align: center;
-  padding: 20px 10px;
-  color: #666;
-  font-style: italic;
-  font-size: 14px;
+.modal-alert-item { display: flex; gap: 12px; padding: 12px; background: #fff9e6; border-left: 4px solid #f39c12; border-radius: 6px; margin-bottom: 10px; }
+.modal-restrict-item {
+  display: flex; gap: 12px; padding: 14px; background: #fef2f2; 
+  border-left: 5px solid #ef4444; border-radius: 8px; margin-bottom: 12px;
 }
-.modal-footer {
-  padding: 16px 22px;
-  border-top: 1px solid #eee;
-  display: flex;
-  justify-content: flex-end;
-}
-.btn-modal-ok {
-  background: #1d2951;
-  color: #fff;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 700;
-  cursor: pointer;
-}
+.restrict-icon { font-size: 18px; margin-top: 2px; }
+.restrict-title { display: block; font-weight: 800; color: #991b1b; font-size: 14px; margin-bottom: 4px; }
+.restrict-desc { margin: 0; font-size: 13px; color: #b91c1c; line-height: 1.4; opacity: 0.9; }
+
+.modal-footer { padding: 16px 22px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; }
+.btn-modal-ok { background: #1d2951; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; }
 .btn-modal-ok:hover { background: #2a3b59; }
 
-.modal-alerts-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.modal-alert-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px 16px;
-  background: #fff9e6;
-  border-left: 4px solid #f39c12;
-  border-radius: 6px;
-}
-.alert-icon {
-  font-size: 16px;
-  margin-top: 2px;
-}
-.alert-text {
-  font-size: 13.5px;
-  color: #5a4b00;
-  line-height: 1.4;
-  font-weight: 500;
-}
-
-/* Toast Notifications */
-.toast-notification {
-  position: fixed;
-  top: 20px;
-  right: 24px;
-  padding: 10px 18px;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  z-index: 6000;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.12);
-  animation: toastIn 0.3s ease-out;
-  min-width: 200px;
-}
-@keyframes toastIn {
-  from { opacity: 0; transform: translateX(50px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-.toast-success {
-  background: #e6f7ed;
-  color: #000;
-  border: 1px solid #27ae60;
-  border-left: 5px solid #27ae60;
-}
-.toast-danger {
-  background: #fdf2f2;
-  color: #000;
-  border: 1px solid #c0392b;
-  border-left: 5px solid #c0392b;
-}
-.toast-icon { font-size: 16px; }
-.toast-message { font-weight: 600; font-size: 13px; color: #000; }
+.toast-notification { position: fixed; top: 20px; right: 24px; padding: 10px 18px; border-radius: 10px; z-index: 6000; display: flex; gap: 10px; align-items: center; box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
+.toast-success { background: #e6f7ed; border: 1px solid #27ae60; border-left: 5px solid #27ae60; }
+.toast-danger { background: #fdf2f2; border: 1px solid #c0392b; border-left: 5px solid #c0392b; }
 </style>

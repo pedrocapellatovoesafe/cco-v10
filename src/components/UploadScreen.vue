@@ -10,7 +10,7 @@
           </div>
         </div>
         <div class="header-actions">
-          <button class="btn-calendar" @click="handleOpenCalendar">📅 Calendário de Instrutores</button>
+          <button class="btn-calendar" @click="handleOpenCalendar">📅 Calendário</button>
           <button class="btn-calendar" @click="handleBackToEditor">Voltar ao Editor</button>
         </div>
       </div>
