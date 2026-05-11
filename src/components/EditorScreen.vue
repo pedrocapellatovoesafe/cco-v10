@@ -392,24 +392,24 @@ function slotCellClass(slot) {
 }
 
 function buttonLabel(slot) {
-  if (slot.serverRestrictions && slot.serverRestrictions.length > 0) return 'Restrição'
+  if (slot.serverRestrictions && slot.serverRestrictions.length > 0) return '🚫 Restrição'
   const alerts = store.getSlotAlerts(slot)
-  if (alerts.length > 0) return 'Atenção'
-  if (!slot.aluno) return slot.st || 'Disponível'
-  return 'Ok'
+  if (alerts.length > 0) return '⚠️ Atenção'
+  if (!slot.aluno) return '📅 ' + (slot.st || 'Disponível')
+  return '✅ Ok'
 }
 
 function buttonClass(slot) {
   const label = buttonLabel(slot)
-  if (label === 'Restrição') return 'btn-mod-err'
-  if (label === 'Atenção') return 'btn-mod-wrn'
-  if (!slot.aluno) return 'btn-disp'
-  return 'btn-mod-ok'
+  if (label.includes('Restrição')) return 'btn-mod-err'
+  if (label.includes('Atenção')) return 'btn-mod-wrn'
+  if (label.includes('Ok')) return 'btn-mod-ok'
+  return 'btn-disp'
 }
 
 function handleButtonClick(slot) {
   const label = buttonLabel(slot)
-  if (label === 'Atenção' || label === 'Restrição') {
+  if (label.includes('Atenção') || label.includes('Restrição')) {
     selectedSlot.value = slot
     isModalOpen.value = true
   }
@@ -577,8 +577,25 @@ function handleLogout() {
 }
 .btn-delete-slot { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; background: #ff4d4d; color: white; border-radius: 50%; border: none; cursor: pointer; z-index: 30; }
 .btn-row { display: grid; background: #f5f8fc; border-top: 1px solid #dde4ef; }
-.bcell { padding: 8px 6px; }
-.btn-cav { width: 100%; height: 36px; border: none; border-radius: 8px; font-size: 11.5px; font-weight: 700; cursor: pointer; color: #fff !important; }
+.bcell { padding: 8px 4px; display: flex; justify-content: center; }
+.btn-container { width: 100%; display: flex; justify-content: center; }
+.btn-cav { 
+  width: 95%; 
+  height: 38px; 
+  border: none; 
+  border-radius: 8px; 
+  font-size: 11.5px; 
+  font-weight: 700; 
+  cursor: pointer; 
+  color: #fff !important; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  gap: 6px;
+  transition: transform 0.1s ease, filter 0.2s ease;
+}
+.btn-cav:hover { filter: brightness(1.1); }
+.btn-cav:active { transform: scale(0.98); }
 .btn-mod-ok { background: #27ae60; }
 .btn-mod-wrn { background: #f1c40f; color: #fff !important; }
 .btn-mod-err { background: #c0392b; }
