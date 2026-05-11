@@ -59,7 +59,7 @@
             <div class="card-header">
               <span class="card-icon">📅</span>
               <h2>Escala de Trabalho</h2>
-              <p>Importar disponibilidade mensal (CLT/Solo)</p>
+              <p>Importar disponibilidade mensal INVAS (CLT/Eventual)</p>
             </div>
 
             <div
