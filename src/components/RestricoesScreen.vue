@@ -110,17 +110,17 @@
               <!-- Preset Instrutor -->
               <div class="preset-section">
                 <div class="form-group">
-                  <label>Instrutor p/ Preset:</label>
-                  <select v-model="presetInvaId" class="form-select">
-                    <option :value="null">Selecione o instrutor...</option>
+                  <label>Instrutores p/ Preset (Selecione vários):</label>
+                  <select v-model="presetInvaIds" class="form-select multi-select" multiple>
                     <option v-for="i in store.state.INVAS" :key="i.id" :value="i.id">{{ i.nome }}</option>
                   </select>
+                  <p class="select-hint">Segure Ctrl (ou Cmd) para selecionar múltiplos, ou clique e arraste.</p>
                 </div>
                 <div class="preset-actions-grid">
-                  <button class="btn-apply-preset" @click="handleApplyInvaPreset" :disabled="!presetInvaId">
+                  <button class="btn-apply-preset" @click="handleApplyInvaPreset" :disabled="presetInvaIds.length === 0">
                     Instrutor Eventual
                   </button>
-                  <button class="btn-apply-preset" @click="handleApplyGroundPreset" :disabled="!presetInvaId">
+                  <button class="btn-apply-preset" @click="handleApplyGroundPreset" :disabled="presetInvaIds.length === 0">
                     Instrutor de Solo
                   </button>
                 </div>
@@ -131,17 +131,17 @@
               <!-- Preset Aeronave -->
               <div class="preset-section">
                 <div class="form-group">
-                  <label>Aeronave p/ Preset:</label>
-                  <select v-model="presetAeronaveId" class="form-select">
-                    <option :value="null">Selecione a aeronave...</option>
+                  <label>Aeronaves p/ Preset (Selecione várias):</label>
+                  <select v-model="presetAeronaveIds" class="form-select multi-select" multiple>
                     <option v-for="ae in store.state.AERONAVES" :key="ae.id" :value="ae.id">{{ ae.nome }}</option>
                   </select>
+                  <p class="select-hint">Segure Ctrl (ou Cmd) para selecionar múltiplas, ou clique e arraste.</p>
                 </div>
                 <div class="preset-actions-grid">
-                  <button class="btn-apply-preset secondary" @click="handleApplyAircraftPreset('diurna')" :disabled="!presetAeronaveId">
+                  <button class="btn-apply-preset secondary" @click="handleApplyAircraftPreset('diurna')" :disabled="presetAeronaveIds.length === 0">
                     Somente Diurna
                   </button>
-                  <button class="btn-apply-preset secondary" @click="handleApplyAircraftPreset('vfr')" :disabled="!presetAeronaveId">
+                  <button class="btn-apply-preset secondary" @click="handleApplyAircraftPreset('vfr')" :disabled="presetAeronaveIds.length === 0">
                     VFR Only (Não IFR)
                   </button>
                 </div>
@@ -193,9 +193,12 @@
                 <p>Remova os itens que NÃO deseja restringir antes de salvar.</p>
               </div>
               <div class="batch-items">
-                <div v-for="(b, idx) in batchList" :key="idx" class="batch-item">
-                  <span class="batch-text">{{ b.nome }}</span>
-                  <button class="btn-remove-batch" @click="removeFromBatch(idx)">✕</button>
+                <div v-for="(g, idx) in groupedBatch" :key="idx" class="batch-item">
+                  <span class="batch-text">
+                    {{ g.count > 1 ? `[Lote x${g.count}] ` : '' }}
+                    {{ g.displayNome }}
+                  </span>
+                  <button class="btn-remove-batch" @click="removeGroupFromBatch(g)">✕</button>
                 </div>
               </div>
               <div class="batch-footer">
@@ -275,8 +278,8 @@ const isEditing = ref(false)
 const editingId = ref(null)
 
 // Batch Presets State
-const presetInvaId = ref(null)
-const presetAeronaveId = ref(null)
+const presetInvaIds = ref([])
+const presetAeronaveIds = ref([])
 const batchList = ref([])
 const isSavingBatch = ref(false)
 const showConfirmModal = ref(false)
@@ -317,13 +320,49 @@ const filteredRestricts = computed(() => {
 
     // Filter by INVA
     if (filters.invaId) {
-      const rid = r.invaId || r.inva_id
+      const rid = r.inva_id || r.invaId
       if (rid != filters.invaId) return false
     }
 
     return true
   })
 })
+
+/**
+ * Grouped Batch List for UI display
+ * Aggregates missions that are being applied to multiple instructors
+ */
+const groupedBatch = computed(() => {
+  const map = new Map()
+  batchList.value.forEach(item => {
+    // Better cleaning logic: Remove specific preset prefixes to get the base mission name
+    let cleanName = item.nome
+      .replace(/^\[Preset\]\s+.*?\s+-\s+Restrição\s+/, '') // Eventual Instructor prefix
+      .replace(/^Restrição automática:\s+Instrutor de Solo\s+\((.*)\)$/, '$1') // Ground Instructor prefix
+      .replace(/^\[Preset AE\]\s+.*?\s+-\s+(.*?)\s+\((.*)\)$/, '$1 ($2)') // Aircraft prefix (e.g., 'Somente Diurna (NOT 01)')
+
+    // Generate a unique key for grouping based on the MISSION/TYPE, not the specific subject
+    // We group by: MissaoId + Flags (isInva/isAeronave/etc) + Normalized Name
+    const key = `${item.missaoId || 'no-miss'}-${item.isInva}-${item.isAeronave}-${item.isModelo}-${cleanName}`
+    
+    if (!map.has(key)) {
+      map.set(key, {
+        ...item,
+        count: 0,
+        displayNome: cleanName
+      })
+    }
+    map.get(key).count++
+  })
+  return Array.from(map.values())
+})
+
+function removeGroupFromBatch(group) {
+  const groupKey = (item) => `${item.missaoId}-${item.aeronaveId}-${item.modeloAeronaveId}-${item.isAeronave}-${item.isInva}-${item.nome.includes(' - ') ? item.nome.split(' - ').slice(1).join(' - ') : item.nome}`
+  const targetKey = groupKey(group)
+  
+  batchList.value = batchList.value.filter(item => groupKey(item) !== targetKey)
+}
 
 function clearFilters() {
   filters.type = ''
@@ -397,16 +436,29 @@ function applyEventualInstructorPreset(invaId, allMissions) {
     let isAuthorized = false
     const missionName = (mission.nome || '').toUpperCase()
     const courseName = (mission.curso?.nome || '').toUpperCase()
+    
+    // Normalize names for comparison (remove spaces)
+    const normalizedMissionName = missionName.replace(/\s+/g, '')
 
     // 1. PPA Logic
     if (EVENTUAL_INSTRUCTOR_ALLOWLIST.PPA.keywords.some(k => courseName.includes(k))) {
-      isAuthorized = EVENTUAL_INSTRUCTOR_ALLOWLIST.PPA.authorizedMissions.some(code => missionName.includes(code))
+      isAuthorized = EVENTUAL_INSTRUCTOR_ALLOWLIST.PPA.authorizedMissions.some(code => 
+        normalizedMissionName.includes(code.replace(/\s+/g, '').toUpperCase())
+      )
     }
     // 2. PCA Logic
     else if (EVENTUAL_INSTRUCTOR_ALLOWLIST.PCA.keywords.some(k => courseName.includes(k))) {
-      const isAllowed = EVENTUAL_INSTRUCTOR_ALLOWLIST.PCA.authorizedMissions.some(code => missionName.includes(code))
-      const isExcluded = EVENTUAL_INSTRUCTOR_ALLOWLIST.PCA.excludedMissions?.some(code => missionName.includes(code))
+      const isAllowed = EVENTUAL_INSTRUCTOR_ALLOWLIST.PCA.authorizedMissions.some(code => 
+        normalizedMissionName.includes(code.replace(/\s+/g, '').toUpperCase())
+      )
+      const isExcluded = EVENTUAL_INSTRUCTOR_ALLOWLIST.PCA.excludedMissions?.some(code => 
+        normalizedMissionName.includes(code.replace(/\s+/g, '').toUpperCase())
+      )
       isAuthorized = isAllowed && !isExcluded
+      
+      if (!isAuthorized) {
+        console.log(`[Preset Debug] Mission Restricted: ${missionName} | Course: ${courseName} | IsAllowed: ${isAllowed} | IsExcluded: ${isExcluded}`)
+      }
     }
     // 3. INVA/CFI Logic
     else if (EVENTUAL_INSTRUCTOR_ALLOWLIST.INVA_CFI.keywords.some(k => courseName.includes(k))) {
@@ -419,7 +471,12 @@ function applyEventualInstructorPreset(invaId, allMissions) {
     }
     // 5. Voos Administrativos Logic
     else if (EVENTUAL_INSTRUCTOR_ALLOWLIST.ADMIN.keywords.some(k => courseName.includes(k))) {
-      isAuthorized = EVENTUAL_INSTRUCTOR_ALLOWLIST.ADMIN.authorizedMissions.some(code => missionName.includes(code))
+      isAuthorized = EVENTUAL_INSTRUCTOR_ALLOWLIST.ADMIN.authorizedMissions.some(code => 
+        normalizedMissionName.includes(code.replace(/\s+/g, '').toUpperCase())
+      )
+    } else {
+      // Logic for missions without a recognized course
+      console.log(`[Preset Debug] Unrecognized Course: ${courseName} | Mission: ${missionName}`)
     }
 
     if (!isAuthorized) {
@@ -447,9 +504,12 @@ function applyGroundInstructorPreset(invaId, allMissions) {
 
   allMissions.forEach(mission => {
     const mName = (mission.nome || '').toUpperCase()
+    const normalizedMName = mName.replace(/\s+/g, '')
     
-    // Check if mission matches any authorized pattern
-    const isAuthorized = GROUND_INSTRUCTOR_ALLOWLIST.some(pattern => mName.includes(pattern))
+    // Check if mission matches any authorized pattern (normalized)
+    const isAuthorized = GROUND_INSTRUCTOR_ALLOWLIST.some(pattern => 
+      normalizedMName.includes(pattern.replace(/\s+/g, '').toUpperCase())
+    )
 
     if (!isAuthorized) {
       generated.push({
@@ -483,9 +543,12 @@ function generateAircraftPreset(type, aircraftId) {
 
   store.state.MISSOES.forEach(mission => {
     const missionName = (mission.nome || '').toUpperCase()
+    const normalizedMissionName = missionName.replace(/\s+/g, '')
     
-    // Check if mission name/code contains any of the restricted codes
-    const isRestricted = restrictedCodes.some(code => missionName.includes(code))
+    // Check if mission name/code contains any of the restricted codes (normalized)
+    const isRestricted = restrictedCodes.some(code => 
+      normalizedMissionName.includes(code.replace(/\s+/g, '').toUpperCase())
+    )
 
     if (isRestricted) {
       // Avoid duplicates if already in batchList
@@ -506,36 +569,54 @@ function generateAircraftPreset(type, aircraftId) {
 }
 
 function handleApplyInvaPreset() {
-  if (!presetInvaId.value) return
-  const res = applyEventualInstructorPreset(presetInvaId.value, store.state.MISSOES)
-  // Merge with existing batch, preventing duplicates
-  const newItems = res.filter(newItem => 
-    !batchList.value.some(oldItem => oldItem.invaId === newItem.invaId && oldItem.missaoId === newItem.missaoId)
-  )
-  batchList.value = [...batchList.value, ...newItems]
-  showToast(`${newItems.length} restrições de instrutor adicionadas ao lote.`, 'success')
+  if (presetInvaIds.value.length === 0) return
+  
+  let totalNewItems = 0
+  presetInvaIds.value.forEach(invaId => {
+    const res = applyEventualInstructorPreset(invaId, store.state.MISSOES)
+    // Merge with existing batch, preventing duplicates
+    const newItems = res.filter(newItem => 
+      !batchList.value.some(oldItem => oldItem.invaId === newItem.invaId && oldItem.missaoId === newItem.missaoId)
+    )
+    batchList.value = [...batchList.value, ...newItems]
+    totalNewItems += newItems.length
+  })
+  
+  showToast(`${totalNewItems} restrições de instrutor adicionadas ao lote.`, 'success')
 }
 
 function handleApplyGroundPreset() {
-  if (!presetInvaId.value) return
-  const res = applyGroundInstructorPreset(presetInvaId.value, store.state.MISSOES)
-  // Merge with existing batch, preventing duplicates
-  const newItems = res.filter(newItem => 
-    !batchList.value.some(oldItem => oldItem.invaId === newItem.invaId && oldItem.missaoId === newItem.missaoId)
-  )
-  batchList.value = [...batchList.value, ...newItems]
-  showToast(`${newItems.length} restrições de instrutor de solo adicionadas ao lote.`, 'success')
+  if (presetInvaIds.value.length === 0) return
+  
+  let totalNewItems = 0
+  presetInvaIds.value.forEach(invaId => {
+    const res = applyGroundInstructorPreset(invaId, store.state.MISSOES)
+    // Merge with existing batch, preventing duplicates
+    const newItems = res.filter(newItem => 
+      !batchList.value.some(oldItem => oldItem.invaId === newItem.invaId && oldItem.missaoId === newItem.missaoId)
+    )
+    batchList.value = [...batchList.value, ...newItems]
+    totalNewItems += newItems.length
+  })
+  
+  showToast(`${totalNewItems} restrições de instrutor de solo adicionadas ao lote.`, 'success')
 }
 
 function handleApplyAircraftPreset(type) {
-  if (!presetAeronaveId.value) return
-  const res = generateAircraftPreset(type, presetAeronaveId.value)
-  if (res.length === 0) {
+  if (presetAeronaveIds.value.length === 0) return
+  
+  let totalNewItems = 0
+  presetAeronaveIds.value.forEach(aircraftId => {
+    const res = generateAircraftPreset(type, aircraftId)
+    batchList.value = [...batchList.value, ...res]
+    totalNewItems += res.length
+  })
+
+  if (totalNewItems === 0) {
     showToast('Nenhuma missão nova encontrada para este preset.', 'info')
     return
   }
-  batchList.value = [...batchList.value, ...res]
-  showToast(`${res.length} restrições de aeronave adicionadas ao lote.`, 'success')
+  showToast(`${totalNewItems} restrições de aeronave adicionadas ao lote.`, 'success')
 }
 
 function removeFromBatch(idx) {
@@ -556,7 +637,8 @@ async function confirmSaveBatch() {
     if (res.success) {
       showToast(`Processamento concluído: ${batchList.value.length} restrições importadas com sucesso!`, 'success')
       batchList.value = []
-      presetInvaId.value = null
+      presetInvaIds.value = []
+      presetAeronaveIds.value = []
     } else {
       showToast(res.error || 'Erro ao importar restrições em lote', 'danger')
     }
@@ -742,6 +824,17 @@ function handleLogout() { store.logout(); router.push('/login') }
 }
 .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
 .form-textarea { height: 80px; resize: none; }
+
+.multi-select {
+  height: 120px;
+  padding: 8px;
+}
+.select-hint {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 6px;
+  font-style: italic;
+}
 
 .form-actions { display: flex; flex-direction: column; gap: 10px; }
 .btn-save {

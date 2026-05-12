@@ -17,9 +17,9 @@ export const EVENTUAL_INSTRUCTOR_ALLOWLIST = {
   
   // Curso de Piloto Comercial
   PCA: {
-    keywords: ['PCA', 'COMERCIAL'],
-    authorizedMissions: ['AD01', 'AP01', 'NAV', 'NOT01'],
-    excludedMissions: ['NAV X1', 'NAV X2'] // Exceções específicas para PCA
+    keywords: ['PCA', 'COMERCIAL', 'PC', 'GFRA'],
+    authorizedMissions: ['AD 01', 'AP 01', 'NAV 01', 'NAV 02', 'NAV 03', 'NAV 04', 'NAV 05', 'NAV 06', 'NOT 01'],
+    excludedMissions: ['AD 02', 'AD 03', 'NAV X1', 'NAV X2'] // Exceções específicas para PCA
   },
   
   // Curso de Instrutor de Voo / CFI
