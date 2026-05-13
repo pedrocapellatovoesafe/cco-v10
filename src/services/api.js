@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { decrypt } from '../utils/crypto'
 
 const api = axios.create({
   baseURL: 'http://localhost:3333/api/v1',
@@ -10,7 +11,8 @@ const api = axios.create({
 // Add an interceptor to include the token in every request if it exists
 api.interceptors.request.use((config) => {
   try {
-    const token = localStorage.getItem('cco_token')
+    const rawToken = localStorage.getItem('cco_token')
+    const token = decrypt(rawToken)
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
