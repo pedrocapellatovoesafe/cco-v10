@@ -78,6 +78,12 @@ const state = reactive({
   })(),
   currentViewDate: '',
   availableDates: [],
+  globalModal: {
+    show: false,
+    title: '',
+    message: '',
+    type: 'info'
+  },
   // Maintain backward compatibility for components using store.state.CATALOG
   // We use computed in reactive to ensure they are always unwrapped and reactive
   parsedSlots: computed(() => parsedSlots.value),
@@ -132,7 +138,7 @@ function onFile(file) {
       state.btnGerarDisabled = false
     } catch (err) {
       state.fileOk = false
-      alert(`Erro ao ler o arquivo: ${err.message}`)
+      showAlert(`Erro ao ler o arquivo: ${err.message}`, 'Erro de Leitura', 'error')
     }
   }
   reader.readAsArrayBuffer(file)
@@ -154,7 +160,7 @@ async function onWorkFile(file) {
       state.workFileOk = true
     } catch (err) {
       state.workFileOk = false
-      alert(`Erro ao ler o arquivo de escala: ${err.message}`)
+      showAlert(`Erro ao ler o arquivo de escala: ${err.message}`, 'Erro de Leitura', 'error')
     }
   }
   reader.readAsArrayBuffer(file)
@@ -562,7 +568,7 @@ async function updateSlot(slot, refresh = true) {
     }
   } catch (error) {
     console.error('Error updating slot:', error)
-    alert('Erro ao salvar alteração no servidor.')
+    showAlert('Erro ao salvar alteração no servidor.', 'Erro de Sincronização', 'error')
   } finally {
     if (refresh) state.globalLoading = false
   }
@@ -657,9 +663,21 @@ export function useCcoStore() {
     return 'high'
   }
 
+  function showAlert(message, title = 'Notificação', type = 'info') {
+    state.globalModal.message = message
+    state.globalModal.title = title
+    state.globalModal.type = type
+    state.globalModal.show = true
+  }
+
+  function closeAlert() {
+    state.globalModal.show = false
+  }
+
   return {
     state, login, logout, checkLogin, onFile, onWorkFile, importScale, importWorkSchedule, fetchSlots, fetchBars, fetchAeronaves, updateAeronave, fetchInvas, fetchStatuses,
     fetchAlunos, fetchModelos, fetchMissoes, fetchRestricoes,
+    showAlert, closeAlert,
     setCurrentViewDate: (d) => { state.currentViewDate = d; gerarEditor() },
     generateEditor: gerarEditor,
     voltarUpload: () => { state.fileOk = false; parsedSlots.value = [] },
@@ -770,7 +788,7 @@ export function useCcoStore() {
         if (a.apiId) tasks.push(api.put(`/slots/${a.apiId}`, buildSlotPayload(a, coordsB)))
         if (b.apiId) tasks.push(api.put(`/slots/${b.apiId}`, buildSlotPayload(b, coordsA)))
         if (tasks.length > 0) { await Promise.all(tasks); await fetchSlots(); gerarEditor() }
-      } catch (err) { alert('Erro ao realizar a movimentação no servidor.') } finally { state.globalLoading = false }
+      } catch (err) { showAlert('Erro ao realizar a movimentação no servidor.', 'Erro de Movimentação', 'error') } finally { state.globalLoading = false }
     },
     // Explicitly export refs for external access
     parsedSlots, parsedWorkSchedules, SCH, INITIAL, AERONAVES, BARRAS, INVAS, ALUNOS, MODELOS, MISSOES, RESTRICTS, STATUSES
