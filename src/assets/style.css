@@ -84,7 +84,7 @@ body{font-family:'Inter',Arial,sans-serif;font-size:13px;background:#f0f4f8;padd
 .rl{padding:6px 10px;background:#f0f0f0;font-size:12px;font-weight:bold;color:#444;border-right:1px solid #ddd;display:flex;align-items:center;min-width:110px;}
 .sc{border-right:1px solid #ddd;min-height:34px;display:flex;align-items:center;justify-content:center;overflow:hidden;min-width:0;padding:0 4px;}
 .sc:last-child{border-right:none;}
-.sc-empty{background:#fff;}.sc-filled{background:#fff;}.sc-err{background:#fff;}.sc-warn{background:#fff;}.sc-incent{background:#fff8e1;}.sc-ok-manual{background:#eafaf1;}.sc-st-conf{background:#fff;}.sc-st-agua{background:#fffde7;}.sc-st-other{background:#fdecea;}
+.sc-empty{background:#fff;}.sc-filled{background:#fff;}.sc-err{background:#fff;}.sc-warn{background:#fff;}.sc-incent{background:#fff;}.sc-ok-manual{background:#fff;}.sc-st-conf{background:#fff;}.sc-st-agua{background:#fff;}.sc-st-other{background:#fff;}
 .sc select,
 .sv select {
   display: block;
