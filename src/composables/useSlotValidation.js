@@ -17,6 +17,7 @@ export function useSlotValidation(SCH, INVAS, AERONAVES, parsedSlots) {
   const aeronaveStats = computed(() => {
     const stats = {}
     const usage = {}
+    const now = new Date().getTime()
     
     const allSlots = [...parsedSlots.value]
       .filter(s => s.ae && s.aeronaveId)
@@ -28,8 +29,15 @@ export function useSlotValidation(SCH, INVAS, AERONAVES, parsedSlots) {
         const modNome = (ae.modeloAeronave?.nome || '').toUpperCase()
         const isSim = modNome.includes('SM PCATD') || modNome.includes('SM AATD') || modNome.includes('SM PCTAD')
         if (!isSim) {
-          usage[s.aeronaveId] = (usage[s.aeronaveId] || 0) + 1
-          const val = parseFloat(ae.horasDisponiveis || 0) - (usage[s.aeronaveId] * 1.5)
+          const slotTime = getTimestamp(s.data, s.hora)
+          
+          // Performance/Logic: Only consume hours for FUTURE slots (from now onwards)
+          if (slotTime >= now) {
+            usage[s.aeronaveId] = (usage[s.aeronaveId] || 0) + 1
+          }
+          
+          const currentUsage = usage[s.aeronaveId] || 0
+          const val = parseFloat(ae.horasDisponiveis || 0) - (currentUsage * 1.5)
           const key = s.apiId || `${s.barra}|${s.data}|${s.hora}`
           stats[key] = val
         }
