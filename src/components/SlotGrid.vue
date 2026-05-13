@@ -51,7 +51,7 @@
                     class="slot-checkbox"
                     title="Marcar como conferido"
                   />
-                  <span v-if="slot.aluno">{{ slot.aluno }}</span>
+                  <span v-if="slot.aluno" class="aluno-name" :title="slot.aluno">{{ slot.aluno }}</span>
                   <span v-else-if="slot.apiId" class="warning-text">ALUNO NÃO INFORMADO</span>
                 </div>
               </div>
@@ -218,8 +218,18 @@ function handleButtonClick(slot) {
   text-align-last: center;
   transition: all 0.2s ease;
 }
-.sv-aluno { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; position: relative; }
-.slot-checkbox { position: absolute; left: 4px; cursor: pointer; margin: 0; flex-shrink: 0; }
+.sv-aluno { display: flex; align-items: center; justify-content: center; gap: 4px; width: 100%; position: relative; padding: 0 25px; }
+.aluno-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1d2951;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  text-align: center;
+}
+.slot-checkbox { position: absolute; left: 6px; cursor: pointer; margin: 0; flex-shrink: 0; }
 .warning-text { color: #c0392b; font-weight: 800; font-size: 10px; }
 
 .ae-hours-predict {
