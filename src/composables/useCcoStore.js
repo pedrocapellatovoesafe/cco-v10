@@ -13,11 +13,12 @@ const DIAS_SEMANA_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
 const HORAS_PCATD = ['08:00', '10:00', '14:00', '16:00']
 const HORAS_DEFAULT = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00']
 const ORDEM_BARRAS = [
-  'MC-01 (SJK) #1', 'MC01 (SJK) (DIURNO) #2', 'MC01 - BACKUP #3',
-  'SIRA (SJK) #4', 'SM AATD SJK #6', 'SM PCATD SJK',
-  'SIM PCATD - SBSJ #5', 'SIM PCATD SBSJ #5',
+  'MC-01 (SJK) #1', 'MC01 (SJK) (DIURNO) #2', 
+  // 'MC01 - BACKUP #3',
+  'SIRA (SJK) #4', 'SM AATD SJK #6',
+  'SIM PCATD - SBSJ #5',
   'COLT #11', 'COLT DIURNO #12', 'COLT #12', 'MC01 (CPQ) #13',
-  'SIM PCATD - SDAM #8', 'SIM PCATD SDAM', 'SIM AATD CPQ #10',
+  'SIM PCATD - SDAM #8', 'SIM AATD CPQ #10',
 ]
 const BARRAS_CONHECIDAS = [...ORDEM_BARRAS]
 
@@ -243,8 +244,10 @@ function gerarEditor() {
     const byHora = {}
     existingInBarra.forEach((s) => { if (!byHora[s.hora]) byHora[s.hora] = s })
 
-    const isPcatd = barraId.toUpperCase().includes('PCATD') || barraId.toUpperCase().includes('SM PCATD')
-    const gradeBase = isPcatd ? HORAS_PCATD : HORAS_DEFAULT
+    const isSim = barraId.toUpperCase().includes('PCATD') || 
+                  barraId.toUpperCase().includes('AATD') || 
+                  barraId.toUpperCase().includes('SM PCATD')
+    const gradeBase = isSim ? HORAS_PCATD : HORAS_DEFAULT
     const horasFinais = [...new Set([...gradeBase, ...Object.keys(byHora)])].sort()
     
     horasFinais.forEach((hora) => {
