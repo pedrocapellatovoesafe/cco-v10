@@ -112,6 +112,9 @@
             <button class="btn-apply-preset" @click="handleApplyAnacPreset" :disabled="presetInvaIds.length === 0">
               Checador ANAC
             </button>
+            <button class="btn-apply-preset" @click="handleApplyStandardPreset" :disabled="presetInvaIds.length === 0">
+              Padrão p/ Todos
+            </button>
           </div>
         </div>
 
@@ -215,7 +218,8 @@ async function handleSave() {
 
 function handleApplyInvaPreset() {
   const allResults = []
-  presetInvaIds.value.forEach(invaId => {
+  const invaIds = Array.isArray(presetInvaIds.value) ? [...presetInvaIds.value] : []
+  invaIds.forEach(invaId => {
     const res = applyEventualInstructorPreset(invaId, store.state.MISSOES)
     allResults.push(...res)
   })
@@ -225,7 +229,8 @@ function handleApplyInvaPreset() {
 
 function handleApplyGroundPreset() {
   const allResults = []
-  presetInvaIds.value.forEach(invaId => {
+  const invaIds = Array.isArray(presetInvaIds.value) ? [...presetInvaIds.value] : []
+  invaIds.forEach(invaId => {
     const res = applyGroundInstructorPreset(invaId, store.state.MISSOES)
     allResults.push(...res)
   })
@@ -235,8 +240,20 @@ function handleApplyGroundPreset() {
 
 function handleApplyAnacPreset() {
   const allResults = []
-  presetInvaIds.value.forEach(invaId => {
+  const invaIds = Array.isArray(presetInvaIds.value) ? [...presetInvaIds.value] : []
+  invaIds.forEach(invaId => {
     const res = applyAnacCheckerPreset(invaId, store.state.MISSOES)
+    allResults.push(...res)
+  })
+  emit('add-to-batch', allResults)
+  presetInvaIds.value = []
+}
+
+function handleApplyStandardPreset() {
+  const allResults = []
+  const invaIds = Array.isArray(presetInvaIds.value) ? [...presetInvaIds.value] : []
+  invaIds.forEach(invaId => {
+    const res = applyStandardInstructorPreset(invaId, store.state.MISSOES)
     allResults.push(...res)
   })
   emit('add-to-batch', allResults)
@@ -245,7 +262,8 @@ function handleApplyAnacPreset() {
 
 function handleApplyAircraftPreset(type) {
   const allResults = []
-  presetAeronaveIds.value.forEach(aircraftId => {
+  const aircraftIds = Array.isArray(presetAeronaveIds.value) ? [...presetAeronaveIds.value] : []
+  aircraftIds.forEach(aircraftId => {
     const res = generateAircraftPreset(type, aircraftId)
     allResults.push(...res)
   })
@@ -254,7 +272,7 @@ function handleApplyAircraftPreset(type) {
 }
 
 function applyEventualInstructorPreset(invaId, allMissions) {
-  const inva = store.state.INVAS.find(i => i.id === invaId)
+  const inva = store.state.INVAS.find(i => String(i.id) == String(invaId))
   const invaNome = inva ? inva.nome : 'Instrutor'
   const generated = []
   allMissions.forEach(mission => {
@@ -262,77 +280,129 @@ function applyEventualInstructorPreset(invaId, allMissions) {
     const missionName = (mission.nome || '').toUpperCase()
     const courseName = (mission.curso?.nome || '').toUpperCase()
     const normalizedMissionName = missionName.replace(/\s+/g, '')
-    if (EVENTUAL_INSTRUCTOR_ALLOWLIST.PPA.keywords.some(k => courseName.includes(k))) {
-      isAuthorized = EVENTUAL_INSTRUCTOR_ALLOWLIST.PPA.authorizedMissions.some(code => normalizedMissionName.includes(code.replace(/\s+/g, '').toUpperCase()))
-    } else if (EVENTUAL_INSTRUCTOR_ALLOWLIST.PCA.keywords.some(k => courseName.includes(k))) {
-      const isAllowed = EVENTUAL_INSTRUCTOR_ALLOWLIST.PCA.authorizedMissions.some(code => normalizedMissionName.includes(code.replace(/\s+/g, '').toUpperCase()))
-      const isExcluded = EVENTUAL_INSTRUCTOR_ALLOWLIST.PCA.excludedMissions?.some(code => normalizedMissionName.includes(code.replace(/\s+/g, '').toUpperCase()))
+    
+    const checkKeyword = (k) => courseName.includes(String(k).toUpperCase())
+    const checkMission = (code) => normalizedMissionName.includes(String(code).replace(/\s+/g, '').toUpperCase())
+
+    if (EVENTUAL_INSTRUCTOR_ALLOWLIST.PPA.keywords.some(checkKeyword)) {
+      isAuthorized = EVENTUAL_INSTRUCTOR_ALLOWLIST.PPA.authorizedMissions.some(checkMission)
+    } else if (EVENTUAL_INSTRUCTOR_ALLOWLIST.PCA.keywords.some(checkKeyword)) {
+      const isAllowed = EVENTUAL_INSTRUCTOR_ALLOWLIST.PCA.authorizedMissions.some(checkMission)
+      const isExcluded = EVENTUAL_INSTRUCTOR_ALLOWLIST.PCA.excludedMissions?.some(checkMission)
       isAuthorized = isAllowed && !isExcluded
-    } else if (EVENTUAL_INSTRUCTOR_ALLOWLIST.INVA_CFI.keywords.some(k => courseName.includes(k))) {
+    } else if (EVENTUAL_INSTRUCTOR_ALLOWLIST.INVA_CFI.keywords.some(checkKeyword)) {
       isAuthorized = false
-    } else if (EVENTUAL_INSTRUCTOR_ALLOWLIST.APERFEICOAMENTO.keywords.some(k => courseName.includes(k))) {
-      const isEval = EVENTUAL_INSTRUCTOR_ALLOWLIST.APERFEICOAMENTO.evaluationKeywords.some(k => missionName.includes(k))
+    } else if (EVENTUAL_INSTRUCTOR_ALLOWLIST.APERFEICOAMENTO.keywords.some(checkKeyword)) {
+      const isEval = EVENTUAL_INSTRUCTOR_ALLOWLIST.APERFEICOAMENTO.evaluationKeywords.some(k => missionName.includes(String(k).toUpperCase()))
       isAuthorized = !isEval
-    } else if (EVENTUAL_INSTRUCTOR_ALLOWLIST.ADMIN.keywords.some(k => courseName.includes(k))) {
-      isAuthorized = EVENTUAL_INSTRUCTOR_ALLOWLIST.ADMIN.authorizedMissions.some(code => normalizedMissionName.includes(code.replace(/\s+/g, '').toUpperCase()))
+    } else if (EVENTUAL_INSTRUCTOR_ALLOWLIST.ADMIN.keywords.some(checkKeyword)) {
+      isAuthorized = EVENTUAL_INSTRUCTOR_ALLOWLIST.ADMIN.authorizedMissions.some(checkMission)
     }
+    
     if (!isAuthorized) {
-      generated.push({
-        nome: `[Preset] ${invaNome} - Restrição ${mission.nome}`,
-        observacao: `Restrição automática (Preset Instrutor Eventual): Não autorizado para missão ${mission.nome}`,
-        invaId: invaId, missaoId: mission.id, isInva: true, isMissao: true
-      })
+      const alreadyInDB = store.state.RESTRICTS.some(r => 
+        (String(r.invaId || r.inva_id) == String(invaId)) && 
+        (String(r.missaoId || r.missao_id) == String(mission.id))
+      )
+      
+      if (!alreadyInDB) {
+        generated.push({
+          nome: `[Preset] ${invaNome} - Restrição ${mission.nome}`,
+          observacao: `Restrição automática (Preset Instrutor Eventual): Não autorizado para missão ${mission.nome}`,
+          invaId: invaId, missaoId: mission.id, isInva: true, isMissao: true
+        })
+      }
     }
   })
   return generated
 }
 
 function applyGroundInstructorPreset(invaId, allMissions) {
-  const inva = store.state.INVAS.find(i => i.id === invaId)
+  const inva = store.state.INVAS.find(i => String(i.id) == String(invaId))
   const invaNome = inva ? inva.nome : 'Instrutor'
   const generated = []
   allMissions.forEach(mission => {
     const mName = (mission.nome || '').toUpperCase()
     const normalizedMName = mName.replace(/\s+/g, '')
-    const isAuthorized = GROUND_INSTRUCTOR_ALLOWLIST.some(pattern => normalizedMName.includes(pattern.replace(/\s+/g, '').toUpperCase()))
+    const isAuthorized = GROUND_INSTRUCTOR_ALLOWLIST.some(pattern => 
+      normalizedMName.includes(String(pattern).replace(/\s+/g, '').toUpperCase())
+    )
     if (!isAuthorized) {
-      generated.push({
-        nome: `Restrição automática: Instrutor de Solo (${mission.nome})`,
-        observacao: `Instrutor de Solo autorizado apenas para Mockups, Monitorias e Navegações Solo. Missão "${mission.nome}" bloqueada.`,
-        invaId: invaId, missaoId: mission.id, isInva: true, isMissao: true
-      })
+      const alreadyInDB = store.state.RESTRICTS.some(r => 
+        (String(r.invaId || r.inva_id) == String(invaId)) && 
+        (String(r.missaoId || r.missao_id) == String(mission.id))
+      )
+      
+      if (!alreadyInDB) {
+        generated.push({
+          nome: `Restrição automática: Instrutor de Solo (${mission.nome})`,
+          observacao: `Instrutor de Solo autorizado apenas para Mockups, Monitorias e Navegações Solo. Missão "${mission.nome}" bloqueada.`,
+          invaId: invaId, missaoId: mission.id, isInva: true, isMissao: true
+        })
+      }
     }
   })
   return generated
 }
 
 function applyAnacCheckerPreset(invaId, allMissions) {
-  const inva = store.state.INVAS.find(i => i.id === invaId)
+  const inva = store.state.INVAS.find(i => String(i.id) == String(invaId))
   const invaNome = inva ? inva.nome : 'Checador'
   const generated = []
-  const authorizedMissions = EVENTUAL_INSTRUCTOR_ALLOWLIST.ANAC.authorizedMissions.map(m => m.replace(/\s+/g, '').toUpperCase())
-  const authorizedCourses = EVENTUAL_INSTRUCTOR_ALLOWLIST.ANAC.keywords
+  const authorizedMissions = EVENTUAL_INSTRUCTOR_ALLOWLIST.ANAC.authorizedMissions.map(m => String(m).replace(/\s+/g, '').toUpperCase())
+  const authorizedCourses = EVENTUAL_INSTRUCTOR_ALLOWLIST.ANAC.keywords.map(k => String(k).toUpperCase())
   
   allMissions.forEach(mission => {
     const mName = (mission.nome || '').toUpperCase()
     const courseName = (mission.curso?.nome || '').toUpperCase()
     const normalizedMName = mName.replace(/\s+/g, '')
     
-    // Auth logic: Must be an authorized mission AND in one of the authorized courses
     const isAuthorized = authorizedCourses.some(k => courseName.includes(k)) && 
                          authorizedMissions.some(authM => normalizedMName.includes(authM))
     
     if (!isAuthorized) {
-      // Avoid duplication: Check if this restriction already exists in the system
-      const alreadyExists = store.state.RESTRICTS.some(r => 
-        (r.invaId === invaId || r.inva_id === invaId) && 
-        (r.missaoId === mission.id || r.missao_id === mission.id)
+      const alreadyInDB = store.state.RESTRICTS.some(r => 
+        (String(r.invaId || r.inva_id) == String(invaId)) && 
+        (String(r.missaoId || r.missao_id) == String(mission.id))
       )
       
-      if (!alreadyExists) {
+      if (!alreadyInDB) {
         generated.push({
           nome: `[Preset ANAC] ${invaNome} - Restrição ${mission.nome}`,
-          observacao: `Checador ANAC autorizado apenas para missões de Cheque nos cursos PPA, PC e INVA. Missão "${mission.nome}" (${mission.curso?.nome || 'S/ Curso'}) bloqueada automaticamente.`,
+          observacao: `Checador ANAC autorizado apenas para missões de Cheque nos cursos PPA, PC e INVA. Missão "${mission.nome}" bloqueada.`,
+          invaId: invaId, missaoId: mission.id, isInva: true, isMissao: true
+        })
+      }
+    }
+  })
+  return generated
+}
+
+function applyStandardInstructorPreset(invaId, allMissions) {
+  const inva = store.state.INVAS.find(i => String(i.id) == String(invaId))
+  const invaNome = inva ? inva.nome : 'Instrutor'
+  const generated = []
+  const restrictedMissions = EVENTUAL_INSTRUCTOR_ALLOWLIST.STANDARD.restrictedMissions.map(m => String(m).replace(/\s+/g, '').toUpperCase())
+  const restrictedCourses = EVENTUAL_INSTRUCTOR_ALLOWLIST.STANDARD.restrictedCourses.map(k => String(k).toUpperCase())
+  
+  allMissions.forEach(mission => {
+    const mName = (mission.nome || '').toUpperCase()
+    const courseName = (mission.curso?.nome || '').toUpperCase()
+    const normalizedMName = mName.replace(/\s+/g, '')
+    
+    const shouldRestrict = restrictedCourses.some(k => courseName.includes(k)) && 
+                          restrictedMissions.some(restM => normalizedMName.includes(restM))
+    
+    if (shouldRestrict) {
+      const alreadyInDB = store.state.RESTRICTS.some(r => 
+        (String(r.invaId || r.inva_id) == String(invaId)) && 
+        (String(r.missaoId || r.missao_id) == String(mission.id))
+      )
+      
+      if (!alreadyInDB) {
+        generated.push({
+          nome: `[Preset Padrão] ${invaNome} - Restrição ${mission.nome}`,
+          observacao: `Missão de Cheque ("${mission.nome}") restrita para instrutores padrão. Apenas checadores ANAC autorizados.`,
           invaId: invaId, missaoId: mission.id, isInva: true, isMissao: true
         })
       }
@@ -342,7 +412,7 @@ function applyAnacCheckerPreset(invaId, allMissions) {
 }
 
 function generateAircraftPreset(type, aircraftId) {
-  const ae = store.state.AERONAVES.find(a => a.id === aircraftId)
+  const ae = store.state.AERONAVES.find(a => String(a.id) == String(aircraftId))
   const aeNome = ae ? ae.nome : 'Aeronave'
   const generated = []
   const restrictedCodes = type === 'diurna' ? AIRCRAFT_PRESET_CODES.DIURNA_ONLY_RESTRICTED : AIRCRAFT_PRESET_CODES.VFR_ONLY_RESTRICTED
@@ -352,11 +422,19 @@ function generateAircraftPreset(type, aircraftId) {
     const normalizedMissionName = missionName.replace(/\s+/g, '')
     const isRestricted = restrictedCodes.some(code => normalizedMissionName.includes(code.replace(/\s+/g, '').toUpperCase()))
     if (isRestricted) {
-      generated.push({
-        nome: `[Preset AE] ${aeNome} - ${typeLabel} (${mission.nome})`,
-        observacao: `Restrição automática (${typeLabel}): Aeronave não homologada/equipada para esta missão.`,
-        aeronaveId: aircraftId, missaoId: mission.id, isAeronave: true, isMissao: true
-      })
+      // Avoid duplication against DB
+      const alreadyInDB = store.state.RESTRICTS.some(r => 
+        (String(r.aeronaveId || r.aeronave_id) == String(aircraftId)) && 
+        (String(r.missaoId || r.missao_id) == String(mission.id))
+      )
+
+      if (!alreadyInDB) {
+        generated.push({
+          nome: `[Preset AE] ${aeNome} - ${typeLabel} (${mission.nome})`,
+          observacao: `Restrição automática (${typeLabel}): Aeronave não homologada/equipada para esta missão.`,
+          aeronaveId: aircraftId, missaoId: mission.id, isAeronave: true, isMissao: true
+        })
+      }
     }
   })
   return generated

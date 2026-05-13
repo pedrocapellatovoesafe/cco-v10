@@ -10,7 +10,7 @@ const TOKEN_KEY = 'cco_token'
 const DIAS_PT = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
 const MESES_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 const DIAS_SEMANA_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-const HORAS_PCATD = ['08:00', '10:00', '14:00', '16:00']
+const HORAS_PCATD = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00']
 const HORAS_DEFAULT = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00']
 const ORDEM_BARRAS = [
   'MC-01 (SJK) #1', 'MC01 (SJK) (DIURNO) #2', 

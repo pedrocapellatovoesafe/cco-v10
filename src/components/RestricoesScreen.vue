@@ -94,21 +94,43 @@ function handleEditRequest(item) {
 }
 
 function handleAddToBatch(items) {
-  const newItems = items.filter(newItem => 
-    !batchList.value.some(oldItem => 
-      (oldItem.invaId === newItem.invaId && oldItem.missaoId === newItem.missaoId) ||
-      (oldItem.aeronaveId === newItem.aeronaveId && oldItem.missaoId === newItem.missaoId)
+  const currentBatch = [...batchList.value]
+  let addedCount = 0
+  
+  items.forEach(newItem => {
+    // Unique key for a restriction: (invaId OR aeronaveId OR modeloId) + missaoId
+    const isDuplicate = currentBatch.some(oldItem => 
+      (String(oldItem.invaId) == String(newItem.invaId) && String(oldItem.missaoId) == String(newItem.missaoId) && !!newItem.invaId && !!newItem.missaoId) ||
+      (String(oldItem.aeronaveId) == String(newItem.aeronaveId) && String(oldItem.missaoId) == String(newItem.missaoId) && !!newItem.aeronaveId && !!newItem.missaoId) ||
+      (String(oldItem.modeloAeronaveId) == String(newItem.modeloAeronaveId) && String(oldItem.missaoId) == String(newItem.missaoId) && !!newItem.modeloAeronaveId && !!newItem.missaoId)
     )
-  )
-  batchList.value = [...batchList.value, ...newItems]
-  if (newItems.length > 0) showToast(`${newItems.length} restrições adicionadas ao lote.`, 'success')
-  else showToast('Nenhuma restrição nova encontrada.', 'info')
+    if (!isDuplicate) {
+      currentBatch.push(newItem)
+      addedCount++
+    }
+  })
+  
+  batchList.value = currentBatch
+  if (addedCount > 0) {
+    showToast(`${addedCount} novas restrições adicionadas ao lote. Total: ${currentBatch.length}.`, 'success')
+  } else {
+    showToast('Nenhuma restrição nova (já estão no lote ou na base).', 'info')
+  }
 }
 
 function handleRemoveGroupFromBatch(group) {
-  const groupKey = (item) => `${item.missaoId}-${item.aeronaveId}-${item.modeloAeronaveId}-${item.isAeronave}-${item.isInva}-${item.nome.includes(' - ') ? item.nome.split(' - ').slice(1).join(' - ') : item.nome}`
-  const targetKey = groupKey(group)
-  batchList.value = batchList.value.filter(item => groupKey(item) !== targetKey)
+  const getCleanName = (nome) => {
+    let n = nome
+      .replace(/^\[Preset.*?\]\s+.*?\s+-\s+Restrição\s+/, '')
+      .replace(/^Restrição automática:\s+Instrutor de Solo\s+\((.*)\)$/, '$1')
+      .replace(/^\[Preset AE\]\s+.*?\s+-\s+(.*?)\s+\((.*)\)$/, '$1 ($2)')
+    if (n.includes(' - Restrição ')) n = n.split(' - Restrição ').pop()
+    return n
+  }
+  
+  const targetKey = (item) => `${item.missaoId}-${item.aeronaveId}-${item.modeloAeronaveId}-${item.isAeronave}-${item.isInva}-${getCleanName(item.nome)}`
+  const targetGroupKey = targetKey(group)
+  batchList.value = batchList.value.filter(item => targetKey(item) !== targetGroupKey)
 }
 
 async function confirmSaveBatch() {

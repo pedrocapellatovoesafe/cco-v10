@@ -45,6 +45,12 @@ export const EVENTUAL_INSTRUCTOR_ALLOWLIST = {
   ANAC: {
     keywords: ['PPA - PRATICO', 'PC/IFRA', 'INVA'],
     authorizedMissions: ['CHEQUE ANAC']
+  },
+
+  // Padrão para todos instrutores (Bloqueio de Cheques)
+  STANDARD: {
+    restrictedCourses: ['PPA - PRATICO', 'PC/IFRA', 'INVA'],
+    restrictedMissions: ['CHEQUE ANAC']
   }
 };
 

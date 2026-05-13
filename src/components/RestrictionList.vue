@@ -41,7 +41,7 @@
         <div class="batch-items">
           <div v-for="(g, idx) in groupedBatch" :key="idx" class="batch-item">
             <span class="batch-text">
-              {{ g.count > 1 ? `[Lote x${g.count}] ` : '' }}
+              {{ g.count > 1 ? `[Lote x${g.count} Instrutores] ` : '' }}
               {{ g.displayNome }}
             </span>
             <button class="btn-remove-batch" @click="$emit('remove-group-from-batch', g)">✕</button>
@@ -122,11 +122,18 @@ const filteredRestricts = computed(() => {
 const groupedBatch = computed(() => {
   const map = new Map()
   props.batchList.forEach(item => {
+    // Robust cleaning: remove any [Preset ...] InstructorName - Restrição prefix
+    // or the Ground Instructor prefix
     let cleanName = item.nome
-      .replace(/^\[Preset\]\s+.*?\s+-\s+Restrição\s+/, '')
-      .replace(/^\[Preset ANAC\]\s+.*?\s+-\s+Restrição\s+/, '')
+      .replace(/^\[Preset.*?\]\s+.*?\s+-\s+Restrição\s+/, '')
       .replace(/^Restrição automática:\s+Instrutor de Solo\s+\((.*)\)$/, '$1')
       .replace(/^\[Preset AE\]\s+.*?\s+-\s+(.*?)\s+\((.*)\)$/, '$1 ($2)')
+    
+    // Fallback: if it's still a long name with " - ", take the part after the last " - "
+    if (cleanName.includes(' - Restrição ')) {
+      cleanName = cleanName.split(' - Restrição ').pop()
+    }
+    
     const key = `${item.missaoId || 'no-miss'}-${item.isInva}-${item.isAeronave}-${item.isModelo}-${cleanName}`
     if (!map.has(key)) {
       map.set(key, { ...item, count: 0, displayNome: cleanName })
