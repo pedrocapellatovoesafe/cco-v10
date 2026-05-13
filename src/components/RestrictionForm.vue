@@ -109,6 +109,9 @@
             <button class="btn-apply-preset" @click="handleApplyGroundPreset" :disabled="presetInvaIds.length === 0">
               Instrutor de Solo
             </button>
+            <button class="btn-apply-preset" @click="handleApplyAnacPreset" :disabled="presetInvaIds.length === 0">
+              Checador ANAC
+            </button>
           </div>
         </div>
 
@@ -230,6 +233,16 @@ function handleApplyGroundPreset() {
   presetInvaIds.value = []
 }
 
+function handleApplyAnacPreset() {
+  const allResults = []
+  presetInvaIds.value.forEach(invaId => {
+    const res = applyAnacCheckerPreset(invaId, store.state.MISSOES)
+    allResults.push(...res)
+  })
+  emit('add-to-batch', allResults)
+  presetInvaIds.value = []
+}
+
 function handleApplyAircraftPreset(type) {
   const allResults = []
   presetAeronaveIds.value.forEach(aircraftId => {
@@ -288,6 +301,41 @@ function applyGroundInstructorPreset(invaId, allMissions) {
         observacao: `Instrutor de Solo autorizado apenas para Mockups, Monitorias e Navegações Solo. Missão "${mission.nome}" bloqueada.`,
         invaId: invaId, missaoId: mission.id, isInva: true, isMissao: true
       })
+    }
+  })
+  return generated
+}
+
+function applyAnacCheckerPreset(invaId, allMissions) {
+  const inva = store.state.INVAS.find(i => i.id === invaId)
+  const invaNome = inva ? inva.nome : 'Checador'
+  const generated = []
+  const authorizedMissions = EVENTUAL_INSTRUCTOR_ALLOWLIST.ANAC.authorizedMissions.map(m => m.replace(/\s+/g, '').toUpperCase())
+  const authorizedCourses = EVENTUAL_INSTRUCTOR_ALLOWLIST.ANAC.keywords
+  
+  allMissions.forEach(mission => {
+    const mName = (mission.nome || '').toUpperCase()
+    const courseName = (mission.curso?.nome || '').toUpperCase()
+    const normalizedMName = mName.replace(/\s+/g, '')
+    
+    // Auth logic: Must be an authorized mission AND in one of the authorized courses
+    const isAuthorized = authorizedCourses.some(k => courseName.includes(k)) && 
+                         authorizedMissions.some(authM => normalizedMName.includes(authM))
+    
+    if (!isAuthorized) {
+      // Avoid duplication: Check if this restriction already exists in the system
+      const alreadyExists = store.state.RESTRICTS.some(r => 
+        (r.invaId === invaId || r.inva_id === invaId) && 
+        (r.missaoId === mission.id || r.missao_id === mission.id)
+      )
+      
+      if (!alreadyExists) {
+        generated.push({
+          nome: `[Preset ANAC] ${invaNome} - Restrição ${mission.nome}`,
+          observacao: `Checador ANAC autorizado apenas para missões de Cheque nos cursos PPA, PC e INVA. Missão "${mission.nome}" (${mission.curso?.nome || 'S/ Curso'}) bloqueada automaticamente.`,
+          invaId: invaId, missaoId: mission.id, isInva: true, isMissao: true
+        })
+      }
     }
   })
   return generated

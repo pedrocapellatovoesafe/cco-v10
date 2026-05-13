@@ -39,6 +39,12 @@ export const EVENTUAL_INSTRUCTOR_ALLOWLIST = {
   ADMIN: {
     keywords: ['ADMIN', 'ADMINISTRATIVOS'],
     authorizedMissions: ['INCENTIVO'] // Apenas Voo de Incentivo
+  },
+
+  // Checadores ANAC
+  ANAC: {
+    keywords: ['PPA - PRATICO', 'PC/IFRA', 'INVA'],
+    authorizedMissions: ['CHEQUE ANAC']
   }
 };
 

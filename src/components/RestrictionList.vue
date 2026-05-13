@@ -124,6 +124,7 @@ const groupedBatch = computed(() => {
   props.batchList.forEach(item => {
     let cleanName = item.nome
       .replace(/^\[Preset\]\s+.*?\s+-\s+Restrição\s+/, '')
+      .replace(/^\[Preset ANAC\]\s+.*?\s+-\s+Restrição\s+/, '')
       .replace(/^Restrição automática:\s+Instrutor de Solo\s+\((.*)\)$/, '$1')
       .replace(/^\[Preset AE\]\s+.*?\s+-\s+(.*?)\s+\((.*)\)$/, '$1 ($2)')
     const key = `${item.missaoId || 'no-miss'}-${item.isInva}-${item.isAeronave}-${item.isModelo}-${cleanName}`
