@@ -577,6 +577,22 @@ async function updateSlot(slot, refresh = true) {
   }
 }
 
+async function saveSlot(slot) {
+  state.globalLoading = true
+  try {
+    const payload = buildSlotPayload(slot)
+    const r = await api.post('/slots', payload)
+    await fetchSlots()
+    gerarEditor()
+    return { success: true, data: r.data }
+  } catch (error) {
+    console.error('Error saving slot:', error)
+    return { success: false, error: error.response?.data?.message || error.message }
+  } finally {
+    state.globalLoading = false
+  }
+}
+
 export function useCcoStore() {
   const { getSlotAlerts, getAeronaveHours, aeronaveStats } = useSlotValidation(SCH, INVAS, AERONAVES, parsedSlots)
 
@@ -780,6 +796,7 @@ export function useCcoStore() {
     },
     updateRestriction: async (id, p) => { state.globalLoading = true; try { const r = await api.put(`/restricoes/${id}`, p); await fetchRestricoes(); return { success: true, data: r.data } } catch (e) { return { success: false, error: e.response?.data?.message || e.message } } finally { state.globalLoading = false } },
     deleteRestriction: async (id) => { state.globalLoading = true; try { await api.delete(`/restricoes/${id}`); await fetchRestricoes(); return { success: true } } catch (e) { return { success: false, error: e.message } } finally { state.globalLoading = false } },
+    saveSlot,
     swapSlots: async (idA, idB) => {
       const a = SCH.value.find(x => x.id === idA); const b = SCH.value.find(x => x.id === idB)
       if (!a || !b) return

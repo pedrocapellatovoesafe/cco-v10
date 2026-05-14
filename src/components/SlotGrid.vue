@@ -120,6 +120,7 @@ const rowLabels = ['Aluno', 'Instrutor', 'Aeronave', 'Missão', 'Status', 'Barra
 const emit = defineEmits([
   'open-delete-modal',
   'open-detail-modal',
+  'open-create-modal',
   'update-instructor',
   'update-aeronave',
   'update-status',
@@ -169,6 +170,8 @@ function handleButtonClick(slot) {
   const label = buttonLabel(slot)
   if (label.includes('Atenção') || label.includes('Restrição') || label.includes('Ok OBS*')) {
     emit('open-detail-modal', slot)
+  } else if (!slot.aluno) {
+    emit('open-create-modal', slot)
   }
 }
 </script>

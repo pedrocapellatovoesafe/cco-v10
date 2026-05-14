@@ -18,6 +18,7 @@
       <SlotGrid 
         @open-delete-modal="openDeleteModal"
         @open-detail-modal="openDetailModal"
+        @open-create-modal="openCreateModal"
         @update-instructor="onInstructorChange"
         @update-aeronave="onAeronaveChange"
         @update-status="onStatusChange"
@@ -43,6 +44,13 @@
         @confirm="confirmDeleteSlot"
       />
 
+      <FlightCreateModal 
+        :is-open="isCreateModalOpen"
+        :slot="slotToCreate"
+        @close="closeCreateModal"
+        @save="handleSaveFlight"
+      />
+
       <!-- Toast Notifications -->
       <div v-if="toast.show" :class="['toast-notification', `toast-${toast.type}`]">
         <span class="toast-icon">{{ toast.type === 'success' ? '✅' : '⚠️' }}</span>
@@ -60,6 +68,7 @@ import AvailabilityPanel from './AvailabilityPanel.vue'
 import SlotGrid from './SlotGrid.vue'
 import SlotDetailModal from './SlotDetailModal.vue'
 import SlotDeleteModal from './SlotDeleteModal.vue'
+import FlightCreateModal from './FlightCreateModal.vue'
 
 const router = useRouter()
 const store = inject('store')
@@ -114,6 +123,9 @@ const selectedSlot = ref(null)
 const isDeleteModalOpen = ref(false)
 const slotToDelete = ref(null)
 
+const isCreateModalOpen = ref(false)
+const slotToCreate = ref(null)
+
 async function handleFilter() {
   isLoading.value = true
   try {
@@ -145,6 +157,20 @@ function openDeleteModal(slot) {
 function closeDeleteModal() {
   isDeleteModalOpen.value = false
   slotToDelete.value = null
+}
+
+function openCreateModal(slot) {
+  slotToCreate.value = slot
+  isCreateModalOpen.value = true
+}
+
+function closeCreateModal() {
+  isCreateModalOpen.value = false
+  slotToCreate.value = null
+}
+
+function handleSaveFlight() {
+  showToast('Voo cadastrado com sucesso!', 'success')
 }
 
 async function confirmDeleteSlot() {
