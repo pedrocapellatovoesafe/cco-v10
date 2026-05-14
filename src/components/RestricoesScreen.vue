@@ -16,6 +16,7 @@
           :is-saving-batch="isSavingBatch"
           @edit="handleEditRequest"
           @delete="handleDelete"
+          @bulk-delete="handleBulkDelete"
           @save-batch="showConfirmModal = true"
           @cancel-batch="batchList = []"
           @remove-group-from-batch="handleRemoveGroupFromBatch"
@@ -193,6 +194,17 @@ async function handleDelete(id) {
   const res = await store.deleteRestriction(id)
   if (res.success) showToast('Restrição removida.', 'success')
   else showToast('Erro ao remover.', 'danger')
+}
+
+async function handleBulkDelete(ids) {
+  if (!confirm(`Deseja excluir as ${ids.length} restrições selecionadas?`)) return
+  try {
+    const res = await store.bulkDeleteRestrictions(ids)
+    if (res.success) showToast(`${ids.length} restrições excluídas com sucesso.`, 'success')
+    else showToast(res.error || 'Erro ao excluir em lote.', 'danger')
+  } catch (e) {
+    showToast('Erro técnico ao processar exclusão em lote.', 'danger')
+  }
 }
 
 function handleBackToEditor() { router.push('/editor') }

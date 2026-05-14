@@ -1,12 +1,22 @@
 <template>
   <div class="rest-card list-card">
     <div class="card-header">
-      <h3>📋 Regras Ativas</h3>
+      <div class="header-content">
+        <h3>📋 Regras Ativas</h3>
+        <div class="bulk-actions" v-if="selectedIds.length > 0">
+          <span class="selected-count">{{ selectedIds.length }} selecionadas</span>
+          <button class="btn-bulk-delete" @click="handleBulkDelete">🗑️ Excluir Selecionadas</button>
+        </div>
+      </div>
     </div>
     
     <!-- Filtros de Busca -->
     <div class="list-filters">
       <div class="filter-row">
+        <div class="select-all-container">
+          <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" title="Selecionar Todos" />
+        </div>
+        
         <select v-model="filters.type" class="filter-select mini">
           <option value="">Todos os Tipos</option>
           <option value="aluno_inva">Aluno x INVA</option>
@@ -59,6 +69,9 @@
         Nenhuma restrição encontrada para os filtros selecionados.
       </div>
       <div v-for="r in filteredRestricts" :key="r.id" class="restrict-item">
+        <div class="item-selector">
+          <input type="checkbox" :value="r.id" v-model="selectedIds" />
+        </div>
         <div class="restrict-info">
           <h4>{{ r.nome }}</h4>
           <p class="restrict-obs">{{ r.observacao }}</p>
@@ -82,20 +95,22 @@
 </template>
 
 <script setup>
-import { reactive, computed, inject } from 'vue'
+import { reactive, computed, inject, ref } from 'vue'
 
 const store = inject('store')
 const props = defineProps({
   batchList: { type: Array, default: () => [] },
   isSavingBatch: { type: Boolean, default: false }
 })
-const emit = defineEmits(['edit', 'delete', 'save-batch', 'cancel-batch', 'remove-group-from-batch'])
+const emit = defineEmits(['edit', 'delete', 'save-batch', 'cancel-batch', 'remove-group-from-batch', 'bulk-delete'])
 
 const filters = reactive({
   type: '',
   alunoId: null,
   invaId: null
 })
+
+const selectedIds = ref([])
 
 const filteredRestricts = computed(() => {
   return store.state.RESTRICTS.filter(r => {
@@ -118,6 +133,23 @@ const filteredRestricts = computed(() => {
     return true
   })
 })
+
+const isAllSelected = computed(() => {
+  return filteredRestricts.value.length > 0 && selectedIds.value.length === filteredRestricts.value.length
+})
+
+function toggleSelectAll() {
+  if (isAllSelected.value) {
+    selectedIds.value = []
+  } else {
+    selectedIds.value = filteredRestricts.value.map(r => r.id)
+  }
+}
+
+function handleBulkDelete() {
+  emit('bulk-delete', [...selectedIds.value])
+  selectedIds.value = []
+}
 
 const groupedBatch = computed(() => {
   const map = new Map()
@@ -164,12 +196,24 @@ function clearFilters() {
   border-bottom: 1px solid #dae2ec;
 }
 .card-header h3 { margin: 0; font-size: 15px; color: #1d2951; font-weight: 800; }
+.header-content { display: flex; justify-content: space-between; align-items: center; }
+.bulk-actions { display: flex; align-items: center; gap: 12px; }
+.selected-count { font-size: 12px; color: #64748b; font-weight: 700; }
+.btn-bulk-delete {
+  background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca;
+  padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 800;
+  cursor: pointer; transition: all 0.2s;
+}
+.btn-bulk-delete:hover { background: #fecaca; transform: translateY(-1px); }
+
 .list-filters {
   padding: 12px 22px;
   background: #f1f5f9;
   border-bottom: 1px solid #dae2ec;
 }
 .filter-row { display: flex; align-items: center; gap: 8px; }
+.select-all-container { display: flex; align-items: center; justify-content: center; width: 28px; }
+.select-all-container input { width: 16px; height: 16px; cursor: pointer; }
 .filter-select {
   flex: 1; padding: 8px 10px; border: 1px solid #d8dee8; border-radius: 6px;
   font-size: 12px; color: #1d2951; background: #fff; outline: none;
@@ -189,6 +233,8 @@ function clearFilters() {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px; border-bottom: 1px solid #f1f5f9;
 }
+.item-selector { margin-right: 15px; display: flex; align-items: center; }
+.item-selector input { width: 16px; height: 16px; cursor: pointer; }
 .restrict-item:last-child { border-bottom: none; }
 .restrict-info { flex: 1; margin-right: 15px; }
 .restrict-info h4 { margin: 0 0 6px; font-size: 14px; color: #1d2951; font-weight: 700; }

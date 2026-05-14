@@ -796,6 +796,18 @@ export function useCcoStore() {
     },
     updateRestriction: async (id, p) => { state.globalLoading = true; try { const r = await api.put(`/restricoes/${id}`, p); await fetchRestricoes(); return { success: true, data: r.data } } catch (e) { return { success: false, error: e.response?.data?.message || e.message } } finally { state.globalLoading = false } },
     deleteRestriction: async (id) => { state.globalLoading = true; try { await api.delete(`/restricoes/${id}`); await fetchRestricoes(); return { success: true } } catch (e) { return { success: false, error: e.message } } finally { state.globalLoading = false } },
+    bulkDeleteRestrictions: async (ids) => {
+      state.globalLoading = true
+      try {
+        const r = await api.post('/restricoes/bulk-delete', { ids })
+        await fetchRestricoes()
+        return { success: true, data: r.data }
+      } catch (e) {
+        return { success: false, error: e.response?.data?.message || e.message }
+      } finally {
+        state.globalLoading = false
+      }
+    },
     saveSlot,
     swapSlots: async (idA, idB) => {
       const a = SCH.value.find(x => x.id === idA); const b = SCH.value.find(x => x.id === idB)

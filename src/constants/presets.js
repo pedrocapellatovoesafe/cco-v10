@@ -37,8 +37,8 @@ export const EVENTUAL_INSTRUCTOR_ALLOWLIST = {
   
   // Voos Administrativos
   ADMIN: {
-    keywords: ['ADMIN', 'ADMINISTRATIVOS'],
-    authorizedMissions: ['INCENTIVO'] // Apenas Voo de Incentivo
+    keywords: ['ADMIN', 'ADMINISTRATIVOS', 'Voo Incentivo (Prático)'],
+    authorizedMissions: ['Voo Incentivo'] // Apenas Voo de Incentivo
   },
 
   // Checadores ANAC
