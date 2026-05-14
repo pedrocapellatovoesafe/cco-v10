@@ -37,8 +37,20 @@ export const EVENTUAL_INSTRUCTOR_ALLOWLIST = {
   
   // Voos Administrativos
   ADMIN: {
-    keywords: ['ADMIN', 'ADMINISTRATIVOS'],
-    authorizedMissions: ['INCENTIVO'] // Apenas Voo de Incentivo
+    keywords: ['ADMIN', 'ADMINISTRATIVOS', 'Voo Incentivo (Prático)'],
+    authorizedMissions: ['Voo Incentivo'] // Apenas Voo de Incentivo
+  },
+
+  // Checadores ANAC
+  ANAC: {
+    keywords: ['PPA - PRATICO', 'PC/IFRA', 'INVA'],
+    authorizedMissions: ['CHEQUE ANAC']
+  },
+
+  // Padrão para todos instrutores (Bloqueio de e missões do IFR)
+  STANDARD: {
+    restrictedCourses: ['PPA - PRATICO', 'PC/IFRA', 'INVA'],
+    restrictedMissions: ['CHEQUE ANAC', 'LAB', 'IFR ']
   }
 };
 

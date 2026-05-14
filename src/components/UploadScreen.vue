@@ -135,7 +135,7 @@ async function handleImportScale() {
 async function handleImportWork() {
   const res = await store.importWorkSchedule()
   if (res.success) {
-    alert('Escala de trabalho importada com sucesso!')
+    store.showAlert('Escala de trabalho importada com sucesso!', 'Sucesso', 'success')
     store.state.workFileName = ''
     store.state.workFileOk = false
   }

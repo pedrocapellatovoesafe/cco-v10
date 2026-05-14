@@ -1,10 +1,12 @@
 <template>
   <div class="app-root">
     <router-view />
+    <GlobalModal />
   </div>
 </template>
 
 <script setup>
+import GlobalModal from './components/GlobalModal.vue'
 // Root component
 </script>
 

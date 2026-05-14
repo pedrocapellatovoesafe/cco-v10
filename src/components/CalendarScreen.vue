@@ -218,14 +218,18 @@ const formattedModalDate = computed(() => {
 })
 
 function openEditModal(inva, day) {
+  if (!inva || !day) return
   selectedInva.value = inva
   selectedDay.value = day
   
   // Look for existing record to populate form
   const dateParts = formattedModalDate.value.split('/')
+  if (dateParts.length < 3) return
   const dateStr = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`
   
-  const realInva = store.state.INVAS.find(i => i.id === inva.id)
+  // Safely find the instructor in the store state
+  const invasList = Array.isArray(store.state.INVAS) ? store.state.INVAS : []
+  const realInva = invasList.find(i => i.id === inva.id)
   const existing = realInva?.escalas?.find(s => s.data && s.data.startsWith(dateStr))
 
   if (existing) {
