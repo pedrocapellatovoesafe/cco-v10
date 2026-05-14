@@ -47,10 +47,10 @@ export const EVENTUAL_INSTRUCTOR_ALLOWLIST = {
     authorizedMissions: ['CHEQUE ANAC']
   },
 
-  // Padrão para todos instrutores (Bloqueio de Cheques)
+  // Padrão para todos instrutores (Bloqueio de e missões do IFR)
   STANDARD: {
     restrictedCourses: ['PPA - PRATICO', 'PC/IFRA', 'INVA'],
-    restrictedMissions: ['CHEQUE ANAC']
+    restrictedMissions: ['CHEQUE ANAC', 'LAB', 'IFR ']
   }
 };
 
