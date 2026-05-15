@@ -34,7 +34,7 @@
                 <template v-for="base in ['SJK', 'CPQ']" :key="base">
                   <tr class="section-divider"><td :colspan="store.calendarDays.value.length + 1">✈ {{ base === 'SJK' ? 'SJK — São José dos Campos' : 'CPQ — Campinas' }}</td></tr>
                   
-                  <tr v-for="row in (base === 'SJK' ? flightSJK : flightCPQ)" :key="row.nome">
+                  <tr v-for="row in (base === 'SJK' ? flightSJK : flightCPQ)" :key="row.id + '-' + base">
                     <td class="td-name" :class="base === 'SJK' ? 'solo-sjk' : 'solo-cpq'">{{ row.nome.split(' ').slice(0, 2).join(' ') }}</td>
                     <td v-for="day in row.days" :key="day.key" @click="openEditModal(row, day)">
                       <div class="day-cell-static clickable" :class="day.estado + (day.isToday ? ' today' : '')" :title="`${row.nome} — ${day.key}`">
@@ -75,7 +75,7 @@
                 <template v-for="base in ['SJK', 'CPQ']" :key="base">
                   <tr class="section-divider"><td :colspan="store.calendarDays.value.length + 1">✈ {{ base === 'SJK' ? 'SJK — São José dos Campos' : 'CPQ — Campinas' }}</td></tr>
                   
-                  <tr v-for="row in (base === 'SJK' ? soloSJK : soloCPQ)" :key="row.nome">
+                  <tr v-for="row in (base === 'SJK' ? soloSJK : soloCPQ)" :key="row.id + '-' + base">
                     <td class="td-name" :class="base === 'SJK' ? 'solo-sjk' : 'solo-cpq'">{{ row.nome.split(' ').slice(0, 2).join(' ') }}</td>
                     <td v-for="day in row.days" :key="day.key" @click="openEditModal(row, day)">
                       <div class="day-cell-static clickable" :class="day.estado + (day.isToday ? ' today' : '')" :title="`${row.nome} — ${day.key}`">

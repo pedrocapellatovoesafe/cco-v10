@@ -324,16 +324,20 @@ function getWorkScheduleRows(situations, calDays) {
     return sit.includes('clt') || sit.includes('eventual') || sit.includes('voo')
   })
   
-  return filteredInvas.map(instr => {
+  return filteredInvas.flatMap(instr => {
     let baseNome = 'SJK'
     const rawBase = (instr.base?.nome || instr.base || '').toUpperCase()
     if (rawBase.includes('CPQ') || rawBase.includes('CAMPINAS') || rawBase.includes('SDAM')) baseNome = 'CPQ'
     else if (rawBase.includes('SJK') || rawBase.includes('JOSÉ') || rawBase.includes('SBSJ')) baseNome = 'SJK'
 
-    return {
+    // Special Exception: Checador (situacaoInvaId = 5) appears in both bases
+    const isChecador = (instr.situacaoInvaId === 5 || instr.situacao_inva_id === 5)
+    const bases = isChecador ? ['SJK', 'CPQ'] : [baseNome]
+
+    return bases.map(b => ({
       nome: instr.nome,
       id: instr.id,
-      base: baseNome,
+      base: b,
       days: calDays.map(cell => {
         const year = state.calendarYear
         const month = String(state.calendarMonthIdx + 1).padStart(2, '0')
@@ -375,7 +379,7 @@ function getWorkScheduleRows(situations, calDays) {
           isWeekend: cell.isWeekend 
         }
       })
-    }
+    }))
   })
 }
 
@@ -747,8 +751,15 @@ export function useCcoStore() {
         const b = getBase(i.base?.nome || i.base)
         const sitRaw = i.situacao?.nome || i.situacao || i.situacaoInva?.nome || ''
         const sit = String(sitRaw).toLowerCase()
-        if (sit.includes('solo')) g[b].solo.push(i)
-        else if (sit.includes('clt') || sit.includes('eventual') || sit.includes('voo')) g[b].voo.push(i)
+        
+        // Special Exception: Checador (situacaoInvaId = 5) appears in both bases
+        const isChecador = (i.situacaoInvaId === 5 || i.situacao_inva_id === 5)
+        const targets = isChecador ? ['SJK', 'CPQ'] : [b]
+        
+        targets.forEach(targetBase => {
+          if (sit.includes('solo')) g[targetBase].solo.push(i)
+          else if (sit.includes('clt') || sit.includes('eventual') || sit.includes('voo')) g[targetBase].voo.push(i)
+        })
       })
       return g
     }),
@@ -758,7 +769,11 @@ export function useCcoStore() {
     currentViewDate: computed(() => state.currentViewDate),
     availableDates: computed(() => state.availableDates),
     scheduleBlocks,
-    getInvasByBarra: (barra) => INVAS.value.filter(i => getBase(i.base?.nome || i.base) === getBase(barra)),
+    getInvasByBarra: (barra) => INVAS.value.filter(i => {
+      const isChecador = (i.situacaoInvaId === 5 || i.situacao_inva_id === 5)
+      if (isChecador) return true
+      return getBase(i.base?.nome || i.base) === getBase(barra)
+    }),
     getAeronavesByBarra: (barraNome, currentAe) => {
       const bUpper = (barraNome || '').toUpperCase().trim(); const barraObj = BARRAS.value.find(b => (b.nome || '').toUpperCase().trim() === bUpper)
       let list = AERONAVES.value

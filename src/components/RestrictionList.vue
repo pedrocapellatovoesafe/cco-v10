@@ -68,9 +68,9 @@
       <div v-if="filteredRestricts.length === 0 && batchList.length === 0" class="empty-list">
         Nenhuma restrição encontrada para os filtros selecionados.
       </div>
-      <div v-for="r in filteredRestricts" :key="r.id" class="restrict-item">
+      <div v-for="r in filteredRestricts" :key="r.id" class="restrict-item" @click="toggleSelect(r.id)">
         <div class="item-selector">
-          <input type="checkbox" :value="r.id" v-model="selectedIds" />
+          <input type="checkbox" :value="r.id" v-model="selectedIds" @click.stop />
         </div>
         <div class="restrict-info">
           <h4>{{ r.nome }}</h4>
@@ -85,7 +85,7 @@
             <span v-else class="tag tag-gray">Geral</span>
           </div>
         </div>
-        <div class="item-actions">
+        <div class="item-actions" @click.stop>
           <button class="btn-edit" @click="$emit('edit', r)" title="Editar">✏️</button>
           <button class="btn-delete" @click="$emit('delete', r.id)" title="Excluir">🗑️</button>
         </div>
@@ -111,6 +111,15 @@ const filters = reactive({
 })
 
 const selectedIds = ref([])
+
+function toggleSelect(id) {
+  const index = selectedIds.value.indexOf(id)
+  if (index === -1) {
+    selectedIds.value.push(id)
+  } else {
+    selectedIds.value.splice(index, 1)
+  }
+}
 
 const filteredRestricts = computed(() => {
   return store.state.RESTRICTS.filter(r => {
@@ -232,6 +241,10 @@ function clearFilters() {
 .restrict-item {
   display: flex; align-items: center; justify-content: space-between;
   padding: 16px; border-bottom: 1px solid #f1f5f9;
+  cursor: pointer; transition: all 0.2s;
+}
+.restrict-item:hover {
+  background: #f8fafc;
 }
 .item-selector { margin-right: 15px; display: flex; align-items: center; }
 .item-selector input { width: 16px; height: 16px; cursor: pointer; }
