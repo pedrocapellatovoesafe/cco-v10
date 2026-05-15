@@ -10,8 +10,8 @@ const TOKEN_KEY = 'cco_token'
 const DIAS_PT = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
 const MESES_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 const DIAS_SEMANA_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-const HORAS_PCATD = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00']
-const HORAS_DEFAULT = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00']
+const HORAS_SJK = ['07:45', '09:45', '11:45', '13:45', '15:45', '17:45']
+const HORAS_CPQ = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00']
 const ORDEM_BARRAS = [
   'MC-01 (SJK) #1', 'MC01 (SJK) (DIURNO) #2', 
   // 'MC01 - BACKUP #3',
@@ -244,10 +244,7 @@ function gerarEditor() {
     const byHora = {}
     existingInBarra.forEach((s) => { if (!byHora[s.hora]) byHora[s.hora] = s })
 
-    const isSim = barraId.toUpperCase().includes('PCATD') || 
-                  barraId.toUpperCase().includes('AATD') || 
-                  barraId.toUpperCase().includes('SM PCATD')
-    const gradeBase = isSim ? HORAS_PCATD : HORAS_DEFAULT
+    const gradeBase = base === 'SJK' ? HORAS_SJK : HORAS_CPQ
     const horasFinais = [...new Set([...gradeBase, ...Object.keys(byHora)])].sort()
     
     horasFinais.forEach((hora) => {
