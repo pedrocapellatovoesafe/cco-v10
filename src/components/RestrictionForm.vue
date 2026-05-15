@@ -18,6 +18,7 @@
             <option value="aluno_inva">Aluno x Instrutor (Interpessoal)</option>
             <option value="ae_missao">Aeronave x Missão</option>
             <option value="inva_missao">Instrutor x Missão</option>
+            <option value="inva_modelo">Instrutor x Modelo de Aeronave</option>
             <option value="mod_missao">Modelo de Aeronave x Missão</option>
             <option value="inva_only">Restrição de Instrutor (Geral)</option>
             <option value="aluno_only">Restrição de Aluno (Geral)</option>
@@ -36,7 +37,7 @@
               </select>
             </div>
 
-            <div class="form-group" v-if="['aluno_inva', 'inva_missao', 'inva_only'].includes(selectedType)">
+            <div class="form-group" v-if="['aluno_inva', 'inva_missao', 'inva_modelo', 'inva_only'].includes(selectedType)">
               <label>Instrutor (INVA):</label>
               <select v-model="form.invaId" class="form-select">
                 <option :value="null">Selecione o instrutor...</option>
@@ -52,7 +53,7 @@
               </select>
             </div>
 
-            <div class="form-group" v-if="['mod_missao'].includes(selectedType)">
+            <div class="form-group" v-if="['mod_missao', 'inva_modelo'].includes(selectedType)">
               <label>Modelo de Aeronave:</label>
               <select v-model="form.modeloAeronaveId" class="form-select">
                 <option :value="null">Selecione o modelo...</option>

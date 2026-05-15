@@ -469,6 +469,16 @@ function fetchSlots(startDate, endDate) {
 
         // Case B: Prohibitions (Entity matches ALL specified flags)
         // Rule applies if ALL active flags match the slot entities.
+        
+        // Special Case: INVA x Modelo (No Mission)
+        if (isI && isMod && !isM) {
+          if (String(getInvaId(slot)) != String(getInvaId(r))) return false
+          const rModId = String(getModId(r))
+          const slotAeModId = String(getModId(slot))
+          const slotBarModId = String(slot.barra?.modeloAeronaveId || slot.barra?.modeloAeronave?.id || '')
+          return (rModId === slotAeModId || rModId === slotBarModId)
+        }
+
         if (isA && String(getAlunoId(slot)) != String(getAlunoId(r))) return false
         if (isI && String(getInvaId(slot)) != String(getInvaId(r))) return false
         if (isM && String(getMissaoId(slot)) != String(getMissaoId(r))) return false

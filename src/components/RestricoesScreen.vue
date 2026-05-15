@@ -103,7 +103,8 @@ function handleAddToBatch(items) {
     const isDuplicate = currentBatch.some(oldItem => 
       (String(oldItem.invaId) == String(newItem.invaId) && String(oldItem.missaoId) == String(newItem.missaoId) && !!newItem.invaId && !!newItem.missaoId) ||
       (String(oldItem.aeronaveId) == String(newItem.aeronaveId) && String(oldItem.missaoId) == String(newItem.missaoId) && !!newItem.aeronaveId && !!newItem.missaoId) ||
-      (String(oldItem.modeloAeronaveId) == String(newItem.modeloAeronaveId) && String(oldItem.missaoId) == String(newItem.missaoId) && !!newItem.modeloAeronaveId && !!newItem.missaoId)
+      (String(oldItem.modeloAeronaveId) == String(newItem.modeloAeronaveId) && String(oldItem.missaoId) == String(newItem.missaoId) && !!newItem.modeloAeronaveId && !!newItem.missaoId) ||
+      (String(oldItem.invaId) == String(newItem.invaId) && String(oldItem.modeloAeronaveId) == String(newItem.modeloAeronaveId) && !!newItem.invaId && !!newItem.modeloAeronaveId)
     )
     if (!isDuplicate) {
       currentBatch.push(newItem)
@@ -129,7 +130,7 @@ function handleRemoveGroupFromBatch(group) {
     return n
   }
   
-  const targetKey = (item) => `${item.missaoId}-${item.aeronaveId}-${item.modeloAeronaveId}-${item.isAeronave}-${item.isInva}-${getCleanName(item.nome)}`
+  const targetKey = (item) => `${item.missaoId}-${item.aeronaveId}-${item.modeloAeronaveId}-${item.invaId}-${item.isAeronave}-${item.isInva}-${getCleanName(item.nome)}`
   const targetGroupKey = targetKey(group)
   batchList.value = batchList.value.filter(item => targetKey(item) !== targetGroupKey)
 }
@@ -165,6 +166,8 @@ async function handleSave(data) {
     payload.aeronaveId = form.aeronaveId; payload.missaoId = form.missaoId; payload.isAeronave = true; payload.isMissao = true;
   } else if (selectedType === 'inva_missao') {
     payload.invaId = form.invaId; payload.missaoId = form.missaoId; payload.isInva = true; payload.isMissao = true;
+  } else if (selectedType === 'inva_modelo') {
+    payload.invaId = form.invaId; payload.modeloAeronaveId = form.modeloAeronaveId; payload.isInva = true; payload.isModelo = true;
   } else if (selectedType === 'mod_missao') {
     payload.modeloAeronaveId = form.modeloAeronaveId; payload.missaoId = form.missaoId; payload.isModelo = true; payload.isMissao = true;
   } else if (selectedType === 'inva_only') {

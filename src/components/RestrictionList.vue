@@ -22,6 +22,7 @@
           <option value="aluno_inva">Aluno x INVA</option>
           <option value="ae_missao">AE x Missão</option>
           <option value="inva_missao">INVA x Missão</option>
+          <option value="inva_modelo">INVA x Modelo</option>
           <option value="mod_missao">Modelo x Missão</option>
           <option value="inva_only">INVA</option>
           <option value="aluno_only">Aluno</option>
@@ -79,6 +80,7 @@
             <span v-if="r.is_aluno_inva || r.isAlunoInva" class="tag tag-blue">Aluno x INVA</span>
             <span v-else-if="r.isAeronave && r.isMissao" class="tag tag-orange">AE x Missão</span>
             <span v-else-if="r.isInva && r.isMissao" class="tag tag-purple">INVA x Missão</span>
+            <span v-else-if="r.isInva && r.isModelo" class="tag tag-pink">INVA x Modelo</span>
             <span v-else-if="r.isModelo && r.isMissao" class="tag tag-teal">Modelo x Missão</span>
             <span v-else-if="r.isInva" class="tag tag-gray">INVA</span>
             <span v-else-if="r.isAluno" class="tag tag-gray">Aluno</span>
@@ -127,8 +129,9 @@ const filteredRestricts = computed(() => {
       if (filters.type === 'aluno_inva' && !(r.isAlunoInva || r.is_aluno_inva)) return false
       if (filters.type === 'ae_missao' && !(r.isAeronave && r.isMissao)) return false
       if (filters.type === 'inva_missao' && !(r.isInva && r.isMissao)) return false
+      if (filters.type === 'inva_modelo' && !(r.isInva && r.isModelo)) return false
       if (filters.type === 'mod_missao' && !(r.isModelo && r.isMissao)) return false
-      if (filters.type === 'inva_only' && !(r.isInva && !r.isMissao && !r.isAlunoInva)) return false
+      if (filters.type === 'inva_only' && !(r.isInva && !r.isMissao && !r.isAlunoInva && !r.isModelo)) return false
       if (filters.type === 'aluno_only' && !(r.isAluno && !r.isAlunoInva)) return false
     }
     if (filters.alunoId) {
@@ -258,6 +261,7 @@ function clearFilters() {
 .tag-orange { background: #fff7ed; color: #f97316; }
 .tag-purple { background: #faf5ff; color: #a855f7; }
 .tag-teal { background: #f0fdfa; color: #14b8a6; }
+.tag-pink { background: #fdf2f8; color: #db2777; }
 .tag-gray { background: #f1f5f9; color: #64748b; }
 
 .item-actions { display: flex; gap: 8px; flex-shrink: 0; }
