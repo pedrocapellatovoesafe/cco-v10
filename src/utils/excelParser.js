@@ -7,7 +7,7 @@ const DIAS_PT = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Qu
 
 const AVAIL_TYPES_MAP = {
   'disponivel': 1, 'disponível': 1,
-  'folga regular': 2, 'folga social': 3,
+  'folga': 2, 'folga regular': 2, 'folga social': 3,
   'sobreaviso': 4, 'treinamento': 5,
   'férias': 6, 'ferias': 6,
   'banco de horas': 7, 'operações': 8,
@@ -172,8 +172,11 @@ export function parseWorkSchedulesFromRows(rows, invasCatalog) {
   }
 
   const startIdx = (iData === 4 && !processedRows[0][4]?.toLowerCase().includes('data')) ? 0 : 1
-  const schedules = []
+  const rawSchedules = []
+  let minDate = null
+  let maxDate = null
 
+  // First pass: extract all explicitly declared schedules and determine date range
   for (let i = startIdx; i < processedRows.length; i++) {
     const row = processedRows[i]
     if (!row || row.length < 2) continue
@@ -196,7 +199,14 @@ export function parseWorkSchedulesFromRows(rows, invasCatalog) {
 
     const rawTipo = String(row[iTipo] || '').toLowerCase()
     let tId = 11
-    for (const [k, v] of Object.entries(AVAIL_TYPES_MAP)) { if (rawTipo.includes(k)) { tId = v; break } }
+    // Order of check matters: longer strings first or exact match
+    const sortedKeys = Object.keys(AVAIL_TYPES_MAP).sort((a,b) => b.length - a.length)
+    for (const k of sortedKeys) {
+      if (rawTipo.includes(k)) {
+        tId = AVAIL_TYPES_MAP[k]
+        break
+      }
+    }
 
     const rawPer = String(row[iPer] || '').toLowerCase()
     let pCode = 'x'
@@ -205,17 +215,122 @@ export function parseWorkSchedulesFromRows(rows, invasCatalog) {
     else if (rawPer.includes('noite') || rawPer === 'n') pCode = 'n'
 
     const num = parseInt(row[iDias] || '1', 10) || 1
-    for (let d = 0; d < num; d++) {
-      const dt = new Date(baseDate)
-      dt.setDate(dt.getDate() + d)
-      schedules.push({
-        data: `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`,
-        periodo: pCode,
-        tipoDisponibilidadeId: tId,
-        invaId: inva.id,
-        motivo: String(row[iMot] || '').trim()
-      })
-    }
+    
+    // Track global date range for the spreadsheet
+    const endDate = new Date(baseDate)
+    endDate.setDate(endDate.getDate() + (num - 1))
+    
+    if (!minDate || baseDate < minDate) minDate = new Date(baseDate)
+    if (!maxDate || endDate > maxDate) maxDate = new Date(endDate)
+
+    rawSchedules.push({ inva, baseDate, num, tId, pCode, motivo: String(row[iMot] || '').trim() })
   }
-  return schedules
+
+  if (!minDate || !maxDate) return []
+
+  // Force to full month coverage based on the dates found
+  const startOfMonth = new Date(minDate.getFullYear(), minDate.getMonth(), 1)
+  const endOfMonth = new Date(maxDate.getFullYear(), maxDate.getMonth() + 1, 0)
+
+  // Second pass: apply specific rules and deduplication with sequential truncation
+  const schedulesMap = new Map()
+  
+  // Group by instructor to ensure sequential instructions are processed together
+  const invaGroups = new Map()
+  rawSchedules.forEach((item, index) => {
+    if (!invaGroups.has(item.inva.id)) invaGroups.set(item.inva.id, [])
+    invaGroups.get(item.inva.id).push({ ...item, index })
+  })
+
+  invaGroups.forEach((invaSchedules, invaId) => {
+    // Sort chronologically. 
+    // If same date, larger 'num' first (so smaller/more specific overwrites it later).
+    // If same date and same 'num', earlier index first (so later row overwrites it).
+    invaSchedules.sort((a, b) => {
+      if (a.baseDate.getTime() !== b.baseDate.getTime()) {
+        return a.baseDate.getTime() - b.baseDate.getTime()
+      }
+      if (a.num !== b.num) {
+        return b.num - a.num
+      }
+      return a.index - b.index
+    })
+
+    const invaMap = new Map()
+
+    invaSchedules.forEach((item) => {
+      const itemDateStr = `${item.baseDate.getFullYear()}-${String(item.baseDate.getMonth() + 1).padStart(2, '0')}-${String(item.baseDate.getDate()).padStart(2, '0')}`
+      
+      // TRUNCATION RULE: A new instruction for an instructor resets the future timeline 
+      // from its start date onwards. We clear any "generated" status from older rows 
+      // that projected into or past this date.
+      for (const key of invaMap.keys()) {
+        if (key >= itemDateStr) {
+          const existing = invaMap.get(key);
+          // NEW PRIORITY: If we already have an EXPLICIT record for this date from an EARLIER row,
+          // we do NOT delete or overwrite it. First entry in the spreadsheet wins.
+          if (existing && existing.isExplicit && existing.index < item.index) {
+            continue;
+          }
+          invaMap.delete(key)
+        }
+      }
+
+      // Apply the current row's days
+      for (let d = 0; d < item.num; d++) {
+        const dt = new Date(item.baseDate)
+        dt.setDate(dt.getDate() + d)
+        const dataStr = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
+        
+        const isExplicit = (d === 0)
+        const existing = invaMap.get(dataStr)
+
+        // FIRST ENTRY WINS: If a record already exists for this date and it was defined by a previous row,
+        // we skip overwriting it.
+        if (existing && existing.index < item.index) {
+          continue
+        }
+        
+        invaMap.set(dataStr, {
+          data: dataStr,
+          periodo: item.pCode,
+          tipoDisponibilidadeId: item.tId,
+          invaId: invaId,
+          motivo: item.motivo,
+          index: item.index,
+          isExplicit: isExplicit
+        })
+      }
+    })
+
+    // Merge into global map
+    for (const [dataStr, payload] of invaMap.entries()) {
+      schedulesMap.set(`${invaId}_${dataStr}`, { payload })
+    }
+  })
+
+  // Third pass: For every instructor found in the sheet, ensure ALL days in the range have a status
+  const distinctInvaIds = [...new Set(rawSchedules.map(s => s.inva.id))]
+  distinctInvaIds.forEach(invaId => {
+    const cur = new Date(startOfMonth)
+    while (cur <= endOfMonth) {
+      const dataStr = `${cur.getFullYear()}-${String(cur.getMonth() + 1).padStart(2, '0')}-${String(cur.getDate()).padStart(2, '0')}`
+      const key = `${invaId}_${dataStr}`
+      
+      if (!schedulesMap.has(key)) {
+        schedulesMap.set(key, {
+          payload: {
+            data: dataStr,
+            periodo: 'x',
+            tipoDisponibilidadeId: 1, // Disponível
+            invaId: invaId,
+            motivo: ''
+          }
+        })
+      }
+      cur.setDate(cur.getDate() + 1)
+    }
+  })
+
+  return Array.from(schedulesMap.values()).map(item => item.payload)
 }
