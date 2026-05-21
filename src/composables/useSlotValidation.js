@@ -265,25 +265,23 @@ export function useSlotValidation(SCH, INVAS, AERONAVES, parsedSlots) {
       const m = slot.missao.toUpperCase()
       // Regras de Gate Cheque e Extrato SACI
       if (m.includes('AVALIAÇÃO INTERMEDIÁRIA')) {
-        alerts.push('Buscar mentor para gate cheque.')
+        alerts.push('Missões Especiais e Coordenação: Buscar mentor para gate cheque.')
       }
-      if (m.includes('AVALIAÇÃO FINAL PARA CHEQUE') || 
-          m.includes('AVALIAÇÃO FINAL - CHEQUE SAFE') ||
-          (m.includes('AVALIAÇÃO FINAL') && m.includes('PPA'))) {
-        alerts.push('Pedir Extrato do SACI em Excel.')
+      if (m.includes('AVALIAÇÃO FINAL')) {
+        alerts.push('Missões Especiais e Coordenação: Pedir Extrato do SACI em Excel.')
       }
 
       // Regras de Instrutor Diferente (PS11/PS12 e NAV X1/X2)
       if (m.includes('PS12')) {
         const ps11 = parsedSlots.value.find(s => s.aluno === slot.aluno && s.missao.toUpperCase().includes('PS11'))
         if (ps11 && ps11.inva === slot.inva && slot.inva) {
-          alerts.push(`Verifique se o instrutor é diferente da PS11 (Anterior: ${ps11.inva}).`)
+          alerts.push(`Missões Especiais e Coordenação: Verifique se o instrutor é diferente da PS11 (Anterior: ${ps11.inva}).`)
         }
       }
       if (m.includes('NAV X2')) {
         const navx1 = parsedSlots.value.find(s => s.aluno === slot.aluno && s.missao.toUpperCase().includes('NAV X1'))
         if (navx1 && navx1.inva === slot.inva && slot.inva) {
-          alerts.push(`Verifique se o instrutor é diferente da NAV X1 (Anterior: ${navx1.inva}).`)
+          alerts.push(`Missões Especiais e Coordenação: Verifique se o instrutor é diferente da NAV X1 (Anterior: ${navx1.inva}).`)
         }
       }
     }
