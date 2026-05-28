@@ -45,7 +45,7 @@ defineEmits(['filter', 'open-calendar', 'logout'])
 }
 .title-section { display: flex; align-items: center; gap: 8px; flex: 1; }
 .title-section img { width: 26px; height: 28px; border-radius: 50%; opacity: 0.9; }
-.topbar h1 { font-size: 13.5px; font-weight: 700; color: #1d2951; margin: 0; white-space: nowrap; }
+.topbar h1 { font-size: 13.5px; font-weight: 700; color: var(--primary); margin: 0; white-space: nowrap; }
 
 .date-filters {
   display: flex; align-items: center; gap: 8px; background: #f8f9fa;
@@ -54,8 +54,8 @@ defineEmits(['filter', 'open-calendar', 'logout'])
 }
 .filter-field { display: flex; align-items: center; gap: 4px; }
 .filter-field label { font-size: 10.5px; font-weight: 700; color: #5a6370; text-transform: uppercase; }
-.date-input { border: 1px solid #d8dee8; border-radius: 6px; padding: 3px 6px; font-size: 11.5px; color: #1d2951; width: 110px; }
-.btn-filter { background: #1d2951; color: #fff; border: none; border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.date-input { border: 1px solid #d8dee8; border-radius: 6px; padding: 3px 6px; font-size: 11.5px; color: var(--primary); width: 110px; }
+.btn-filter { background: var(--primary); color: #fff; border: none; border-radius: 6px; padding: 5px 10px; font-size: 11px; font-weight: 700; cursor: pointer; }
 
 .controls { 
   display: flex; 
@@ -70,6 +70,6 @@ defineEmits(['filter', 'open-calendar', 'logout'])
   cursor: pointer; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap;
   flex-shrink: 0;
 }
-.btn-back { background: #1d3a52; color: #fff; }
+.btn-back { background: var(--primary); color: #fff; }
 .btn-logout-editor { background: #c0392b; color: #fff; }
 </style>

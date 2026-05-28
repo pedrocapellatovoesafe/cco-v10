@@ -49,8 +49,8 @@ const store = inject('store')
 <style scoped>
 .panels { margin-bottom: 16px; }
 .panel-box { padding: 18px; background: #fff; border: 1px solid #dae2ec; border-radius: 16px; }
-.panel-box h3 { margin: 0 0 14px; font-size: 12px; font-weight: 700; color: #1d2951; text-transform: uppercase; }
-.disp-group-label { display: inline-block; margin-bottom: 10px; font-size: 11px; font-weight: 700; color: #1d2951; }
+.panel-box h3 { margin: 0 0 14px; font-size: 12px; font-weight: 700; color: var(--primary); text-transform: uppercase; }
+.disp-group-label { display: inline-block; margin-bottom: 10px; font-size: 11px; font-weight: 700; color: var(--primary); }
 .disp-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .disp-sections { display: flex; flex-direction: column; gap: 12px; }
 .disp-section { display: flex; align-items: flex-start; gap: 10px; }

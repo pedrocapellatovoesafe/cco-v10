@@ -320,7 +320,7 @@ function handleLogout() {
   align-items: center;
   gap: 10px;
   margin-bottom: 20px;
-  background: #1d2951;
+  background: var(--primary);
   color: #fff;
   border-radius: 8px;
   padding: 12px 18px;
@@ -350,7 +350,7 @@ function handleLogout() {
 .btn-nav,
 .btn-cal-back,
 .btn-logout-cal {
-  background: #1d2951;
+  background: var(--primary);
   color: #fff;
   border: 1px solid rgba(255,255,255,0.2);
   border-radius: 6px;
@@ -360,7 +360,7 @@ function handleLogout() {
   cursor: pointer;
   transition: background 0.2s;
 }
-.btn-nav:hover { background: #162040; }
+.btn-nav:hover { background: var(--primary); }
 .btn-cal-back { background: #34495e; }
 .btn-cal-back:hover { background: #2c3e50; }
 .btn-logout-cal {
@@ -384,7 +384,7 @@ function handleLogout() {
 .calendar-section h2 {
   font-size: 16px;
   font-weight: bold;
-  color: #1d2951;
+  color: var(--primary);
   margin-bottom: 12px;
   padding-bottom: 8px;
   border-bottom: 2px solid #eef2f5;
@@ -408,14 +408,14 @@ function handleLogout() {
 .cal-table th {
   font-size: 10px;
   padding: 8px 4px;
-  background: #1d2951;
+  background: var(--primary);
   color: #fff;
 }
 .cal-table th.th-name {
   text-align: left;
   padding-left: 15px;
   min-width: 180px;
-  background: #1d2951;
+  background: var(--primary);
   color: #fff;
   position: sticky;
   left: 0;
@@ -435,8 +435,8 @@ function handleLogout() {
   left: 0;
   z-index: 5;
 }
-.td-name.solo-sjk { border-left: 4px solid #1d2951; }
-.td-name.solo-cpq { border-left: 4px solid #1d6070; }
+.td-name.solo-sjk { border-left: 4px solid var(--primary); }
+.td-name.solo-cpq { border-left: 4px solid var(--primary); }
 .day-cell-static {
   width: 50px;
   height: 42px;
@@ -582,7 +582,7 @@ function handleLogout() {
   padding: 18px 22px; background: #f8f9fa; border-bottom: 1px solid #eee;
   display: flex; align-items: center; justify-content: space-between;
 }
-.modal-header h3 { margin: 0; font-size: 16px; color: #1d2951; }
+.modal-header h3 { margin: 0; font-size: 16px; color: var(--primary); }
 .modal-close {
   background: rgba(0, 0, 0, 0.05);
   border: none;
@@ -600,12 +600,12 @@ function handleLogout() {
 }
 .modal-close:hover {
   background: rgba(0, 0, 0, 0.1);
-  color: #1d2951;
+  color: var(--primary);
 }
 .modal-body { padding: 22px; }
 .modal-date-info { margin-bottom: 18px; font-size: 14px; color: #444; }
 .form-group { margin-bottom: 16px; }
-.form-group label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 700; color: #1d2951; }
+.form-group label { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 700; color: var(--primary); }
 .modal-select {
   width: 100%; height: 38px; border: 1px solid #ddd; border-radius: 8px;
   padding: 0 10px; font-size: 13px;
@@ -619,7 +619,7 @@ function handleLogout() {
   display: flex; justify-content: flex-end; gap: 10px;
 }
 .btn-modal-cancel { background: #eee; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; cursor: pointer; }
-.btn-modal-save { background: #1d2951; color: #fff; border: none; padding: 10px 22px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.btn-modal-save { background: var(--primary); color: #fff; border: none; padding: 10px 22px; border-radius: 8px; font-weight: 700; cursor: pointer; }
 .btn-modal-save:disabled { background: #999; cursor: default; }
 
 /* Toast */

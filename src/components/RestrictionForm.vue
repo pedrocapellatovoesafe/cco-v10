@@ -444,7 +444,7 @@ function generateAircraftPreset(type, aircraftId) {
 
 <style scoped>
 .rest-card {
-  background: #fff;
+  background: var(--white);
   border: 1px solid #dae2ec;
   border-radius: 16px;
   overflow: hidden;
@@ -455,14 +455,14 @@ function generateAircraftPreset(type, aircraftId) {
   background: #f8fafc;
   border-bottom: 1px solid #dae2ec;
 }
-.card-header h3 { margin: 0; font-size: 15px; color: #1d2951; font-weight: 800; }
+.card-header h3 { margin: 0; font-size: 15px; color: var(--primary); font-weight: 800; }
 .card-body { padding: 22px; }
 
 .form-group { margin-bottom: 18px; }
 .form-group label { display: block; margin-bottom: 8px; font-size: 12px; font-weight: 700; color: #5a6370; text-transform: uppercase; }
 .form-input, .form-select, .form-textarea {
   width: 100%; padding: 10px 12px; border: 1px solid #d8dee8; border-radius: 8px;
-  font-size: 13px; color: #1d2951; outline: none; transition: border-color 0.2s;
+  font-size: 13px; color: var(--primary); outline: none; transition: border-color 0.2s;
 }
 .form-input:focus, .form-select:focus, .form-textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
 .form-textarea { height: 80px; resize: none; }
@@ -472,7 +472,7 @@ function generateAircraftPreset(type, aircraftId) {
 
 .form-actions { display: flex; flex-direction: column; gap: 10px; }
 .btn-save {
-  width: 100%; padding: 14px; background: #1d2951; color: #fff; border: none;
+  width: 100%; padding: 14px; background: var(--primary); color: var(--white); border: none;
   border-radius: 10px; font-weight: 800; font-size: 14px; cursor: pointer; transition: all 0.2s;
 }
 .btn-save:hover:not(:disabled) { background: #2a3b59; transform: translateY(-1px); }
@@ -492,14 +492,14 @@ function generateAircraftPreset(type, aircraftId) {
 }
 .preset-divider::after {
   content: 'OU'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  background: #fff; padding: 0 10px; font-size: 10px; font-weight: 800; color: #94a3b8;
+  background: var(--white); padding: 0 10px; font-size: 10px; font-weight: 800; color: #94a3b8;
 }
 .preset-actions-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .btn-apply-preset {
-  width: 100%; padding: 12px; background: #3b82f6; color: #fff; border: none;
+  width: 100%; padding: 12px; background: #3b82f6; color: var(--white); border: none;
   border-radius: 8px; font-weight: 700; font-size: 13px; cursor: pointer; transition: all 0.2s;
 }
-.btn-apply-preset.secondary { background: #f1f5f9; color: #1d2951; border: 1px solid #cbd5e1; }
+.btn-apply-preset.secondary { background: #f1f5f9; color: var(--primary); border: 1px solid #cbd5e1; }
 .btn-apply-preset:hover:not(:disabled) { background: #2563eb; transform: translateY(-1px); }
 .btn-apply-preset.secondary:hover:not(:disabled) { background: #e2e8f0; border-color: #94a3b8; }
 .btn-apply-preset:disabled { opacity: 0.5; cursor: not-allowed; }

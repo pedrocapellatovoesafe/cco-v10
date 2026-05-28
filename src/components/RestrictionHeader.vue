@@ -21,19 +21,20 @@ defineEmits(['back', 'logout'])
   align-items: center;
   justify-content: space-between;
   margin-bottom: 24px;
-  background: #1d2951;
-  color: #fff;
+  background: var(--primary);
+  color: var(--white);
   padding: 20px 28px;
   border-radius: 16px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  border-bottom: 4px solid var(--secondary);
 }
-.rest-title-area h1 { font-size: 20px; font-weight: 800; margin: 0; }
+.rest-title-area h1 { font-size: 20px; font-weight: 800; margin: 0; font-family: var(--font-title); text-transform: uppercase; }
 .rest-title-area p { margin: 4px 0 0; font-size: 13px; opacity: 0.8; }
 
 .header-actions { display: flex; gap: 12px; }
 .btn-rest-back, .btn-logout-rest {
   background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  color: var(--white);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
   padding: 10px 18px;

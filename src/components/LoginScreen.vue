@@ -80,10 +80,11 @@ const handleLogin = async () => {
   overflow: hidden;
 }
 .login-header {
-  background: #1d2951;
-  color: #fff;
+  background: var(--primary);
+  color: var(--white);
   padding: 24px;
   text-align: center;
+  border-bottom: 4px solid var(--secondary);
 }
 .login-header img {
   width: 56px;
@@ -96,8 +97,9 @@ const handleLogin = async () => {
   font-size: 18px;
   font-weight: bold;
   margin-bottom: 4px;
-  font-family: 'Montserrat', sans-serif;
+  font-family: var(--font-title);
   letter-spacing: 0.5px;
+  text-transform: uppercase;
 }
 .login-header p {
   font-size: 12px;
@@ -113,7 +115,7 @@ const handleLogin = async () => {
   display: block;
   font-size: 11px;
   font-weight: bold;
-  color: #555;
+  color: var(--primary);
   margin-bottom: 5px;
   text-transform: uppercase;
 }
@@ -124,23 +126,27 @@ const handleLogin = async () => {
   border-radius: 5px;
   font-size: 13px;
   outline: none;
+  transition: all 0.2s;
 }
 .login-field input:focus {
-  border-color: #1d2951;
+  border-color: var(--secondary);
+  box-shadow: 0 0 0 3px rgba(var(--secondary-rgb), 0.1);
 }
 .login-btn {
   width: 100%;
-  background: #1d2951;
-  color: #fff;
+  background: var(--secondary);
+  color: var(--white);
   border: none;
   border-radius: 5px;
   padding: 11px;
   font-size: 14px;
   font-weight: bold;
   cursor: pointer;
+  transition: all 0.2s;
 }
 .login-btn:hover {
-  background: #162040;
+  background: var(--primary);
+  transform: translateY(-1px);
 }
 .login-err {
   background: #fdecea;

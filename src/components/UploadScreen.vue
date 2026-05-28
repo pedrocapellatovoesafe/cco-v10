@@ -178,12 +178,15 @@ function handleOpenCalendar() { router.push('/calendar') }
 .card-header h2 {
   font-size: 16px;
   font-weight: bold;
-  color: #1d2951;
+  color: var(--primary);
   margin: 0;
+  font-family: var(--font-title);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 .card-header p {
   font-size: 11px;
-  color: #64748b;
+  color: var(--text-muted);
   margin: 4px 0 0;
 }
 .upload-error {
@@ -202,15 +205,15 @@ function handleOpenCalendar() { router.push('/calendar') }
   align-items: center;
   justify-content: center;
   padding: 20px;
-  background: #f0f4f8;
+  background: var(--bg-main);
 }
 .upload-screen {
   max-width: 900px;
   width: 100%;
 }
 .up-header {
-  background: #1d2951;
-  color: #fff;
+  background: var(--primary);
+  color: var(--white);
   padding: 16px 24px;
   border-radius: 12px;
   margin-bottom: 20px;
@@ -218,6 +221,7 @@ function handleOpenCalendar() { router.push('/calendar') }
   align-items: center;
   justify-content: space-between;
   gap: 16px;
+  border-bottom: 4px solid var(--secondary);
 }
 .up-header-title {
   display: flex;
@@ -228,6 +232,8 @@ function handleOpenCalendar() { router.push('/calendar') }
   font-size: 17px;
   font-weight: bold;
   margin: 0;
+  font-family: var(--font-title);
+  text-transform: uppercase;
 }
 .up-header p {
   margin: 2px 0 0;
@@ -239,19 +245,21 @@ function handleOpenCalendar() { router.push('/calendar') }
   gap: 10px;
 }
 .btn-calendar, .btn-logout {
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(var(--white-rgb, 255, 255, 255), 0.15);
+  color: var(--white);
+  border: 1px solid rgba(var(--white-rgb, 255, 255, 255), 0.3);
   border-radius: 6px;
   padding: 6px 14px;
   font-size: 12px;
   font-weight: bold;
   cursor: pointer;
+  transition: all 0.2s;
 }
+.btn-calendar:hover { background: var(--secondary); border-color: var(--secondary); }
 .btn-logout { background: rgba(231, 76, 60, 0.2); border-color: rgba(231, 76, 60, 0.4); }
 .up-body {
   padding: 30px;
-  background: #fff;
+  background: var(--white);
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
 }
@@ -263,19 +271,19 @@ function handleOpenCalendar() { router.push('/calendar') }
   cursor: pointer;
   transition: all 0.2s;
   margin-bottom: 16px;
-  background: #fff;
+  background: var(--white);
 }
 .drop-zone.drag-over {
-  border-color: #3b82f6;
-  background: #eff6ff;
+  border-color: var(--secondary);
+  background: var(--secondary-light);
 }
 .drop-zone input { display: none; }
 .drop-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.5; }
-.drop-zone h3 { font-size: 14px; color: #334155; font-weight: bold; margin-bottom: 6px; }
-.drop-zone p { font-size: 11px; color: #94a3b8; }
+.drop-zone h3 { font-size: 14px; color: var(--primary); font-weight: bold; margin-bottom: 6px; }
+.drop-zone p { font-size: 11px; color: var(--text-muted); }
 .btn-upload {
   background: #f1f5f9;
-  color: #475569;
+  color: var(--primary);
   border: 1px solid #e2e8f0;
   border-radius: 5px;
   padding: 6px 16px;
@@ -283,7 +291,9 @@ function handleOpenCalendar() { router.push('/calendar') }
   font-weight: bold;
   cursor: pointer;
   margin-top: 10px;
+  transition: all 0.2s;
 }
+.btn-upload:hover { background: var(--secondary); color: var(--white); border-color: var(--secondary); }
 .file-ok {
   background: #ecfdf5;
   border: 1px solid #a7f3d0;
@@ -297,16 +307,17 @@ function handleOpenCalendar() { router.push('/calendar') }
 .work-ok { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
 .btn-gerar {
   width: 100%;
-  background: #1d2951;
-  color: #fff;
+  background: var(--secondary);
+  color: var(--white);
   border: none;
   border-radius: 6px;
   padding: 12px;
   font-size: 13px;
   font-weight: bold;
   cursor: pointer;
+  transition: all 0.2s;
 }
-.btn-gerar:hover { background: #2c3e50; }
-.btn-work { background: #3b82f6; }
-.btn-work:hover { background: #2563eb; }
+.btn-gerar:hover { background: var(--primary); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.2); }
+.btn-work { background: var(--accent-teal); }
+.btn-work:hover { background: var(--primary); }
 </style>

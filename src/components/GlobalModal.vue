@@ -43,7 +43,7 @@ function close() {
 }
 
 .modal-content {
-  background: #fff;
+  background: var(--white);
   width: 90%;
   max-width: 400px;
   border-radius: 20px;
@@ -70,7 +70,7 @@ function close() {
   margin: 0;
   font-size: 16px;
   font-weight: 800;
-  color: #1d2951;
+  color: var(--primary);
 }
 
 .close-btn {
@@ -110,8 +110,8 @@ function close() {
 
 .confirm-btn {
   padding: 12px 40px;
-  background: #1d2951;
-  color: #fff;
+  background: var(--primary);
+  color: var(--white);
   border: none;
   border-radius: 12px;
   font-weight: 700;

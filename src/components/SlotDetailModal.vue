@@ -66,7 +66,7 @@ const isRestriction = computed(() => {
 
 <style scoped>
 .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 3000; backdrop-filter: blur(4px); }
-.modal-content { background: #fff; width: 100%; max-width: 450px; border-radius: 16px; overflow: hidden; }
+.modal-content { background: var(--white); width: 100%; max-width: 450px; border-radius: 16px; overflow: hidden; }
 .modal-header { padding: 18px 22px; background: #f8f9fa; display: flex; align-items: center; justify-content: space-between; }
 .modal-close {
   background: rgba(0, 0, 0, 0.05);
@@ -85,11 +85,11 @@ const isRestriction = computed(() => {
 }
 .modal-close:hover {
   background: rgba(0, 0, 0, 0.1);
-  color: #1d2951;
+  color: var(--primary);
 }
 .modal-body { padding: 22px; }
 .modal-slot-info {
-  background: #f0f4f8;
+  background: var(--bg-main);
   padding: 16px;
   border-radius: 12px;
   margin-bottom: 20px;
@@ -110,6 +110,6 @@ const isRestriction = computed(() => {
 .restrict-desc { margin: 0; font-size: 13px; color: #b91c1c; line-height: 1.4; opacity: 0.9; }
 
 .modal-footer { padding: 16px 22px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; }
-.btn-modal-ok { background: #1d2951; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.btn-modal-ok { background: var(--primary); color: var(--white); border: none; padding: 10px 20px; border-radius: 8px; font-weight: 700; cursor: pointer; }
 .btn-modal-ok:hover { background: #2a3b59; }
 </style>

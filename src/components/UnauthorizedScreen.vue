@@ -25,11 +25,11 @@ const goLogin = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f0f4f8;
+  background: var(--bg-main);
   padding: 20px;
 }
 .error-box {
-  background: white;
+  background: var(--white);
   padding: 40px;
   border-radius: 12px;
   box-shadow: 0 4px 25px rgba(0,0,0,0.1);
@@ -42,7 +42,7 @@ const goLogin = () => {
   margin-bottom: 20px;
 }
 h1 {
-  color: #1d2951;
+  color: var(--primary);
   margin-bottom: 15px;
   font-size: 24px;
 }
@@ -52,8 +52,8 @@ p {
   line-height: 1.5;
 }
 .login-btn {
-  background: #1d2951;
-  color: white;
+  background: var(--primary);
+  color: var(--white);
   border: none;
   padding: 12px 30px;
   border-radius: 6px;

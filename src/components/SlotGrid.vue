@@ -181,40 +181,40 @@ function handleButtonClick(slot) {
   display: flex; align-items: center; gap: 12px; margin: 12px 0; padding: 8px 18px;
   background: #fff; border: 1px solid #dae2ec; border-radius: 14px;
 }
-.pag-label { font-size: 12px; font-weight: 700; color: #1d2951; }
+.pag-label { font-size: 12px; font-weight: 700; color: var(--primary); }
 .pag-btns { display: flex; gap: 6px; flex-wrap: wrap; }
 .date-btn {
-  border: 1px solid #dae2ec; background: #fff; color: #5a6370; padding: 5px 12px;
+  border: 1px solid #dae2ec; background: var(--white); color: #5a6370; padding: 5px 12px;
   border-radius: 8px; font-size: 11.5px; font-weight: 700; cursor: pointer; transition: all 0.2s;
 }
-.date-btn:hover { border-color: #1d2951; color: #1d2951; }
-.date-btn.active { background: #1d2951; color: #fff; border-color: #1d2951; }
+.date-btn:hover { border-color: var(--primary); color: var(--primary); }
+.date-btn.active { background: var(--primary); color: var(--white); border-color: var(--primary); }
 
 .tabs { display: flex; gap: 6px; margin-bottom: 14px; }
-.tab-btn { padding: 10px 22px; font-size: 13px; font-weight: 700; border: none; border-radius: 999px; background: #d4d4d4; cursor: pointer; }
-.tab-btn.t-sjk { background: #1d2951; color: #fff; }
-.tab-btn.t-cpq { background: #1d3a52; color: #fff; }
+.tab-btn { padding: 10px 22px; font-size: 13px; font-weight: 700; border: none; border-radius: 999px; background: #d4d4d4; cursor: pointer; font-family: var(--font-title); }
+.tab-btn.t-sjk { background: var(--primary); color: var(--white); }
+.tab-btn.t-cpq { background: #1d3a52; color: var(--white); }
 
 .barra-bloco { border-radius: 18px; overflow: hidden; box-shadow: 0 16px 30px rgba(14, 38, 72, 0.08); margin-bottom: 18px; }
-.bh { display: grid; background: #1d2951; color: #fff; font-weight: 700; }
+.bh { display: grid; background: var(--primary); color: var(--white); font-weight: 700; font-family: var(--font-title); }
 .hd { padding: 14px 16px; min-width: 110px; }
 .hh { display: flex; align-items: center; justify-content: center; padding: 14px 6px; border-left: 1px solid rgba(255, 255, 255, 0.16); font-size: 13px; }
-.barra-body { background: #fff; }
+.barra-body { background: var(--white); }
 .brow { display: grid; min-height: 48px; border-bottom: 1px solid #e3e9f0; }
 .rl { padding: 14px 12px; background: #f6f8fb; font-size: 12px; font-weight: 700; color: #2a3b59; border-right: 1px solid #dde4ef; display: flex; align-items: center; }
 .sc { border-right: 1px solid #dde4ef; display: flex; align-items: center; justify-content: center; padding: 4px 6px; position: relative; }
-.sc-empty { background: #fff !important; }
+.sc-empty { background: var(--white) !important; }
 
 .slot-input {
   width: 100%;
   height: 36px;
   border: 1px solid #d8dee8;
   border-radius: 8px;
-  background: #fff !important;
+  background: var(--white) !important;
   font-size: 11.5px;
-  font-family: inherit;
+  font-family: var(--font-text);
   padding: 0 10px;
-  color: #1d2951;
+  color: var(--primary);
   cursor: pointer;
   outline: none;
   text-align: center;
@@ -225,7 +225,7 @@ function handleButtonClick(slot) {
 .aluno-name {
   font-size: 11px;
   font-weight: 600;
-  color: #1d2951;
+  color: var(--primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -251,7 +251,7 @@ function handleButtonClick(slot) {
 .ae-hours-predict.mid { background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
 .ae-hours-predict.low { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
-.btn-delete-slot { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; background: #ff4d4d; color: white; border-radius: 50%; border: none; cursor: pointer; z-index: 30; }
+.btn-delete-slot { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; background: #ff4d4d; color: var(--white); border-radius: 50%; border: none; cursor: pointer; z-index: 30; }
 .btn-row { display: grid; background: #f5f8fc; border-top: 1px solid #dde4ef; }
 
 .bcell { padding: 8px 4px; display: flex; justify-content: center; }
@@ -264,19 +264,20 @@ function handleButtonClick(slot) {
   font-size: 11.5px; 
   font-weight: 700; 
   cursor: pointer; 
-  color: #fff !important; 
+  color: var(--white) !important; 
   display: flex; 
   align-items: center; 
   justify-content: center; 
   gap: 6px;
-  transition: transform 0.1s ease, filter 0.2s ease;
+  transition: all 0.2s ease;
+  font-family: var(--font-text);
 }
-.btn-cav:hover { filter: brightness(1.1); }
+.btn-cav:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
 .btn-cav:active { transform: scale(0.98); }
 .btn-mod-ok { background: #27ae60; }
-.btn-mod-wrn { background: #f1c40f; color: #fff !important; }
+.btn-mod-wrn { background: #f1c40f; color: var(--white) !important; }
 .btn-mod-err { background: #c0392b; }
-.btn-disp { background: #1d2951; }
+.btn-disp { background: var(--secondary); }
 
 .drag-indicator { cursor: grab; opacity: 0.5; margin-left: 4px; }
 </style>

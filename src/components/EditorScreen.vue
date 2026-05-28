@@ -240,7 +240,7 @@ function handleLogout() {
 .screen-layout {
   min-height: 100vh;
   padding: 24px;
-  background: #f0f4f8;
+  background: var(--bg-main);
   position: relative;
 }
 .loading-overlay {
@@ -253,7 +253,7 @@ function handleLogout() {
 }
 .loader {
   border: 4px solid #f3f3f3;
-  border-top: 4px solid #1d2951;
+  border-top: 4px solid var(--primary);
   border-radius: 50%;
   width: 40px; height: 40px;
   animation: spin 1s linear infinite;
@@ -263,7 +263,7 @@ function handleLogout() {
 .editor-screen { width: 100%; max-width: 1380px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
 
 .footer { margin-top: 18px; font-size: 11px; color: #5a6370; border-top: 1px solid #dde4ef; padding-top: 14px; display: flex; justify-content: space-between; }
-.footer-badge { background: #1d2951; color: #fff; font-size: 10px; padding: 4px 10px; border-radius: 999px; }
+.footer-badge { background: var(--primary); color: #fff; font-size: 10px; padding: 4px 10px; border-radius: 999px; }
 
 .toast-notification { position: fixed; top: 20px; right: 24px; padding: 10px 18px; border-radius: 10px; z-index: 6000; display: flex; gap: 10px; align-items: center; box-shadow: 0 8px 20px rgba(0,0,0,0.12); }
 .toast-success { background: #e6f7ed; border: 1px solid #27ae60; border-left: 5px solid #27ae60; }
