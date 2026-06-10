@@ -388,7 +388,8 @@ function getWorkScheduleRows(situations, calDays) {
   })
 }
 
-function fetchBars() { return api.get('/barras').then(r => { BARRAS.value = r.data?.data || r.data; return true }) }
+function fetchBars() { return api.get('/barras?includeInactive=1').then(r => { BARRAS.value = r.data?.data || r.data; return true }) }
+function fetchBarDetail(id) { return api.get(`/barras/${id}?includeInactive=1`).then(r => r.data?.data || r.data) }
 
 function fetchBases() { return api.get('/bases').then(r => { BASES.value = r.data?.data || r.data; return true }) }
 function fetchSituacoes() { return api.get('/situacao-invas').then(r => { SITUACOES.value = r.data?.data || r.data; return true }) }
@@ -474,7 +475,7 @@ async function deleteBarra(id) {
 async function saveHorario(p) {
   state.globalLoading = true
   try {
-    const r = await api.post('/horarios', p)
+    const r = await api.post('/barras-horarios', p)
     await fetchBars()
     return { success: true, data: r.data }
   } catch (e) {
@@ -487,7 +488,7 @@ async function saveHorario(p) {
 async function updateHorario(id, p) {
   state.globalLoading = true
   try {
-    const r = await api.put(`/horarios/${id}`, p)
+    const r = await api.put(`/barras-horarios/${id}`, p)
     await fetchBars()
     return { success: true, data: r.data }
   } catch (e) {
@@ -500,7 +501,7 @@ async function updateHorario(id, p) {
 async function deleteHorario(id) {
   state.globalLoading = true
   try {
-    await api.delete(`/horarios/${id}`)
+    await api.delete(`/barras-horarios/${id}`)
     await fetchBars()
     return { success: true }
   } catch (e) {
@@ -830,7 +831,7 @@ export function useCcoStore() {
   }
 
   return {
-    state, login, logout, checkLogin, onFile, onWorkFile, importScale, importWorkSchedule, fetchSlots, fetchBars, fetchBases, fetchSituacoes, fetchAeronaves, updateAeronave, fetchInvas, fetchStatuses,
+    state, login, logout, checkLogin, onFile, onWorkFile, importScale, importWorkSchedule, fetchSlots, fetchBars, fetchBarDetail, fetchBases, fetchSituacoes, fetchAeronaves, updateAeronave, fetchInvas, fetchStatuses,
     fetchAlunos, fetchModelos, fetchMissoes, fetchRestricoes,
     saveInva, updateInva, deleteInva,
     saveBarra, updateBarra, deleteBarra,

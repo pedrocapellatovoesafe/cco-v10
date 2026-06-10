@@ -100,16 +100,17 @@
                   <div v-if="!selectedBar.horarios || selectedBar.horarios.length === 0" class="empty-times">
                     Nenhum horário cadastrado.
                   </div>
-                  <div v-for="h in sortedHorarios" :key="h.id" class="horario-row">
+                  <div v-for="h in sortedHorarios" :key="h.id" 
+                       :class="['horario-row', !h.ativo ? 'is-inactive' : '']">
                     <input type="time" v-model="h.hora" class="time-input-inline" @change="handleUpdateHorario(h)" />
                     <div class="horario-status">
                       <label class="switch">
-                        <input type="checkbox" :checked="h.ativo" @change="toggleHorario(h)">
+                        <input type="checkbox" :checked="!!h.ativo" @change="toggleHorario(h)">
                         <span class="slider round"></span>
                       </label>
                       <span class="status-label">{{ h.ativo ? 'Ativo' : 'Inativo' }}</span>
                     </div>
-                    <button class="btn-del-time" @click="handleDeleteHorario(h)">🗑️</button>
+                    <button class="btn-del-time" @click="handleDeleteHorario(h)" title="Remover Permanentemente">🗑️</button>
                   </div>
                 </div>
               </div>
@@ -204,13 +205,17 @@ function createNew() {
   showAddTime.value = false; newTime.value = ''
 }
 
-function selectBar(bar) {
+async function selectBar(bar) {
   isEditing.value = true
   selectedBar.value = bar
   form.id = bar.id
   form.nome = bar.nome
   form.baseId = bar.baseId || bar.base?.id
   form.modeloAeronaveId = bar.modeloAeronaveId || bar.modeloAeronave?.id
+  
+  // Fetch full detail to get all schedules (including inactive)
+  const detail = await store.fetchBarDetail(bar.id)
+  if (detail) selectedBar.value = detail
 }
 
 async function handleSaveBar() {
@@ -222,7 +227,7 @@ async function handleSaveBar() {
     const res = isEditing.value ? await store.updateBarra(form.id, payload) : await store.saveBarra(payload)
     if (res.success) {
       showToast(isEditing.value ? 'Barra atualizada!' : 'Barra criada!', 'success')
-      if (!isEditing.value) selectBar(res.data)
+      if (!isEditing.value) await selectBar(res.data)
       else await store.fetchBars()
     } else {
       showToast(res.error || 'Erro ao salvar barra', 'danger')
@@ -252,13 +257,18 @@ async function handleAddHorario() {
   if (res.success) {
     showToast('Horário adicionado!')
     newTime.value = ''; showAddTime.value = false
-    refreshSelectedBar()
+    await refreshSelectedBar()
   }
 }
 
 async function handleUpdateHorario(h) {
-  await store.updateHorario(h.id, { hora: h.hora, ativo: h.ativo })
-  showToast('Horário atualizado')
+  const res = await store.updateHorario(h.id, { hora: h.hora, ativo: h.ativo })
+  if (res.success) {
+    showToast('Horário atualizado')
+    await refreshSelectedBar()
+  } else {
+    showToast(res.error || 'Erro ao atualizar horário', 'danger')
+  }
 }
 
 async function toggleHorario(h) {
@@ -271,13 +281,14 @@ async function handleDeleteHorario(h) {
   const res = await store.deleteHorario(h.id)
   if (res.success) {
     showToast('Horário removido')
-    refreshSelectedBar()
+    await refreshSelectedBar()
   }
 }
 
-function refreshSelectedBar() {
-  const updated = store.BARRAS.value.find(b => b.id === selectedBar.value.id)
-  if (updated) selectedBar.value = updated
+async function refreshSelectedBar() {
+  const detail = await store.fetchBarDetail(selectedBar.value.id)
+  if (detail) selectedBar.value = detail
+  await store.fetchBars() // Update list count
 }
 </script>
 
@@ -350,8 +361,10 @@ function refreshSelectedBar() {
 .btn-confirm-time { background: var(--secondary); color: #fff; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: 700; cursor: pointer; }
 
 .horarios-list { display: flex; flex-direction: column; gap: 8px; }
-.horario-row { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: #fff; border: 1px solid #f1f5f9; border-radius: 8px; }
-.time-input-inline { border: none; font-size: 14px; font-weight: 700; color: var(--primary); width: 70px; }
+.horario-row { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: #fff; border: 1px solid #f1f5f9; border-radius: 8px; transition: all 0.2s; }
+.horario-row.is-inactive { background: #f8fafc; opacity: 0.6; border-style: dashed; }
+.horario-row.is-inactive .time-input-inline { color: #94a3b8; }
+.time-input-inline { border: none; font-size: 14px; font-weight: 700; color: var(--primary); width: 70px; background: transparent; }
 .horario-status { display: flex; align-items: center; gap: 8px; flex: 1; }
 .status-label { font-size: 11px; font-weight: 600; color: #94a3b8; }
 
