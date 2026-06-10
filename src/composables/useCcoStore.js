@@ -38,6 +38,7 @@ const RESTRICTS = shallowRef([])
 const STATUSES = shallowRef([])
 const BASES = shallowRef([])
 const SITUACOES = shallowRef([])
+const CURSOS = shallowRef([])
 
 const auth = useAuth()
 
@@ -104,6 +105,7 @@ const state = reactive({
   STATUSES: computed(() => STATUSES.value),
   BASES: computed(() => BASES.value),
   SITUACOES: computed(() => SITUACOES.value),
+  CURSOS: computed(() => CURSOS.value),
 })
 
 function login() {
@@ -315,8 +317,88 @@ function fetchAlunos() {
 function fetchModelos() {
   return api.get('/modelo-aeronaves').then(r => { MODELOS.value = r.data?.data || r.data; return true })
 }
-function fetchMissoes() {
-  return api.get('/missoes').then(r => { MISSOES.value = r.data?.data || r.data; return true })
+function fetchMissoes() { return api.get('/missoes').then(r => { MISSOES.value = r.data?.data || r.data; return true }) }
+function fetchCursos() { return api.get('/cursos').then(r => { CURSOS.value = r.data?.data || r.data; return true }) }
+
+async function saveCurso(p) {
+  state.globalLoading = true
+  try {
+    const r = await api.post('/cursos', p)
+    await fetchCursos()
+    return { success: true, data: r.data?.data || r.data }
+  } catch (e) {
+    return { success: false, error: e.response?.data?.message || e.message }
+  } finally {
+    state.globalLoading = false
+  }
+}
+
+async function updateCurso(id, p) {
+  state.globalLoading = true
+  try {
+    const r = await api.put(`/cursos/${id}`, p)
+    await fetchCursos()
+    return { success: true, data: r.data?.data || r.data }
+  } catch (e) {
+    return { success: false, error: e.response?.data?.message || e.message }
+  } finally {
+    state.globalLoading = false
+  }
+}
+
+async function deleteCurso(id) {
+  state.globalLoading = true
+  try {
+    await api.delete(`/cursos/${id}`)
+    await fetchCursos()
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: e.response?.data?.message || e.message }
+  } finally {
+    state.globalLoading = false
+  }
+}
+
+async function saveMissao(p) {
+  state.globalLoading = true
+  try {
+    const r = await api.post('/missoes', p)
+    await fetchCursos() // Missions are often retrieved nested in courses
+    await fetchMissoes()
+    return { success: true, data: r.data?.data || r.data }
+  } catch (e) {
+    return { success: false, error: e.response?.data?.message || e.message }
+  } finally {
+    state.globalLoading = false
+  }
+}
+
+async function updateMissao(id, p) {
+  state.globalLoading = true
+  try {
+    const r = await api.put(`/missoes/${id}`, p)
+    await fetchCursos()
+    await fetchMissoes()
+    return { success: true, data: r.data?.data || r.data }
+  } catch (e) {
+    return { success: false, error: e.response?.data?.message || e.message }
+  } finally {
+    state.globalLoading = false
+  }
+}
+
+async function deleteMissao(id) {
+  state.globalLoading = true
+  try {
+    await api.delete(`/missoes/${id}`)
+    await fetchCursos()
+    await fetchMissoes()
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: e.response?.data?.message || e.message }
+  } finally {
+    state.globalLoading = false
+  }
 }
 function fetchRestricoes() {
   return api.get('/restricoes').then(r => { RESTRICTS.value = r.data?.data || r.data; return true })
@@ -837,10 +919,12 @@ export function useCcoStore() {
 
   return {
     state, login, logout, checkLogin, onFile, onWorkFile, importScale, importWorkSchedule, fetchSlots, fetchBars, fetchBarDetail, fetchBases, fetchSituacoes, fetchAeronaves, updateAeronave, fetchInvas, fetchStatuses,
-    fetchAlunos, fetchModelos, fetchMissoes, fetchRestricoes,
+    fetchAlunos, fetchModelos, fetchMissoes, fetchCursos, fetchRestricoes,
     saveInva, updateInva, deleteInva,
     saveBarra, updateBarra, deleteBarra,
     saveHorario, updateHorario, deleteHorario,
+    saveCurso, updateCurso, deleteCurso,
+    saveMissao, updateMissao, deleteMissao,
     showAlert, closeAlert,
     setCurrentViewDate: (d) => { state.currentViewDate = d; gerarEditor() },
     generateEditor: gerarEditor,
@@ -979,6 +1063,6 @@ export function useCcoStore() {
       } catch (err) { showAlert('Erro ao realizar a movimentação no servidor.', 'Erro de Movimentação', 'error') } finally { state.globalLoading = false }
     },
     // Explicitly export refs for external access
-    parsedSlots, parsedWorkSchedules, SCH, INITIAL, AERONAVES, BARRAS, INVAS, ALUNOS, MODELOS, MISSOES, RESTRICTS, STATUSES, BASES, SITUACOES
+    parsedSlots, parsedWorkSchedules, SCH, INITIAL, AERONAVES, BARRAS, INVAS, ALUNOS, MODELOS, MISSOES, RESTRICTS, STATUSES, BASES, SITUACOES, CURSOS
   }
 }
