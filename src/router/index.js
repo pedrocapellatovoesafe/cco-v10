@@ -10,7 +10,6 @@ const ConfiguracoesScreen = () => import('../components/ConfiguracoesScreen.vue'
 const ConfigInstrutores = () => import('../components/ConfigInstrutores.vue')
 const ConfigBarras = () => import('../components/ConfigBarras.vue')
 const ConfigCursos = () => import('../components/ConfigCursos.vue')
-const ConfigMissoes = () => import('../components/ConfigMissoes.vue')
 const ConfigUsuarios = () => import('../components/ConfigUsuarios.vue')
 const UnauthorizedScreen = () => import('../components/UnauthorizedScreen.vue')
 
@@ -82,12 +81,6 @@ const routes = [
     path: '/configuracoes/cursos',
     name: 'ConfigCursos',
     component: ConfigCursos,
-    meta: { requiresAuth: true }
-  },
-  {
-    path: '/configuracoes/missoes',
-    name: 'ConfigMissoes',
-    component: ConfigMissoes,
     meta: { requiresAuth: true }
   },
   {

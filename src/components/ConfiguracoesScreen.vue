@@ -67,13 +67,6 @@ const configItems = [
     route: '/configuracoes/cursos'
   },
   {
-    id: 'missoes',
-    title: 'Missões',
-    description: 'Configurar tipos de missões, durações e requisitos.',
-    icon: '🎯',
-    route: '/configuracoes/missoes'
-  },
-  {
     id: 'restricoes',
     title: 'Restrições',
     description: 'Gerenciar regras de restrição entre instrutores, aeronaves e missões.',
