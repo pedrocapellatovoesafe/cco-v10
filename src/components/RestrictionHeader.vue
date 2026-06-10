@@ -5,6 +5,7 @@
       <p>Configure alertas e impedimentos cruzados para a escala</p>
     </div>
     <div class="header-actions">
+      <button class="btn-rest-back" @click="() => $router.push('/configuracoes')">⚙️ Configurações</button>
       <button class="btn-rest-back" @click="$emit('back')">← Voltar ao Editor</button>
       <button class="btn-logout-rest" @click="$emit('logout')">Sair</button>
     </div>

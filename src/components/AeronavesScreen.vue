@@ -7,6 +7,7 @@
           <p>Visualize e gerencie a frota e disponibilidade (horas)</p>
         </div>
         <div class="header-actions">
+          <button class="btn-ae-back" @click="() => router.push('/configuracoes')">⚙️ Configurações</button>
           <button class="btn-ae-back" @click="handleBackToEditor">← Voltar ao Editor</button>
           <button class="btn-logout-ae" @click="handleLogout">Sair</button>
         </div>
@@ -16,13 +17,13 @@
         <!-- Listagem de Aeronaves -->
         <div class="ae-card list-card">
           <div class="card-header">
-            <h3>📋 Frota Ativa ({{ store.state.AERONAVES.length }})</h3>
+            <h3>📋 Frota Ativa ({{ store.AERONAVES.length }})</h3>
           </div>
           <div class="card-body scrollable">
-            <div v-if="store.state.AERONAVES.length === 0" class="empty-list">
+            <div v-if="store.AERONAVES.length === 0" class="empty-list">
               Nenhuma aeronave carregada.
             </div>
-            <div v-for="ae in store.state.AERONAVES" :key="ae.id" 
+            <div v-for="ae in store.AERONAVES" :key="ae.id" 
                  :class="['ae-item', selectedAe?.id === ae.id ? 'active' : '']"
                  @click="selectAe(ae)">
               <div class="ae-info">
