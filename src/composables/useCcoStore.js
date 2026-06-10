@@ -36,6 +36,8 @@ const MODELOS = shallowRef([])
 const MISSOES = shallowRef([])
 const RESTRICTS = shallowRef([])
 const STATUSES = shallowRef([])
+const BASES = shallowRef([])
+const SITUACOES = shallowRef([])
 
 const auth = useAuth()
 
@@ -100,6 +102,8 @@ const state = reactive({
   MISSOES: computed(() => MISSOES.value),
   RESTRICTS: computed(() => RESTRICTS.value),
   STATUSES: computed(() => STATUSES.value),
+  BASES: computed(() => BASES.value),
+  SITUACOES: computed(() => SITUACOES.value),
 })
 
 function login() {
@@ -385,6 +389,126 @@ function getWorkScheduleRows(situations, calDays) {
 }
 
 function fetchBars() { return api.get('/barras').then(r => { BARRAS.value = r.data?.data || r.data; return true }) }
+
+function fetchBases() { return api.get('/bases').then(r => { BASES.value = r.data?.data || r.data; return true }) }
+function fetchSituacoes() { return api.get('/situacao-invas').then(r => { SITUACOES.value = r.data?.data || r.data; return true }) }
+
+async function saveInva(p) {
+  state.globalLoading = true
+  try {
+    const r = await api.post('/invas', p)
+    await fetchInvas()
+    return { success: true, data: r.data }
+  } catch (e) {
+    return { success: false, error: e.response?.data?.message || e.message }
+  } finally {
+    state.globalLoading = false
+  }
+}
+
+async function updateInva(id, p) {
+  state.globalLoading = true
+  try {
+    const r = await api.put(`/invas/${id}`, p)
+    await fetchInvas()
+    return { success: true, data: r.data }
+  } catch (e) {
+    return { success: false, error: e.response?.data?.message || e.message }
+  } finally {
+    state.globalLoading = false
+  }
+}
+
+async function deleteInva(id) {
+  state.globalLoading = true
+  try {
+    await api.delete(`/invas/${id}`)
+    await fetchInvas()
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: e.response?.data?.message || e.message }
+  } finally {
+    state.globalLoading = false
+  }
+}
+
+async function saveBarra(p) {
+  state.globalLoading = true
+  try {
+    const r = await api.post('/barras', p)
+    await fetchBars()
+    return { success: true, data: r.data?.data || r.data }
+  } catch (e) {
+    return { success: false, error: e.response?.data?.message || e.message }
+  } finally {
+    state.globalLoading = false
+  }
+}
+
+async function updateBarra(id, p) {
+  state.globalLoading = true
+  try {
+    const r = await api.put(`/barras/${id}`, p)
+    await fetchBars()
+    return { success: true, data: r.data?.data || r.data }
+  } catch (e) {
+    return { success: false, error: e.response?.data?.message || e.message }
+  } finally {
+    state.globalLoading = false
+  }
+}
+
+async function deleteBarra(id) {
+  state.globalLoading = true
+  try {
+    await api.delete(`/barras/${id}`)
+    await fetchBars()
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: e.response?.data?.message || e.message }
+  } finally {
+    state.globalLoading = false
+  }
+}
+
+async function saveHorario(p) {
+  state.globalLoading = true
+  try {
+    const r = await api.post('/horarios', p)
+    await fetchBars()
+    return { success: true, data: r.data }
+  } catch (e) {
+    return { success: false, error: e.response?.data?.message || e.message }
+  } finally {
+    state.globalLoading = false
+  }
+}
+
+async function updateHorario(id, p) {
+  state.globalLoading = true
+  try {
+    const r = await api.put(`/horarios/${id}`, p)
+    await fetchBars()
+    return { success: true, data: r.data }
+  } catch (e) {
+    return { success: false, error: e.response?.data?.message || e.message }
+  } finally {
+    state.globalLoading = false
+  }
+}
+
+async function deleteHorario(id) {
+  state.globalLoading = true
+  try {
+    await api.delete(`/horarios/${id}`)
+    await fetchBars()
+    return { success: true }
+  } catch (e) {
+    return { success: false, error: e.response?.data?.message || e.message }
+  } finally {
+    state.globalLoading = false
+  }
+}
 
 function fetchAeronaves() {
   return api.get('/aeronaves').then(r => { 
@@ -706,8 +830,11 @@ export function useCcoStore() {
   }
 
   return {
-    state, login, logout, checkLogin, onFile, onWorkFile, importScale, importWorkSchedule, fetchSlots, fetchBars, fetchAeronaves, updateAeronave, fetchInvas, fetchStatuses,
+    state, login, logout, checkLogin, onFile, onWorkFile, importScale, importWorkSchedule, fetchSlots, fetchBars, fetchBases, fetchSituacoes, fetchAeronaves, updateAeronave, fetchInvas, fetchStatuses,
     fetchAlunos, fetchModelos, fetchMissoes, fetchRestricoes,
+    saveInva, updateInva, deleteInva,
+    saveBarra, updateBarra, deleteBarra,
+    saveHorario, updateHorario, deleteHorario,
     showAlert, closeAlert,
     setCurrentViewDate: (d) => { state.currentViewDate = d; gerarEditor() },
     generateEditor: gerarEditor,
@@ -846,6 +973,6 @@ export function useCcoStore() {
       } catch (err) { showAlert('Erro ao realizar a movimentação no servidor.', 'Erro de Movimentação', 'error') } finally { state.globalLoading = false }
     },
     // Explicitly export refs for external access
-    parsedSlots, parsedWorkSchedules, SCH, INITIAL, AERONAVES, BARRAS, INVAS, ALUNOS, MODELOS, MISSOES, RESTRICTS, STATUSES
+    parsedSlots, parsedWorkSchedules, SCH, INITIAL, AERONAVES, BARRAS, INVAS, ALUNOS, MODELOS, MISSOES, RESTRICTS, STATUSES, BASES, SITUACOES
   }
 }

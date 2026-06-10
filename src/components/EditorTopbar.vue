@@ -21,6 +21,7 @@
       <button class="btn-back" @click="$emit('open-calendar')">📅 Calendário</button>
       <button class="btn-back" @click="() => router.push('/restricoes')">🛠️ Restrições</button>
       <button class="btn-back" @click="() => router.push('/aeronaves')">✈️ Aeronaves</button>
+      <button class="btn-back" @click="() => router.push('/configuracoes')">⚙️ Configurações</button>
       <button class="btn-back" @click="() => router.push('/upload')">📂 Base de dados</button>
       <button class="btn-logout-editor" @click="$emit('logout')">Sair</button>
     </div>
