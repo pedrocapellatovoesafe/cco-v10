@@ -219,8 +219,8 @@ function gerarEditor() {
   const barraMap = {}
   const slotsForDate = parsedSlots.value.filter(s => s.data === state.currentViewDate)
   slotsForDate.forEach((s) => {
-    if (!barraMap[s.barra]) barraMap[s.barra] = []
-    barraMap[s.barra].push(s)
+    if (!barraMap[s.barraId]) barraMap[s.barraId] = []
+    barraMap[s.barraId].push(s)
   })
 
   state.parsedDate = state.currentViewDate
@@ -230,8 +230,9 @@ function gerarEditor() {
     state.parsedDayName = DIAS_PT[d.getDay()] || ''
   }
 
+  // Get all active bars and sort them by base and then by name/known order
   const barrasParaExibir = BARRAS.value
-    .filter(b => isBarraConhecida(b.nome))
+    .filter(b => b.ativo !== 0) // Ensure bar is active
     .sort((a, b) => {
       const baseA = getBase(a.nome)
       const baseB = getBase(b.nome)
@@ -243,14 +244,18 @@ function gerarEditor() {
   let sid = 0
 
   barrasParaExibir.forEach((barraObj) => {
-    const barraId = barraObj.nome
-    const base = getBase(barraId)
-    const existingInBarra = barraMap[barraId] || []
+    const barraIdStr = barraObj.nome
+    const base = getBase(barraIdStr)
+    const existingInBarra = barraMap[barraObj.id] || []
     const byHora = {}
     existingInBarra.forEach((s) => { if (!byHora[s.hora]) byHora[s.hora] = s })
 
-    const gradeBase = base === 'SJK' ? HORAS_SJK : HORAS_CPQ
-    const horasFinais = [...new Set([...gradeBase, ...Object.keys(byHora)])].sort()
+    // Use schedules defined in the API for this bar, filter only active ones
+    const activeHorarios = (barraObj.horarios || [])
+      .filter(h => h.ativo !== 0)
+      .map(h => h.hora.substring(0, 5)) // Ensure HH:mm format
+    
+    const horasFinais = [...new Set([...activeHorarios, ...Object.keys(byHora)])].sort()
     
     horasFinais.forEach((hora) => {
       const existing = byHora[hora]
@@ -258,8 +263,8 @@ function gerarEditor() {
       schSlots.push({
         id: `s${sid}`,
         apiId: existing ? (typeof existing.id === 'string' && existing.id.startsWith('api-') ? existing.id.replace('api-', '') : existing.id) : null,
-        barra: barraId,
-        barraId: existing ? (existing.barraId || barraObj.id) : barraObj.id,
+        barra: barraIdStr,
+        barraId: barraObj.id,
         base,
         hora,
         aluno: existing ? existing.aluno : '',

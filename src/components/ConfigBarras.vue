@@ -26,10 +26,13 @@
               Nenhuma barra encontrada.
             </div>
             <div v-for="bar in filteredBars" :key="bar.id" 
-                 :class="['bar-item', selectedBar?.id === bar.id ? 'active' : '']"
+                 :class="['bar-item', selectedBar?.id === bar.id ? 'active' : '', bar.ativo === 0 ? 'inactive-bar' : '']"
                  @click="selectBar(bar)">
               <div class="bar-info">
-                <span class="bar-name">{{ bar.nome }}</span>
+                <div class="bar-title-row">
+                  <span class="bar-name">{{ bar.nome }}</span>
+                  <span v-if="bar.ativo === 0" class="badge-inactive">INATIVA</span>
+                </div>
                 <div class="bar-tags">
                   <span class="tag-base">{{ bar.base?.nome }}</span>
                   <span class="tag-model">{{ bar.modeloAeronave?.nome }}</span>
@@ -74,6 +77,17 @@
                   </div>
                 </div>
 
+                <div class="form-group">
+                  <label>Status da Barra:</label>
+                  <div class="horario-status">
+                    <label class="switch">
+                      <input type="checkbox" v-model="form.ativo">
+                      <span class="slider round"></span>
+                    </label>
+                    <span class="status-label">{{ form.ativo ? 'Barra Ativa (Visível no Editor)' : 'Barra Inativa (Oculta no Editor)' }}</span>
+                  </div>
+                </div>
+
                 <div class="form-actions-main">
                   <button class="btn-save-main" @click="handleSaveBar" :disabled="isSaving || !isValidBar">
                     {{ isSaving ? 'Processando...' : (isEditing ? 'Atualizar Barra' : 'Criar Barra') }}
@@ -86,7 +100,13 @@
               <div v-if="isEditing" class="horarios-section">
                 <div class="section-header">
                   <h4>⏰ Horários desta Barra</h4>
-                  <button class="btn-add-time" @click="showAddTime = true">➕ Add Horário</button>
+                  <div class="header-tools">
+                    <label class="show-inactive-toggle">
+                      <input type="checkbox" v-model="showInactiveSchedules">
+                      <span>Ver Inativos</span>
+                    </label>
+                    <button class="btn-add-time" @click="showAddTime = true">➕ Add Horário</button>
+                  </div>
                 </div>
 
                 <!-- Input rápido para adicionar horário -->
@@ -154,12 +174,14 @@ const isSaving = ref(false)
 const isEditing = ref(false)
 const showAddTime = ref(false)
 const newTime = ref('')
+const showInactiveSchedules = ref(false)
 
 const form = reactive({
   id: null,
   nome: '',
   baseId: null,
-  modeloAeronaveId: null
+  modeloAeronaveId: null,
+  ativo: true
 })
 
 const confirmModal = reactive({ show: false, title: '', message: '', onConfirm: null })
@@ -180,7 +202,11 @@ const filteredBars = computed(() => {
 
 const sortedHorarios = computed(() => {
   if (!selectedBar.value?.horarios) return []
-  return [...selectedBar.value.horarios].sort((a, b) => a.hora.localeCompare(b.hora))
+  let list = [...selectedBar.value.horarios]
+  if (!showInactiveSchedules.value) {
+    list = list.filter(h => !!h.ativo)
+  }
+  return list.sort((a, b) => a.hora.localeCompare(b.hora))
 })
 
 const isValidBar = computed(() => form.nome.length > 2 && form.baseId && form.modeloAeronaveId)
@@ -212,6 +238,7 @@ async function selectBar(bar) {
   form.nome = bar.nome
   form.baseId = bar.baseId || bar.base?.id
   form.modeloAeronaveId = bar.modeloAeronaveId || bar.modeloAeronave?.id
+  form.ativo = bar.ativo !== 0 // backend might send 0/1
   
   // Fetch full detail to get all schedules (including inactive)
   const detail = await store.fetchBarDetail(bar.id)
@@ -221,7 +248,12 @@ async function selectBar(bar) {
 async function handleSaveBar() {
   if (!isValidBar.value) return
   isSaving.value = true
-  const payload = { nome: form.nome, baseId: form.baseId, modeloAeronaveId: form.modeloAeronaveId }
+  const payload = { 
+    nome: form.nome, 
+    baseId: form.baseId, 
+    modeloAeronaveId: form.modeloAeronaveId,
+    ativo: form.ativo ? 1 : 0
+  }
   
   try {
     const res = isEditing.value ? await store.updateBarra(form.id, payload) : await store.saveBarra(payload)
@@ -327,6 +359,10 @@ async function refreshSelectedBar() {
 }
 .bar-item:hover { border-color: var(--primary); transform: translateX(4px); }
 .bar-item.active { border-color: var(--primary); background: #f0f7ff; }
+.bar-item.inactive-bar { opacity: 0.6; background: #f8fafc; border-style: dashed; }
+
+.bar-title-row { display: flex; align-items: center; gap: 8px; }
+.badge-inactive { font-size: 9px; font-weight: 800; background: #64748b; color: #fff; padding: 2px 6px; border-radius: 4px; }
 
 .bar-name { font-size: 14px; font-weight: 700; color: var(--primary); }
 .bar-tags { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
@@ -354,6 +390,10 @@ async function refreshSelectedBar() {
 .horarios-section { display: flex; flex-direction: column; gap: 16px; }
 .section-header { display: flex; justify-content: space-between; align-items: center; }
 .section-header h4 { margin: 0; font-size: 14px; color: var(--primary); }
+.header-tools { display: flex; align-items: center; gap: 16px; }
+.show-inactive-toggle { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: #64748b; cursor: pointer; }
+.show-inactive-toggle input { cursor: pointer; }
+
 .btn-add-time { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; }
 
 .add-time-box { background: #f8fafc; padding: 12px; border-radius: 10px; display: flex; gap: 8px; align-items: center; border: 1px solid #e2e8f0; }
