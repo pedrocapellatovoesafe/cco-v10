@@ -17,7 +17,8 @@ const ORDEM_BARRAS = [
   // 'MC01 - BACKUP #3',
   'SIRA (SJK) #4', 'SM AATD SJK #6',
   'SIM PCATD - SBSJ #5',
-  'COLT #11', 'COLT DIURNO #12', 'COLT #12', 'MC01 (CPQ) #13',
+  'COLT #11', 'COLT #12', 'MC01 (CPQ) #13',
+  'MC01 (CPQ) (DIURNO) #14',
   'SIM PCATD - SDAM #8', 'SIM AATD CPQ #10',
 ]
 const BARRAS_CONHECIDAS = [...ORDEM_BARRAS]

@@ -3,3 +3,4 @@ dist
 .vscode
 .DS_Store
 INSTRUCOES_IA.md
+.env.local
