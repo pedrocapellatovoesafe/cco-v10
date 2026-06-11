@@ -17,10 +17,25 @@ const AVAIL_TYPES_MAP = {
 
 export function normalizeDate(value) {
   if (!value) return ''
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(value)) return value
-  const parts = value.substring(0, 10).replace(/-/g, '/').split('/')
-  if (parts.length >= 3) return `${parts[2]}/${parts[1]}/${parts[0]}`
-  return value
+  let s = String(value).trim()
+  
+  // Handle Excel Serial Dates
+  if (/^\d{5}$/.test(s)) {
+    const d = new Date(Math.round((parseInt(s, 10) - 25569) * 864e5))
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`
+  }
+
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s
+  
+  // Handle ISO or YYYY-MM-DD
+  const parts = s.substring(0, 10).replace(/-/g, '/').split('/')
+  if (parts.length >= 3) {
+    if (parts[0].length === 4) {
+      return `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`
+    }
+    return `${parts[0].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[2]}`
+  }
+  return s
 }
 
 export function getBase(barraId) {
@@ -36,20 +51,26 @@ export function parseSlotsFromRows(rows) {
   
   const header = rows[0].map((h) => String(h || '').trim().toLowerCase())
   const COLS = {
-    aluno: ['aluno', 'aluno/paciente', 'nome do aluno', 'nome aluno'],
-    status: ['status'],
-    inva: ['inva', 'instrutor', 'instrutor de voo'],
-    barra: ['barra', 'aeronave/barra', 'barra/aeronave'],
-    data: ['data', 'data do voo', 'data voo'],
-    missao: ['missao', 'missão', 'missao/treino', 'missão/treino'],
-    horario: ['horario', 'horário', 'hora', 'hora inicio', 'hora início'],
-    ae: ['aeronave', 'prefixo'],
-    obs: ['obs', 'observação', 'observações'],
+    aluno: ['aluno', 'aluno/paciente', 'nome do aluno', 'nome aluno', 'cliente'],
+    status: ['status', 'situação', 'situacao', 'st'],
+    inva: ['inva', 'instrutor', 'instrutor de voo', 'piloto'],
+    barra: ['barra', 'aeronave/barra', 'barra/aeronave', 'equipamento', 'equip'],
+    data: ['data', 'data do voo', 'data voo', 'dt'],
+    missao: ['missao', 'missão', 'missao/treino', 'missão/treino', 'treinamento', 'treino'],
+    horario: ['horario', 'horário', 'hora', 'hora inicio', 'hora início', 'h. início', 'h. inicio', 'h.'],
+    ae: ['aeronave', 'prefixo', 'matrícula', 'matricula'],
+    obs: ['obs', 'observação', 'observações', 'notas'],
   }
   
   const findCol = (h, keys) => {
+    // Priority 1: Exact match
     for (const k of keys) {
       const idx = h.indexOf(k)
+      if (idx >= 0) return idx
+    }
+    // Priority 2: Keyword is contained within header
+    for (const k of keys) {
+      const idx = h.findIndex(headerName => headerName.includes(k))
       if (idx >= 0) return idx
     }
     return -1
@@ -81,21 +102,29 @@ export function parseSlotsFromRows(rows) {
 
   for (let i = 1; i < rows.length; i += 1) {
     const row = rows[i]
+    if (!row || row.length === 0) continue
+
     const barra = gBarra(row)
     const horario = gHorario(row)
     if (!barra || !horario) continue
 
-    const hm = horario.match(/^(\d{2}:\d{2})/)
+    // Improved regex to handle H:MM as well as HH:MM
+    const hm = horario.match(/^(\d{1,2}:\d{2})/)
     if (!hm) continue
-    const hora = hm[1]
+    
+    // Normalize hora to HH:MM format
+    let hora = hm[1]
+    if (hora.length === 4) hora = '0' + hora
+
     const base = getBase(barra)
     const missao = gMissao(row)
     let missaoShort = missao
     if (missao.includes(' > ')) missaoShort = missao.split(' > ').pop().trim()
 
-    const data = gData(row)
-    if (!parsedDate && data) {
-      parsedDate = normalizeDate(data)
+    const rawData = gData(row)
+    const normalizedData = normalizeDate(rawData)
+    if (!parsedDate && normalizedData) {
+      parsedDate = normalizedData
     }
 
     slots.push({
@@ -105,7 +134,7 @@ export function parseSlotsFromRows(rows) {
       ae: gAe(row),
       missao: missaoShort,
       st: gStatus(row),
-      data,
+      data: normalizedData || rawData,
       obs: gObs(row)
     })
   }
