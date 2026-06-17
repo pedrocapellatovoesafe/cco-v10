@@ -3,15 +3,12 @@ import api from '../services/api'
 import { getBase, parseSlotsFromRows, parseWorkSchedulesFromRows } from '../utils/excelParser'
 import { useSlotValidation } from './useSlotValidation'
 import { useAuth } from './useAuth'
-
-const SESSION_KEY = 'cco_auth'
-const TOKEN_KEY = 'cco_token'
+import { useCcoCatalog } from './useCcoCatalog'
+import { useCcoCalendar } from './useCcoCalendar'
 
 const DIAS_PT = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado']
 const MESES_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 const DIAS_SEMANA_PT = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']
-const HORAS_SJK = ['07:45', '09:45', '11:45', '13:45', '15:45', '17:45']
-const HORAS_CPQ = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00']
 const ORDEM_BARRAS = [
   'MC-01 (SJK) #1', 'MC01 (SJK) (DIURNO) #2', 
   // 'MC01 - BACKUP #3',
@@ -21,7 +18,6 @@ const ORDEM_BARRAS = [
   'MC01 (CPQ) (DIURNO) #14',
   'SIM PCATD - SDAM #8', 'SIM AATD CPQ #10',
 ]
-const BARRAS_CONHECIDAS = [...ORDEM_BARRAS]
 
 // Performance: Use shallowRef for large catalog lists as per INSTRUCOES_IA.md
 const parsedSlots = shallowRef([])
@@ -108,6 +104,25 @@ const state = reactive({
   CURSOS: computed(() => CURSOS.value),
 })
 
+// Initialize Sub-Composables
+const refs = { 
+  parsedSlots, parsedWorkSchedules, SCH, INITIAL, AERONAVES, BARRAS, 
+  INVAS, ALUNOS, MODELOS, MISSOES, RESTRICTS, STATUSES, BASES, SITUACOES, CURSOS 
+}
+const catalog = useCcoCatalog({ state, refs })
+const calendar = useCcoCalendar({ state, refs })
+
+function showAlert(message, title = 'Notificação', type = 'info') {
+  state.globalModal.message = message
+  state.globalModal.title = title
+  state.globalModal.type = type
+  state.globalModal.show = true
+}
+
+function closeAlert() {
+  state.globalModal.show = false
+}
+
 function login() {
   auth.state.loginUser = state.loginUser
   auth.state.loginPass = state.loginPass
@@ -154,7 +169,7 @@ function onFile(file) {
 
 async function onWorkFile(file) {
   if (!file) return
-  if (!INVAS.value || INVAS.value.length === 0) await fetchInvas()
+  if (!INVAS.value || INVAS.value.length === 0) await catalog.fetchInvas()
   const reader = new FileReader()
   reader.onload = (e) => {
     try {
@@ -196,7 +211,7 @@ async function importWorkSchedule() {
   try {
     const payload = { escalas: parsedWorkSchedules.value }
     const response = await api.post('/escala-trabalhos/import', payload)
-    await fetchInvas()
+    await catalog.fetchInvas()
     return { success: true, data: response.data }
   } catch (err) {
     state.uploadError = err.response?.data?.message || err.message
@@ -211,10 +226,6 @@ function ordemBarra(id) {
   if (idx >= 0) return idx
   const m = id.match(/#(\d+)/)
   return m ? 100 + parseInt(m[1], 10) : 999
-}
-
-function isBarraConhecida(id) {
-  return BARRAS_CONHECIDAS.some((k) => id.toUpperCase().includes(k.toUpperCase()) || k.toUpperCase().includes(id.toUpperCase()))
 }
 
 function gerarEditor() {
@@ -296,333 +307,6 @@ function gerarEditor() {
 function hv(hora) {
   const m = hora && hora.match(/^(\d+):(\d+)/)
   return m ? +m[1] + +m[2] / 60 : 0
-}
-
-function fetchInvas() {
-  const mes = `${state.calendarYear}-${String(state.calendarMonthIdx + 1).padStart(2, '0')}`
-  return api.get(`/invas?mes=${mes}`)
-    .then(response => {
-      INVAS.value = response.data?.data || response.data || []
-      return true
-    })
-    .catch(error => {
-      console.error('Error fetching invas:', error)
-      return false
-    })
-}
-
-function fetchAlunos() {
-  return api.get('/alunos').then(r => { ALUNOS.value = r.data?.data || r.data; return true })
-}
-function fetchModelos() {
-  return api.get('/modelo-aeronaves').then(r => { MODELOS.value = r.data?.data || r.data; return true })
-}
-function fetchMissoes() { return api.get('/missoes').then(r => { MISSOES.value = r.data?.data || r.data; return true }) }
-function fetchCursos() { return api.get('/cursos').then(r => { CURSOS.value = r.data?.data || r.data; return true }) }
-
-async function saveCurso(p) {
-  state.globalLoading = true
-  try {
-    const r = await api.post('/cursos', p)
-    await fetchCursos()
-    return { success: true, data: r.data?.data || r.data }
-  } catch (e) {
-    return { success: false, error: e.response?.data?.message || e.message }
-  } finally {
-    state.globalLoading = false
-  }
-}
-
-async function updateCurso(id, p) {
-  state.globalLoading = true
-  try {
-    const r = await api.put(`/cursos/${id}`, p)
-    await fetchCursos()
-    return { success: true, data: r.data?.data || r.data }
-  } catch (e) {
-    return { success: false, error: e.response?.data?.message || e.message }
-  } finally {
-    state.globalLoading = false
-  }
-}
-
-async function deleteCurso(id) {
-  state.globalLoading = true
-  try {
-    await api.delete(`/cursos/${id}`)
-    await fetchCursos()
-    return { success: true }
-  } catch (e) {
-    return { success: false, error: e.response?.data?.message || e.message }
-  } finally {
-    state.globalLoading = false
-  }
-}
-
-async function saveMissao(p) {
-  state.globalLoading = true
-  try {
-    const r = await api.post('/missoes', p)
-    await fetchCursos() // Missions are often retrieved nested in courses
-    await fetchMissoes()
-    return { success: true, data: r.data?.data || r.data }
-  } catch (e) {
-    return { success: false, error: e.response?.data?.message || e.message }
-  } finally {
-    state.globalLoading = false
-  }
-}
-
-async function updateMissao(id, p) {
-  state.globalLoading = true
-  try {
-    const r = await api.put(`/missoes/${id}`, p)
-    await fetchCursos()
-    await fetchMissoes()
-    return { success: true, data: r.data?.data || r.data }
-  } catch (e) {
-    return { success: false, error: e.response?.data?.message || e.message }
-  } finally {
-    state.globalLoading = false
-  }
-}
-
-async function deleteMissao(id) {
-  state.globalLoading = true
-  try {
-    await api.delete(`/missoes/${id}`)
-    await fetchCursos()
-    await fetchMissoes()
-    return { success: true }
-  } catch (e) {
-    return { success: false, error: e.response?.data?.message || e.message }
-  } finally {
-    state.globalLoading = false
-  }
-}
-function fetchRestricoes() {
-  return api.get('/restricoes').then(r => { RESTRICTS.value = r.data?.data || r.data; return true })
-}
-
-function getWorkScheduleRows(situations, calDays) {
-  if (!INVAS.value || INVAS.value.length === 0) return []
-  const isSoloSearch = situations.includes('solo')
-  const filteredInvas = INVAS.value.filter(i => {
-    const sitRaw = i.situacao?.nome || i.situacao || i.situacaoInva?.nome || ''
-    const sit = String(sitRaw).toLowerCase().trim()
-    if (!sit) return false
-    if (isSoloSearch) return sit.includes('solo')
-    if (sit.includes('solo')) return false
-    return sit.includes('clt') || sit.includes('eventual') || sit.includes('voo')
-  })
-  
-  return filteredInvas.flatMap(instr => {
-    let baseNome = 'SJK'
-    const rawBase = (instr.base?.nome || instr.base || '').toUpperCase()
-    if (rawBase.includes('CPQ') || rawBase.includes('CAMPINAS') || rawBase.includes('SDAM')) baseNome = 'CPQ'
-    else if (rawBase.includes('SJK') || rawBase.includes('JOSÉ') || rawBase.includes('SBSJ')) baseNome = 'SJK'
-
-    // Special Exception: Checador (situacaoInvaId = 5) appears in both bases
-    const isChecador = (instr.situacaoInvaId === 5 || instr.situacao_inva_id === 5)
-    const bases = isChecador ? ['SJK', 'CPQ'] : [baseNome]
-
-    return bases.map(b => ({
-      nome: instr.nome,
-      id: instr.id,
-      base: b,
-      days: calDays.map(cell => {
-        const year = state.calendarYear
-        const month = String(state.calendarMonthIdx + 1).padStart(2, '0')
-        const day = String(cell.day).padStart(2, '0')
-        const dateStr = `${year}-${month}-${day}`
-        const schedule = Array.isArray(instr.escalas) ? instr.escalas.find(s => s.data && s.data.startsWith(dateStr)) : null
-        
-        let estado = 'avail'
-        let sigla = 'A'
-        let periodo = ''
-
-        if (schedule) {
-          const tipoNome = (schedule.tipoDisponibilidade?.nome || schedule.tipo || '').toLowerCase()
-          periodo = schedule.periodo || ''
-          
-          if (tipoNome.includes('disponivel') || tipoNome.includes('disponível')) { estado = 'avail'; sigla = '✓' }
-          else if (tipoNome.includes('folga regular')) { estado = 'folga-reg'; sigla = 'FR' }
-          else if (tipoNome.includes('folga social')) { estado = 'folga-soc'; sigla = 'FS' }
-          else if (tipoNome.includes('sobreaviso')) { estado = 'sobreaviso'; sigla = 'SA' }
-          else if (tipoNome.includes('treinamento')) { estado = 'treinamento'; sigla = 'TR' }
-          else if (tipoNome.includes('férias') || tipoNome.includes('ferias')) { estado = 'ferias'; sigla = 'FE' }
-          else if (tipoNome.includes('banco')) { estado = 'banco'; sigla = 'BH' }
-          else if (tipoNome.includes('opera')) { estado = 'operacoes'; sigla = 'OP' }
-          else if (tipoNome.includes('externo')) { estado = 'externo'; sigla = 'TE' }
-          else if (tipoNome.includes('médica') || tipoNome.includes('medica') || tipoNome.includes('dispensa')) { estado = 'medica'; sigla = 'DM' }
-          else { estado = 'outro'; sigla = '?' }
-        } else if (cell.isWeekend) { 
-          estado = 'weekend-avail'
-          sigla = 'A'
-        }
-
-        return { 
-          key: cell.day, 
-          estado, 
-          sigla,
-          periodo,
-          label: sigla + (periodo ? ` - ${periodo}` : ''), 
-          isToday: new Date().getFullYear() === state.calendarYear && new Date().getMonth() === state.calendarMonthIdx && new Date().getDate() === cell.day, 
-          isWeekend: cell.isWeekend 
-        }
-      })
-    }))
-  })
-}
-
-function fetchBars() { return api.get('/barras?includeInactive=1').then(r => { BARRAS.value = r.data?.data || r.data; return true }) }
-function fetchBarDetail(id) { return api.get(`/barras/${id}?includeInactive=1`).then(r => r.data?.data || r.data) }
-
-function fetchBases() { return api.get('/bases').then(r => { BASES.value = r.data?.data || r.data; return true }) }
-function fetchSituacoes() { return api.get('/situacao-invas').then(r => { SITUACOES.value = r.data?.data || r.data; return true }) }
-
-async function saveInva(p) {
-  state.globalLoading = true
-  try {
-    const r = await api.post('/invas', p)
-    await fetchInvas()
-    return { success: true, data: r.data }
-  } catch (e) {
-    return { success: false, error: e.response?.data?.message || e.message }
-  } finally {
-    state.globalLoading = false
-  }
-}
-
-async function updateInva(id, p) {
-  state.globalLoading = true
-  try {
-    const r = await api.put(`/invas/${id}`, p)
-    await fetchInvas()
-    return { success: true, data: r.data }
-  } catch (e) {
-    return { success: false, error: e.response?.data?.message || e.message }
-  } finally {
-    state.globalLoading = false
-  }
-}
-
-async function deleteInva(id) {
-  state.globalLoading = true
-  try {
-    await api.delete(`/invas/${id}`)
-    await fetchInvas()
-    return { success: true }
-  } catch (e) {
-    return { success: false, error: e.response?.data?.message || e.message }
-  } finally {
-    state.globalLoading = false
-  }
-}
-
-async function saveBarra(p) {
-  state.globalLoading = true
-  try {
-    const r = await api.post('/barras', p)
-    await fetchBars()
-    return { success: true, data: r.data?.data || r.data }
-  } catch (e) {
-    return { success: false, error: e.response?.data?.message || e.message }
-  } finally {
-    state.globalLoading = false
-  }
-}
-
-async function updateBarra(id, p) {
-  state.globalLoading = true
-  try {
-    const r = await api.put(`/barras/${id}`, p)
-    await fetchBars()
-    return { success: true, data: r.data?.data || r.data }
-  } catch (e) {
-    return { success: false, error: e.response?.data?.message || e.message }
-  } finally {
-    state.globalLoading = false
-  }
-}
-
-async function deleteBarra(id) {
-  state.globalLoading = true
-  try {
-    await api.delete(`/barras/${id}`)
-    await fetchBars()
-    return { success: true }
-  } catch (e) {
-    return { success: false, error: e.response?.data?.message || e.message }
-  } finally {
-    state.globalLoading = false
-  }
-}
-
-async function saveHorario(p) {
-  state.globalLoading = true
-  try {
-    const r = await api.post('/barras-horarios', p)
-    await fetchBars()
-    return { success: true, data: r.data }
-  } catch (e) {
-    return { success: false, error: e.response?.data?.message || e.message }
-  } finally {
-    state.globalLoading = false
-  }
-}
-
-async function updateHorario(id, p) {
-  state.globalLoading = true
-  try {
-    const r = await api.put(`/barras-horarios/${id}`, p)
-    await fetchBars()
-    return { success: true, data: r.data }
-  } catch (e) {
-    return { success: false, error: e.response?.data?.message || e.message }
-  } finally {
-    state.globalLoading = false
-  }
-}
-
-async function deleteHorario(id) {
-  state.globalLoading = true
-  try {
-    await api.delete(`/barras-horarios/${id}`)
-    await fetchBars()
-    return { success: true }
-  } catch (e) {
-    return { success: false, error: e.response?.data?.message || e.message }
-  } finally {
-    state.globalLoading = false
-  }
-}
-
-function fetchAeronaves() {
-  return api.get('/aeronaves').then(r => { 
-    AERONAVES.value = r.data?.data || r.data; 
-    return true 
-  })
-}
-
-async function updateAeronave(id, p) {
-  state.globalLoading = true
-  try {
-    const r = await api.put(`/aeronaves/${id}`, p)
-    await fetchAeronaves()
-    return { success: true, data: r.data }
-  } catch (e) {
-    return { success: false, error: e.response?.data?.message || e.message }
-  } finally {
-    state.globalLoading = false
-  }
-}
-
-function fetchStatuses() { 
-  return api.get('/status-slots').then(r => { 
-    STATUSES.value = r.data?.data || r.data; 
-    return true 
-  }) 
 }
 
 function fetchSlots(startDate, endDate) {
@@ -789,7 +473,7 @@ async function updateSlot(slot, refresh = true) {
     const payload = buildSlotPayload(slot)
     await api.put(`/slots/${slot.apiId}`, payload)
     if (refresh) { 
-      await fetchInvas()
+      await catalog.fetchInvas()
       await fetchSlots()
       gerarEditor()
     }
@@ -820,74 +504,6 @@ async function saveSlot(slot) {
 export function useCcoStore() {
   const { getSlotAlerts, getAeronaveHours, aeronaveStats } = useSlotValidation(SCH, INVAS, AERONAVES, parsedSlots)
 
-  const calendarDays = computed(() => {
-    const date = new Date(state.calendarYear, state.calendarMonthIdx + 1, 0)
-    return Array.from({ length: date.getDate() }, (_, idx) => ({
-      day: idx + 1,
-      weekDay: DIAS_SEMANA_PT[new Date(state.calendarYear, state.calendarMonthIdx, idx + 1).getDay()],
-      isWeekend: [0, 6].includes(new Date(state.calendarYear, state.calendarMonthIdx, idx + 1).getDay()),
-      key: idx + 1
-    }))
-  })
-
-  const calendarFlightRows = computed(() => getWorkScheduleRows(['clt', 'eventual', 'voo'], calendarDays.value))
-  const calendarSoloRows = computed(() => getWorkScheduleRows(['solo'], calendarDays.value))
-  const calendarMonthLabel = computed(() => `${MESES_PT[state.calendarMonthIdx]} ${state.calendarYear}`)
-
-  const availabilityState = (n) => {
-    const i = INVAS.value.find(x => x.nome === n)
-    if (i) {
-      const dParts = state.currentViewDate.split('/')
-      if (dParts.length === 3) {
-        const dStr = `${dParts[2]}-${dParts[1]}-${dParts[0]}`
-        const s = Array.isArray(i.escalas) ? i.escalas.find(x => x.data.startsWith(dStr)) : null
-        if (s) {
-          const tipoNome = (s.tipoDisponibilidade?.nome || s.tipo || '').toLowerCase()
-          if (tipoNome.includes('disponivel') || tipoNome.includes('disponível')) return 'avail'
-          if (tipoNome.includes('folga regular')) return 'folga-reg'
-          if (tipoNome.includes('folga social')) return 'folga-soc'
-          if (tipoNome.includes('sobreaviso')) return 'sobreaviso'
-          if (tipoNome.includes('treinamento')) return 'treinamento'
-          if (tipoNome.includes('férias') || tipoNome.includes('ferias')) return 'ferias'
-          if (tipoNome.includes('banco')) return 'banco'
-          if (tipoNome.includes('opera')) return 'operacoes'
-          if (tipoNome.includes('externo')) return 'externo'
-          if (tipoNome.includes('médica') || tipoNome.includes('medica')) return 'medica'
-          return 'outro'
-        }
-      }
-    }
-    return state.availability[n] || 'avail'
-  }
-
-  const availabilityLabel = (n) => {
-    const i = INVAS.value.find(x => x.nome === n)
-    if (i) {
-      const dParts = state.currentViewDate.split('/')
-      if (dParts.length === 3) {
-        const dStr = `${dParts[2]}-${dParts[1]}-${dParts[0]}`
-        const s = Array.isArray(i.escalas) ? i.escalas.find(x => x.data.startsWith(dStr)) : null
-        if (s) {
-          const tipoNome = (s.tipoDisponibilidade?.nome || s.tipo || '').toLowerCase()
-          let sigla = '?'
-          if (tipoNome.includes('disponivel') || tipoNome.includes('disponível')) sigla = '✓'
-          else if (tipoNome.includes('folga regular')) sigla = 'FR'
-          else if (tipoNome.includes('folga social')) sigla = 'FS'
-          else if (tipoNome.includes('sobreaviso')) sigla = 'SA'
-          else if (tipoNome.includes('treinamento')) sigla = 'TR'
-          else if (tipoNome.includes('férias') || tipoNome.includes('ferias')) sigla = 'FE'
-          else if (tipoNome.includes('banco')) sigla = 'BH'
-          else if (tipoNome.includes('opera')) sigla = 'OP'
-          else if (tipoNome.includes('externo')) sigla = 'TE'
-          else if (tipoNome.includes('médica') || tipoNome.includes('medica')) sigla = 'DM'
-          return `${sigla}${s.periodo ? ' - ' + s.periodo : ''}`
-        }
-      }
-    }
-    const man = state.availability[n] || 'avail'
-    return man === 'avail' ? 'A' : man === 'folga-reg' ? 'FR' : man === 'cond' ? '?' : 'A'
-  }
-
   const scheduleBlocks = computed(() => {
     const g = { SJK: [], CPQ: [] }
     const barras = [...new Set(SCH.value.map(s => s.barra))]
@@ -906,43 +522,22 @@ export function useCcoStore() {
     return 'high'
   }
 
-  function showAlert(message, title = 'Notificação', type = 'info') {
-    state.globalModal.message = message
-    state.globalModal.title = title
-    state.globalModal.type = type
-    state.globalModal.show = true
-  }
-
-  function closeAlert() {
-    state.globalModal.show = false
-  }
-
   return {
-    state, login, logout, checkLogin, onFile, onWorkFile, importScale, importWorkSchedule, fetchSlots, fetchBars, fetchBarDetail, fetchBases, fetchSituacoes, fetchAeronaves, updateAeronave, fetchInvas, fetchStatuses,
-    fetchAlunos, fetchModelos, fetchMissoes, fetchCursos, fetchRestricoes,
-    saveInva, updateInva, deleteInva,
-    saveBarra, updateBarra, deleteBarra,
-    saveHorario, updateHorario, deleteHorario,
-    saveCurso, updateCurso, deleteCurso,
-    saveMissao, updateMissao, deleteMissao,
+    state, login, logout, checkLogin, onFile, onWorkFile, importScale, importWorkSchedule, fetchSlots, 
+    ...catalog,
+    ...calendar,
     showAlert, closeAlert,
     setCurrentViewDate: (d) => { state.currentViewDate = d; gerarEditor() },
     generateEditor: gerarEditor,
     voltarUpload: () => { state.fileOk = false; parsedSlots.value = [] },
     resetSchedule: () => { SCH.value = INITIAL.value.map(s => ({ ...s })) },
-    toggleDisp: (n) => { 
-      const current = availabilityState(n); const states = ['avail', 'folga-reg', 'cond'] 
-      const next = states[(states.indexOf(current === 'avail' ? 'avail' : current === 'folga-reg' ? 'folga-reg' : 'cond') + 1) % 3]
-      state.availability[n] = next 
-    },
-    openCalendar: () => fetchInvas(),
+    openCalendar: () => catalog.fetchInvas(),
     changeCalendarMonth: (delta) => {
       state.calendarMonthIdx += delta
       if (state.calendarMonthIdx > 11) { state.calendarMonthIdx = 0; state.calendarYear += 1 }
       else if (state.calendarMonthIdx < 0) { state.calendarMonthIdx = 11; state.calendarYear -= 1 }
-      fetchInvas()
+      catalog.fetchInvas()
     },
-    calendarMonthLabel, calendarFlightRows, calendarSoloRows, calendarDays,
     getSlotClass: (s) => !s.aluno ? 'sc sc-empty' : `sc ${s.st === 'CONFIRMADO' ? 'sc-filled' : s.st === 'PENDENTE' ? 'sc-st-agua' : 'sc-st-other'}`,
     getSlotAlerts,
     aeronaveStats,
@@ -973,25 +568,10 @@ export function useCcoStore() {
         updateSlot(s) 
       } 
     },
-    availabilityGroups: computed(() => {
-      const g = { SJK: { voo: [], solo: [] }, CPQ: { voo: [], solo: [] } }
-      INVAS.value.forEach(i => {
-        const b = getBase(i.base?.nome || i.base)
-        const sitRaw = i.situacao?.nome || i.situacao || i.situacaoInva?.nome || ''
-        const sit = String(sitRaw).toLowerCase()
-        
-        // Special Exception: Checador (situacaoInvaId = 5) appears in both bases
-        const isChecador = (i.situacaoInvaId === 5 || i.situacao_inva_id === 5)
-        const targets = isChecador ? ['SJK', 'CPQ'] : [b]
-        
-        targets.forEach(targetBase => {
-          if (sit.includes('solo')) g[targetBase].solo.push(i)
-          else if (sit.includes('clt') || sit.includes('eventual') || sit.includes('voo')) g[targetBase].voo.push(i)
-        })
-      })
-      return g
-    }),
-    availabilityState, availabilityClass: (n) => availabilityState(n), availabilityLabel,
+    availabilityGroups: calendar.availabilityGroups,
+    availabilityState: calendar.availabilityState,
+    availabilityClass: (n) => calendar.availabilityState(n),
+    availabilityLabel: calendar.availabilityLabel,
     filterStartDate: computed({ get: () => state.filterStartDate, set: (v) => { state.filterStartDate = v } }),
     filterEndDate: computed({ get: () => state.filterEndDate, set: (v) => { state.filterEndDate = v } }),
     currentViewDate: computed(() => state.currentViewDate),
@@ -1019,35 +599,6 @@ export function useCcoStore() {
       return list
     },
     deleteSlot: async (id) => { state.globalLoading = true; try { await api.delete(`/slots/${id}`); await fetchSlots(); gerarEditor() } finally { state.globalLoading = false } },
-    saveAvailability: async (p) => { state.globalLoading = true; try { const r = await api.post('/escala-trabalhos', p); await fetchInvas(); return { success: true, data: r.data } } catch (e) { return { success: false, error: e.response?.data?.message || e.message } } finally { state.globalLoading = false } },
-    updateAvailability: async (id, p) => { state.globalLoading = true; try { const r = await api.put(`/escala-trabalhos/${id}`, p); await fetchInvas(); return { success: true, data: r.data } } catch (e) { return { success: false, error: e.response?.data?.message || e.message } } finally { state.globalLoading = false } },
-    saveRestriction: async (p) => { state.globalLoading = true; try { const r = await api.post('/restricoes', p); await fetchRestricoes(); return { success: true, data: r.data } } catch (e) { return { success: false, error: e.response?.data?.message || e.message } } finally { state.globalLoading = false } },
-    importRestrictions: async (restricoes) => {
-      state.globalLoading = true
-      try {
-        const r = await api.post('/restricoes/import', { restricoes })
-        await fetchRestricoes()
-        return { success: true, data: r.data }
-      } catch (e) {
-        return { success: false, error: e.response?.data?.message || e.message }
-      } finally {
-        state.globalLoading = false
-      }
-    },
-    updateRestriction: async (id, p) => { state.globalLoading = true; try { const r = await api.put(`/restricoes/${id}`, p); await fetchRestricoes(); return { success: true, data: r.data } } catch (e) { return { success: false, error: e.response?.data?.message || e.message } } finally { state.globalLoading = false } },
-    deleteRestriction: async (id) => { state.globalLoading = true; try { await api.delete(`/restricoes/${id}`); await fetchRestricoes(); return { success: true } } catch (e) { return { success: false, error: e.message } } finally { state.globalLoading = false } },
-    bulkDeleteRestrictions: async (ids) => {
-      state.globalLoading = true
-      try {
-        const r = await api.post('/restricoes/bulk-delete', { ids })
-        await fetchRestricoes()
-        return { success: true, data: r.data }
-      } catch (e) {
-        return { success: false, error: e.response?.data?.message || e.message }
-      } finally {
-        state.globalLoading = false
-      }
-    },
     saveSlot,
     swapSlots: async (idA, idB) => {
       const a = SCH.value.find(x => x.id === idA); const b = SCH.value.find(x => x.id === idB)
