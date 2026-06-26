@@ -37,6 +37,23 @@
                     </option>
                   </select>
                 </div>
+                <div class="filter-item">
+                  <label>Tipo:</label>
+                  <select v-model="chartTypeFilter" class="chart-select">
+                    <option value="ambos">Ambas (Aero + Sim)</option>
+                    <option value="aeronave">Aeronave</option>
+                    <option value="simulador">Simulador</option>
+                  </select>
+                </div>
+                <div class="filter-item">
+                  <label>Base:</label>
+                  <select v-model="chartBaseFilter" class="chart-select">
+                    <option value="all">Todas as Bases</option>
+                    <option v-for="b in store.state.BASES" :key="b.id" :value="b.nome">
+                      {{ b.nome }}
+                    </option>
+                  </select>
+                </div>
               </div>
             </div>
             
@@ -167,55 +184,86 @@
 
           <!-- Card da Tabela -->
           <div class="dashboard-card main-card">
-          <div class="card-header">
-            <h3>📈 Saldo de Horas por Instrutor</h3>
-            <div class="search-box">
-              <input 
-                type="text" 
-                v-model="invaSearchQuery" 
-                placeholder="🔍 Filtrar instrutor..." 
-                class="search-input"
-              />
+            <div class="card-header table-header-filters">
+              <h3>📈 Saldo de Horas por Instrutor</h3>
+              <div class="table-filters-row">
+                <div class="filter-item">
+                  <label>Início:</label>
+                  <input type="date" v-model="tableStartDate" class="filter-input date-input" />
+                </div>
+                <div class="filter-item">
+                  <label>Fim:</label>
+                  <input type="date" v-model="tableEndDate" class="filter-input date-input" />
+                </div>
+                <div class="filter-item">
+                  <label>Base:</label>
+                  <select v-model="tableBaseFilter" class="chart-select">
+                    <option value="all">Todas as Bases</option>
+                    <option v-for="b in store.state.BASES" :key="b.id" :value="b.nome">
+                      {{ b.nome }}
+                    </option>
+                  </select>
+                </div>
+                <div class="search-box">
+                  <input 
+                    type="text" 
+                    v-model="invaSearchQuery" 
+                    placeholder="🔍 Filtrar instrutor..." 
+                    class="search-input"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-          <div class="card-body scrollable-body">
-            <table class="report-table">
-              <thead>
-                <tr>
-                  <th>Instrutor</th>
-                  <th>Base</th>
-                  <th class="text-right">Horas Reais (Cavok)</th>
-                  <th class="text-right">Horas Agendadas (CCO)</th>
-                  <th class="text-right">Total Previsto</th>
-                  <th class="text-right">Total (Decimal)</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-if="filteredInvas.length === 0">
-                  <td colspan="6" class="empty-row">Nenhum instrutor encontrado.</td>
-                </tr>
-                <tr v-for="inva in filteredInvas" :key="inva.id" class="report-row">
-                  <td class="font-bold text-primary">{{ inva.nome }}</td>
-                  <td>
-                    <span class="badge-base" :class="inva.base?.nome?.toLowerCase() || 'default'">
-                      {{ inva.base?.nome || inva.base || 'N/A' }}
-                    </span>
-                  </td>
-                  <td class="text-right font-semibold text-success">
-                    {{ formatMinutes(getInvaRealMinutes(inva.nome)) }}
-                  </td>
-                  <td class="text-right font-semibold text-secondary">
-                    {{ formatMinutes(getInvaScheduledMinutes(inva.nome)) }}
-                  </td>
-                  <td class="text-right font-extrabold text-dark-primary">
-                    {{ formatMinutes(getInvaRealMinutes(inva.nome) + getInvaScheduledMinutes(inva.nome)) }}
-                  </td>
-                  <td class="text-right font-bold text-primary">
-                    {{ formatDecimalHours(getInvaRealMinutes(inva.nome) + getInvaScheduledMinutes(inva.nome)) }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="card-body scrollable-body">
+              <table class="report-table">
+                <thead>
+                  <tr>
+                    <th>Instrutor</th>
+                    <th>Base</th>
+                    <th class="text-right">Reais Aero (Cavok)</th>
+                    <th class="text-right">Reais Sim (Cavok)</th>
+                    <th class="text-right">Reais Aero + SIM (Cavok)</th>
+                    <th class="text-right">Agendadas Aero (CCO)</th>
+                    <th class="text-right">Agendadas Sim (CCO)</th>
+                    <th class="text-right">Total Previsto</th>
+                    <th class="text-right">Total (Decimal)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-if="filteredInvas.length === 0">
+                    <td colspan="9" class="empty-row">Nenhum instrutor encontrado.</td>
+                  </tr>
+                  <tr v-for="inva in filteredInvas" :key="inva.id" class="report-row">
+                    <td class="font-bold text-primary">{{ inva.nome }}</td>
+                    <td>
+                      <span class="badge-base" :class="inva.base?.nome?.toLowerCase() || 'default'">
+                        {{ inva.base?.nome || inva.base || 'N/A' }}
+                      </span>
+                    </td>
+                    <td class="text-right font-semibold text-success">
+                      {{ formatMinutes(getInvaRealMinutes(inva.nome, 'aeronave', tableStartDate, tableEndDate)) }}
+                    </td>
+                    <td class="text-right font-semibold text-success">
+                      {{ formatMinutes(getInvaRealMinutes(inva.nome, 'simulador', tableStartDate, tableEndDate)) }}
+                    </td>
+                    <td class="text-right font-bold text-success">
+                      {{ formatMinutes(getInvaRealMinutes(inva.nome, 'ambos', tableStartDate, tableEndDate)) }}
+                    </td>
+                    <td class="text-right font-semibold text-secondary">
+                      {{ formatMinutes(getInvaScheduledMinutes(inva.nome, 'aeronave', tableStartDate, tableEndDate)) }}
+                    </td>
+                    <td class="text-right font-semibold text-secondary">
+                      {{ formatMinutes(getInvaScheduledMinutes(inva.nome, 'simulador', tableStartDate, tableEndDate)) }}
+                    </td>
+                    <td class="text-right font-extrabold text-dark-primary">
+                      {{ formatMinutes(getInvaRealMinutes(inva.nome, 'ambos', tableStartDate, tableEndDate) + getInvaScheduledMinutes(inva.nome, 'ambos', tableStartDate, tableEndDate)) }}
+                    </td>
+                    <td class="text-right font-bold text-primary">
+                      {{ formatDecimalHours(getInvaRealMinutes(inva.nome, 'ambos', tableStartDate, tableEndDate) + getInvaScheduledMinutes(inva.nome, 'ambos', tableStartDate, tableEndDate)) }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
           </div>
         </div>
         </div> <!-- Fim main-column -->
@@ -375,6 +423,21 @@ const filterInstructor = ref('')
 // Filtros do gráfico
 const chartMonth = ref(getTodayStr().substring(0, 7)) // e.g. "2026-06"
 const chartInvaStatus = ref('all')
+const chartTypeFilter = ref('ambos')
+const chartBaseFilter = ref('all')
+
+const getLastDayOfMonthStr = () => {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = d.getMonth() + 1
+  const lastDay = new Date(y, m, 0).getDate()
+  const mStr = String(m).padStart(2, '0')
+  return `${y}-${mStr}-${String(lastDay).padStart(2, '0')}`
+}
+
+const tableStartDate = ref(getFirstDayOfMonthStr())
+const tableEndDate = ref(getLastDayOfMonthStr())
+const tableBaseFilter = ref('all')
 
 const uniqueMonths = computed(() => {
   const months = new Set()
@@ -467,10 +530,49 @@ const chartFilteredInvas = computed(() => {
       return String(sitId) === String(chartInvaStatus.value)
     })
   }
+  if (chartBaseFilter.value !== 'all') {
+    list = list.filter(i => {
+      const iBase = i.base?.nome || i.base || ''
+      return iBase.toLowerCase().trim() === chartBaseFilter.value.toLowerCase().trim()
+    })
+  }
   return list
 })
 
-const getInvaRealMinutesForMonth = (invaName, monthStr) => {
+const isSimulatorSlot = (s) => {
+  if (!s) return false
+  if (typeof s.tipoSimulador === 'boolean') {
+    return s.tipoSimulador
+  }
+  const aeronaves = store.state.AERONAVES || []
+  if (s.aeronaveId) {
+    const aeObj = aeronaves.find(a => String(a.id) === String(s.aeronaveId))
+    if (aeObj) return !!aeObj.tipoSimulador
+  }
+  if (s.ae) {
+    const aeObj = aeronaves.find(a => (a.nome || '').toUpperCase().trim() === (s.ae || '').toUpperCase().trim())
+    if (aeObj) return !!aeObj.tipoSimulador
+  }
+  const aeName = (s.ae || '').toUpperCase()
+  const barraName = (s.barra || '').toUpperCase()
+  return aeName.includes('SIM') || aeName.includes('SIMULADOR') || barraName.includes('SIM') || barraName.includes('SIMULADOR')
+}
+
+const isSimulatorVoo = (voo) => {
+  if (!voo) return false
+  if (voo.aeronaveRelation) {
+    return !!voo.aeronaveRelation.tipoSimulador
+  }
+  const aeronaves = store.state.AERONAVES || []
+  if (voo.aeronaveId) {
+    const aeObj = aeronaves.find(a => String(a.id) === String(voo.aeronaveId))
+    if (aeObj) return !!aeObj.tipoSimulador
+  }
+  const aeName = (voo.aeronaveRelation?.nome || voo.aeronave || '').toUpperCase()
+  return aeName.includes('SIM') || aeName.includes('SIMULADOR')
+}
+
+const getInvaRealMinutesForMonth = (invaName, monthStr, type = 'ambos') => {
   if (!invaName) return 0
   const matchedVoos = voosRealizadosList.value.filter(voo => {
     const vInst = (voo.invaRelation?.nome || voo.instrutor || '').toUpperCase().trim()
@@ -478,12 +580,18 @@ const getInvaRealMinutesForMonth = (invaName, monthStr) => {
     const matchName = vInst && (iName.includes(vInst) || vInst.includes(iName))
     const vooDate = voo.data ? voo.data.substring(0, 10) : ''
     const matchMonth = !monthStr || vooDate.startsWith(monthStr)
-    return matchName && matchMonth
+    if (!matchName || !matchMonth) return false
+    
+    const isSim = isSimulatorVoo(voo)
+    if (type === 'aeronave' && isSim) return false
+    if (type === 'simulador' && !isSim) return false
+    
+    return true
   })
   return matchedVoos.reduce((sum, voo) => sum + (parseFloat(voo.tempoTotalVoo) || 0), 0)
 }
 
-const getInvaScheduledMinutesForMonth = (invaName, monthStr) => {
+const getInvaScheduledMinutesForMonth = (invaName, monthStr, type = 'ambos') => {
   if (!invaName) return 0
   const technicalImpediments = ['REVISÃO', 'OPERAÇÕES', 'METEOROLOGIA', 'MANUTENÇÃO', 'INDISPONIBILIDADE', 'CANCELADO']
   
@@ -507,7 +615,13 @@ const getInvaScheduledMinutesForMonth = (invaName, monthStr) => {
       matchMonth = (y === targetYear && m === targetMonth)
     }
     
-    return matchInva && hasStudent && isNotImpediment && matchMonth
+    if (!matchInva || !hasStudent || !isNotImpediment || !matchMonth) return false
+    
+    const isSim = isSimulatorSlot(s)
+    if (type === 'aeronave' && isSim) return false
+    if (type === 'simulador' && !isSim) return false
+    
+    return true
   })
   
   return matchedSlots.length * 90 // 1.5h = 90 mins
@@ -516,8 +630,8 @@ const getInvaScheduledMinutesForMonth = (invaName, monthStr) => {
 const chartData = computed(() => {
   const invasList = chartFilteredInvas.value
   return invasList.map(inva => {
-    const real = getInvaRealMinutesForMonth(inva.nome, chartMonth.value) / 60
-    const scheduled = getInvaScheduledMinutesForMonth(inva.nome, chartMonth.value) / 60
+    const real = getInvaRealMinutesForMonth(inva.nome, chartMonth.value, chartTypeFilter.value) / 60
+    const scheduled = getInvaScheduledMinutesForMonth(inva.nome, chartMonth.value, chartTypeFilter.value) / 60
     const total = real + scheduled
     return {
       name: inva.nome,
@@ -644,6 +758,8 @@ onMounted(async () => {
       store.fetchSlots(),
       store.fetchBars(),
       store.fetchSituacoes(),
+      store.fetchAeronaves(),
+      store.fetchBases(),
       loadVoosRealizados()
     ])
   } finally {
@@ -690,6 +806,12 @@ const filteredInvas = computed(() => {
   const query = invaSearchQuery.value.toLowerCase().trim()
   let list = store.INVAS.value || []
   list = list.filter(i => !isSoloOrChecadorInva(i))
+  if (tableBaseFilter.value !== 'all') {
+    list = list.filter(i => {
+      const iBase = i.base?.nome || i.base || ''
+      return iBase.toLowerCase().trim() === tableBaseFilter.value.toLowerCase().trim()
+    })
+  }
   if (!query) return list
   return list.filter(i => (i.nome || '').toLowerCase().includes(query))
 })
@@ -738,36 +860,73 @@ const getSitLabel = (nome) => {
   return labels[nome.toLowerCase().trim()] || nome
 }
 
-const getInvaRealMinutes = (invaName) => {
+const getInvaRealMinutes = (invaName, type = 'ambos', startDate = null, endDate = null) => {
   if (!invaName) return 0
   const matchedVoos = voosRealizadosList.value.filter(voo => {
     const vInst = (voo.invaRelation?.nome || voo.instrutor || '').toUpperCase().trim()
     const iName = invaName.toUpperCase().trim()
-    return vInst && (iName.includes(vInst) || vInst.includes(iName))
+    const matchName = vInst && (iName.includes(vInst) || vInst.includes(iName))
+    if (!matchName) return false
+    
+    // Convert startDate and endDate refs (if passed) or raw strings
+    const startVal = startDate && typeof startDate === 'object' ? startDate.value : startDate
+    const endVal = endDate && typeof endDate === 'object' ? endDate.value : endDate
+
+    const vooDate = voo.data ? voo.data.substring(0, 10) : ''
+    if (startVal && vooDate < startVal) return false
+    if (endVal && vooDate > endVal) return false
+    
+    const isSim = isSimulatorVoo(voo)
+    if (type === 'aeronave' && isSim) return false
+    if (type === 'simulador' && !isSim) return false
+    
+    return true
   })
   return matchedVoos.reduce((sum, voo) => sum + (parseFloat(voo.tempoTotalVoo) || 0), 0)
 }
 
-const getInvaScheduledMinutes = (invaName) => {
+const getInvaScheduledMinutes = (invaName, type = 'ambos', startDate = null, endDate = null) => {
   if (!invaName) return 0
-  const now = new Date().getTime()
   const technicalImpediments = ['REVISÃO', 'OPERAÇÕES', 'METEOROLOGIA', 'MANUTENÇÃO', 'INDISPONIBILIDADE', 'CANCELADO']
   
+  const startVal = startDate && typeof startDate === 'object' ? startDate.value : startDate
+  const endVal = endDate && typeof endDate === 'object' ? endDate.value : endDate
+
   const slots = store.state.parsedSlots || []
   const matchedSlots = slots.filter(s => {
     const matchInva = s.inva && s.inva.toUpperCase().trim() === invaName.toUpperCase().trim()
     const hasStudent = !!s.aluno
     const isNotImpediment = s.st && !technicalImpediments.includes(s.st.toUpperCase().trim())
     
-    let isFuture = true
-    if (s.data && s.hora) {
-      const [d, m, y] = s.data.split('/').map(Number)
-      const [h, min] = s.hora.split(':').map(Number)
-      const slotTime = new Date(y, m - 1, d, h, min).getTime()
-      isFuture = slotTime >= now
+    if (!matchInva || !hasStudent || !isNotImpediment) return false
+    
+    let slotDateStr = ''
+    if (s.data) {
+      const [d, m, y] = s.data.split('/')
+      slotDateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
     }
     
-    return matchInva && hasStudent && isNotImpediment && isFuture
+    if (startVal && slotDateStr < startVal) return false
+    if (endVal && slotDateStr > endVal) return false
+    
+    // Fallback: if no date filters are provided, restrict to future slots only
+    if (!startVal && !endVal) {
+      const now = new Date().getTime()
+      let isFuture = true
+      if (s.data && s.hora) {
+        const [d, m, y] = s.data.split('/').map(Number)
+        const [h, min] = s.hora.split(':').map(Number)
+        const slotTime = new Date(y, m - 1, d, h, min).getTime()
+        isFuture = slotTime >= now
+      }
+      if (!isFuture) return false
+    }
+    
+    const isSim = isSimulatorSlot(s)
+    if (type === 'aeronave' && isSim) return false
+    if (type === 'simulador' && !isSim) return false
+    
+    return true
   })
   
   return matchedSlots.length * 90 // 1.5h = 90 minutes
@@ -914,15 +1073,47 @@ const getInvaScheduledMinutes = (invaName) => {
   font-weight: 700;
   text-transform: uppercase;
   font-size: 11px;
-  padding: 12px 24px;
+  padding: 12px 10px;
   text-align: left;
   border-bottom: 1px solid #e2e8f0;
 }
 
 .report-table td {
-  padding: 16px 24px;
+  padding: 16px 10px;
   border-bottom: 1px solid #f1f5f9;
   color: #334155;
+}
+
+.table-filters-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.table-filters-row .filter-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.table-filters-row .filter-item label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.table-filters-row .filter-input.date-input {
+  padding: 5px 10px;
+  font-size: 12.5px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  outline: none;
+  font-weight: 600;
+  color: var(--primary);
+  background: #fff;
 }
 
 .report-row:hover {
