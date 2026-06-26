@@ -126,7 +126,7 @@ export function useSlotValidation(SCH, INVAS, AERONAVES, parsedSlots) {
         
         if (s) {
           const tipoNome = (s.tipoDisponibilidade?.nome || s.tipo || '').toLowerCase()
-          const isAvailable = tipoNome.includes('disponivel') || tipoNome.includes('disponível')
+          const isAvailable = tipoNome.includes('disponivel') || tipoNome.includes('disponível') || tipoNome.includes('acionado')
           
           if (!isAvailable) {
             alerts.push(`Indisponibilidade: Instrutor alocado mas consta como "${s.tipoDisponibilidade?.nome || s.tipo}" na escala oficial${s.periodo ? ' (' + s.periodo + ')' : ''}.`)

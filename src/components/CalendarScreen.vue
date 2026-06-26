@@ -207,7 +207,8 @@ const availTypes = [
   { id: 8, nome: 'Operações' },
   { id: 9, nome: 'Trabalho Externo' },
   { id: 10, nome: 'Dispensa Médica' },
-  { id: 11, nome: 'Não Especificado' }
+  { id: 11, nome: 'Não Especificado' },
+  { id: 12, nome: 'Acionado' }
 ]
 
 const formattedModalDate = computed(() => {
@@ -481,6 +482,7 @@ function handleLogout() {
 .day-cell-static.operacoes { background: #34495e; }
 .day-cell-static.externo { background: #7f8c8d; }
 .day-cell-static.medica { background: #000000; }
+.day-cell-static.acionado { background: #4f46e5; }
 .day-cell-static.outro { background: #bdc3c7; color: #000; }
 .day-cell-static.weekend { background: #f8fafc; color: #94a3b8; }
 .day-cell-static.today { 

@@ -353,7 +353,7 @@ const findBestInvaForSlot = (slot, tempSch, voosRealizados, startDate, endDate) 
     
     // 1. Check availability
     const dispState = store.availabilityState(inva.nome)
-    const isAvail = dispState === 'avail' || dispState === 'weekend-avail' || dispState === 'sobreaviso'
+    const isAvail = dispState === 'avail' || dispState === 'weekend-avail' || dispState === 'sobreaviso' || dispState === 'acionado'
     if (!isAvail) {
       score += 1000 // High penalty for unavailability
     }
@@ -418,6 +418,19 @@ const findBestInvaForSlot = (slot, tempSch, voosRealizados, startDate, endDate) 
     score -= difference * 0.5
     score += flown * 0.5
     
+    // 7. Consolidation bonus (prefer instructors already allocated today or already Acionado)
+    const isAlreadyAllocatedToday = tempSch.some(other => 
+      other.invaId === inva.id && 
+      other.id !== slot.id && 
+      other.aluno
+    )
+    if (isAlreadyAllocatedToday) {
+      score -= 100
+    }
+    if (dispState === 'acionado') {
+      score -= 50
+    }
+    
     // Check for server restrictions on the proposed allocation
     const activeRestricts = checkProposedRestrictions(proposedSlot, store.state.RESTRICTS)
     if (activeRestricts.length > 0) {
@@ -473,12 +486,28 @@ const handleAutoFill = async () => {
   const tempSch = store.state.SCH.map(s => ({ ...s }))
   const targetSlots = tempSch.filter(s => s.aluno && !s.invaId)
   
-  // Sort chronologically by hour
-  const sortedTargets = [...targetSlots].sort((a, b) => {
-    const timeA = a.hora.split(':').map(Number)
-    const timeB = b.hora.split(':').map(Number)
-    return (timeA[0] * 60 + timeA[1]) - (timeB[0] * 60 + timeB[1])
-  })
+  // Helper to count eligible instructors for a slot (to sort targets by constraint degree)
+  const getEligibleInvasCount = (slotObj) => {
+    const eligibleInvas = store.getInvasByBarra(slotObj.barra)
+    let count = 0
+    for (const inva of eligibleInvas) {
+      const dispState = store.availabilityState(inva.nome)
+      const isAvail = dispState === 'avail' || dispState === 'weekend-avail' || dispState === 'sobreaviso' || dispState === 'acionado'
+      if (!isAvail) continue
+      
+      const activeRestricts = checkProposedRestrictions({ ...slotObj, invaId: inva.id }, store.state.RESTRICTS)
+      if (activeRestricts.length > 0) continue
+      
+      count++
+    }
+    return count
+  }
+  
+  // Sort target slots by number of eligible instructors (fewer eligible first - Most Constrained first)
+  const sortedTargets = [...targetSlots].map(s => ({
+    slot: s,
+    eligibleCount: getEligibleInvasCount(s)
+  })).sort((a, b) => a.eligibleCount - b.eligibleCount).map(x => x.slot)
   
   const suggestions = []
   
@@ -506,13 +535,15 @@ const handleAutoFill = async () => {
   autoFillSuggestions.value = suggestions
   isAutoFillModalOpen.value = true
 }
-
+ 
 const confirmAutoFill = async (approvedSuggestions) => {
   isAutoFillModalOpen.value = false
   isLoading.value = true
   try {
     const promises = []
     const targets = approvedSuggestions || autoFillSuggestions.value
+    const processedAvailabilities = new Set()
+    
     for (const sugg of targets) {
       const slotObj = store.state.SCH.find(s => s.id === sugg.slotId)
       if (slotObj) {
@@ -528,19 +559,51 @@ const confirmAutoFill = async (approvedSuggestions) => {
         }
         
         promises.push(store.updateSlot(slotObj, false))
+        
+        // Also update calendar availability for this instructor to "Acionado" (integral)
+        if (slotObj.invaId) {
+          const [d, m, y] = slotObj.data.split('/')
+          const apiDate = `${y}-${m}-${d}`
+          const key = `${slotObj.invaId}|${apiDate}`
+          
+          if (!processedAvailabilities.has(key)) {
+            processedAvailabilities.add(key)
+            
+            const invaObj = store.state.INVAS.find(i => i.id === slotObj.invaId)
+            const existing = invaObj?.escalas?.find(s => s.data && s.data.startsWith(apiDate))
+            
+            const payload = {
+              data: apiDate,
+              invaId: slotObj.invaId,
+              tipoDisponibilidadeId: 12, // Acionado
+              periodo: 'x', // dia todo (integral)
+              motivo: 'Acionado pelo preenchimento automático da escala'
+            }
+            
+            if (existing) {
+              promises.push(store.updateAvailability(existing.id, payload))
+            } else {
+              promises.push(store.saveAvailability(payload))
+            }
+          }
+        }
       }
     }
     
     if (promises.length > 0) {
       await Promise.all(promises)
-      await store.fetchSlots()
+      // Refresh both slots and instructor availabilities
+      await Promise.all([
+        store.fetchSlots(),
+        store.fetchInvas()
+      ])
       store.generateEditor()
-      showToast('Escala preenchida com sucesso!', 'success')
+      showToast('Escala e calendários atualizados com sucesso!', 'success')
     } else {
       showToast('Nenhuma alocação pendente de atualização.', 'info')
     }
   } catch (err) {
-    showToast('Erro ao atualizar escala automaticamente.', 'danger')
+    showToast('Erro ao atualizar escala e calendários.', 'danger')
   } finally {
     isLoading.value = false
     store.state.globalLoading = false

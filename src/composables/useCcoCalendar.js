@@ -61,6 +61,7 @@ export function useCcoCalendar({ state, refs }) {
             else if (tipoNome.includes('opera')) { estado = 'operacoes'; sigla = 'OP' }
             else if (tipoNome.includes('externo')) { estado = 'externo'; sigla = 'TE' }
             else if (tipoNome.includes('médica') || tipoNome.includes('medica') || tipoNome.includes('dispensa')) { estado = 'medica'; sigla = 'DM' }
+            else if (tipoNome.includes('acionado')) { estado = 'acionado'; sigla = 'AC' }
             else { estado = 'outro'; sigla = '?' }
           } else if (cell.isWeekend) { 
             estado = 'weekend-avail'
@@ -114,6 +115,7 @@ export function useCcoCalendar({ state, refs }) {
           if (tipoNome.includes('opera')) return 'operacoes'
           if (tipoNome.includes('externo')) return 'externo'
           if (tipoNome.includes('médica') || tipoNome.includes('medica')) return 'medica'
+          if (tipoNome.includes('acionado')) return 'acionado'
           return 'outro'
         }
       }
@@ -141,6 +143,7 @@ export function useCcoCalendar({ state, refs }) {
           else if (tipoNome.includes('opera')) sigla = 'OP'
           else if (tipoNome.includes('externo')) sigla = 'TE'
           else if (tipoNome.includes('médica') || tipoNome.includes('medica')) sigla = 'DM'
+          else if (tipoNome.includes('acionado')) sigla = 'AC'
           return `${sigla}${s.periodo ? ' - ' + s.periodo : ''}`
         }
       }
