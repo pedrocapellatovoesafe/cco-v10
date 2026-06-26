@@ -256,10 +256,10 @@
                       {{ formatMinutes(getInvaScheduledMinutes(inva.nome, 'simulador', tableStartDate, tableEndDate)) }}
                     </td>
                     <td class="text-right font-extrabold text-dark-primary">
-                      {{ formatMinutes(getInvaRealMinutes(inva.nome, 'ambos', tableStartDate, tableEndDate) + getInvaScheduledMinutes(inva.nome, 'ambos', tableStartDate, tableEndDate)) }}
+                      {{ formatMinutes(getInvaScheduledMinutes(inva.nome, 'ambos', tableStartDate, tableEndDate)) }}
                     </td>
                     <td class="text-right font-bold text-primary">
-                      {{ formatDecimalHours(getInvaRealMinutes(inva.nome, 'ambos', tableStartDate, tableEndDate) + getInvaScheduledMinutes(inva.nome, 'ambos', tableStartDate, tableEndDate)) }}
+                      {{ formatDecimalHours(getInvaRealMinutes(inva.nome, 'ambos', tableStartDate, tableEndDate)) }}
                     </td>
                   </tr>
                 </tbody>
