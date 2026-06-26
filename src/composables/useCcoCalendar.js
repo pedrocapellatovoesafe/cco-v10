@@ -19,7 +19,7 @@ export function useCcoCalendar({ state, refs }) {
       if (!sit) return false
       if (isSoloSearch) return sit.includes('solo')
       if (sit.includes('solo')) return false
-      return sit.includes('clt') || sit.includes('eventual') || sit.includes('voo')
+      return sit.includes('clt') || sit.includes('eventual') || sit.includes('voo') || sit.includes('checador')
     })
     
     return filteredInvas.flatMap(instr => {
@@ -28,9 +28,8 @@ export function useCcoCalendar({ state, refs }) {
       if (rawBase.includes('CPQ') || rawBase.includes('CAMPINAS') || rawBase.includes('SDAM')) baseNome = 'CPQ'
       else if (rawBase.includes('SJK') || rawBase.includes('JOSÉ') || rawBase.includes('SBSJ')) baseNome = 'SJK'
 
-      // Special Exception: Checador (situacaoInvaId = 5) appears in both bases
-      const isChecador = (instr.situacaoInvaId === 5 || instr.situacao_inva_id === 5)
-      const bases = isChecador ? ['SJK', 'CPQ'] : [baseNome]
+      // No special exception for bases: checador only appears in their registered base
+      const bases = [baseNome]
 
       return bases.map(b => ({
         nome: instr.nome,
@@ -159,13 +158,12 @@ export function useCcoCalendar({ state, refs }) {
       const sitRaw = i.situacao?.nome || i.situacao || i.situacaoInva?.nome || ''
       const sit = String(sitRaw).toLowerCase()
       
-      // Special Exception: Checador (situacaoInvaId = 5) appears in both bases
-      const isChecador = (i.situacaoInvaId === 5 || i.situacao_inva_id === 5)
-      const targets = isChecador ? ['SJK', 'CPQ'] : [b]
+      // No special exception for bases: checador only appears in their registered base
+      const targets = [b]
       
       targets.forEach(targetBase => {
         if (sit.includes('solo')) g[targetBase].solo.push(i)
-        else if (sit.includes('clt') || sit.includes('eventual') || sit.includes('voo')) g[targetBase].voo.push(i)
+        else if (sit.includes('clt') || sit.includes('eventual') || sit.includes('voo') || sit.includes('checador')) g[targetBase].voo.push(i)
       })
     })
     return g
