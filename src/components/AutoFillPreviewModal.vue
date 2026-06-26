@@ -11,6 +11,82 @@
           O algoritmo analisou as disponibilidades e restrições para sugerir a menor quantidade de alertas possíveis.
         </p>
 
+        <!-- Painel explicativo dos critérios do algoritmo -->
+        <div class="algorithm-info-card">
+          <div class="card-header" @click="isCriteriaExpanded = !isCriteriaExpanded">
+            <span class="card-title">
+              <span class="sparkle-icon">⚙️</span>
+              Como as sugestões são calculadas?
+            </span>
+            <span class="toggle-arrow" :class="{ rotated: isCriteriaExpanded }">▼</span>
+          </div>
+          <transition name="fade-slide">
+            <div v-show="isCriteriaExpanded" class="card-content">
+              <p class="criteria-intro">
+                O algoritmo de preenchimento automático analisa todos os slots sem instrutor e os ordena por nível de restrição. Em seguida, busca o melhor instrutor candidato com base nas seguintes regras de pontuação:
+              </p>
+              <div class="criteria-grid">
+                <div class="criterion-item">
+                  <div class="criterion-icon">📅</div>
+                  <div class="criterion-details">
+                    <strong>Disponibilidade &amp; Restrições</strong>
+                    <span>Filtra apenas instrutores disponíveis na data e sem restrições ou impedimentos operacionais cadastrados.</span>
+                  </div>
+                </div>
+                <div class="criterion-item">
+                  <div class="criterion-icon">🚫</div>
+                  <div class="criterion-details">
+                    <strong>Conflito de Horário</strong>
+                    <span>Evita alocações simultâneas para o mesmo instrutor no mesmo horário.</span>
+                  </div>
+                </div>
+                <div class="criterion-item">
+                  <div class="criterion-icon">🔀</div>
+                  <div class="criterion-details">
+                    <strong>Troca de Aluno em Sequência</strong>
+                    <span>Tenta ativamente evitar e resolver trocas consecutivas de aluno para o mesmo instrutor, inclusive rotacionando horários adjacentes se necessário.</span>
+                  </div>
+                </div>
+                <div class="criterion-item">
+                  <div class="criterion-icon">⏱️</div>
+                  <div class="criterion-details">
+                    <strong>Equilíbrio de Horas (Jornada)</strong>
+                    <span>Prioriza instrutores com menor saldo de horas voadas no mês (relação planejado x realizado) para equilibrar a escala.</span>
+                  </div>
+                </div>
+                <div class="criterion-item">
+                  <div class="criterion-icon">🎯</div>
+                  <div class="criterion-details">
+                    <strong>Consolidação de Escala</strong>
+                    <span>Dá preferência a instrutores que já possuem alguma alocação no dia ou que já estão de sobreaviso acionado.</span>
+                  </div>
+                </div>
+                <div class="criterion-item">
+                  <div class="criterion-icon">🔄</div>
+                  <div class="criterion-details">
+                    <strong>Aulas Consecutivas</strong>
+                    <span>Bonifica a alocação do mesmo instrutor para aulas consecutivas com o mesmo aluno ou mesma aeronave.</span>
+                  </div>
+                </div>
+                <div class="criterion-item">
+                  <div class="criterion-icon">📍</div>
+                  <div class="criterion-details">
+                    <strong>Base Operacional</strong>
+                    <span>Prioriza instrutores lotados na mesma base física do slot de voo correspondente.</span>
+                  </div>
+                </div>
+                <div class="criterion-item">
+                  <div class="criterion-icon">⚠️</div>
+                  <div class="criterion-details">
+                    <strong>Minimização de Alertas</strong>
+                    <span>Avalia as regras gerais de validação (como Limite de Jornada) e busca a opção com menor impacto de alertas.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </transition>
+        </div>
+
         <div v-if="suggestions.length === 0" class="empty-state">
           <div class="info-icon">🎉</div>
           <p>Todos os slots com alunos já possuem instrutores alocados para hoje!</p>
@@ -100,6 +176,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'confirm'])
 
 const selectedIds = ref([])
+const isCriteriaExpanded = ref(true)
 
 watch(
   () => props.isOpen,
@@ -277,5 +354,118 @@ const getGroupedRestrictedOptions = (restrictedOptions) => {
   height: 16px;
   cursor: pointer;
   accent-color: #16a34a;
+}
+
+/* Algoritmo Info Card styles */
+.algorithm-info-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+  transition: all 0.3s ease;
+}
+.algorithm-info-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.04);
+}
+.card-header {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  background: #f1f5f9;
+  user-select: none;
+  transition: background 0.2s ease;
+}
+.card-header:hover {
+  background: #e2e8f0;
+}
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+}
+.sparkle-icon {
+  font-size: 14px;
+}
+.toggle-arrow {
+  font-size: 10px;
+  color: #64748b;
+  transition: transform 0.2s ease;
+}
+.toggle-arrow.rotated {
+  transform: rotate(180deg);
+}
+.card-content {
+  padding: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+.criteria-intro {
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  color: #475569;
+  line-height: 1.5;
+}
+.criteria-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 12px;
+}
+.criterion-item {
+  display: flex;
+  gap: 12px;
+  background: #ffffff;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #f1f5f9;
+  transition: all 0.2s ease;
+}
+.criterion-item:hover {
+  border-color: #e2e8f0;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+.criterion-icon {
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: #f8fafc;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.criterion-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.criterion-details strong {
+  font-size: 12px;
+  color: #1e293b;
+  font-weight: 700;
+}
+.criterion-details span {
+  font-size: 11px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* Animations */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.fade-slide-enter-from,
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-8px);
 }
 </style>
