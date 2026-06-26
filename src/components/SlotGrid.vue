@@ -15,6 +15,34 @@
       </div>
     </div>
 
+    <!-- Painel de Aeronaves Cadastradas Ativas -->
+    <div class="aeronaves-panel" v-if="activeAeronaves.length > 0">
+      <div class="panel-header">
+        <span class="panel-title">✈️ Frota Ativa &amp; Horas Disponíveis</span>
+        <span class="panel-subtitle">Saldo de horas cadastradas no sistema</span>
+      </div>
+      <div class="aeronaves-scroll">
+        <div 
+          v-for="ae in activeAeronaves" 
+          :key="ae.id" 
+          class="aeronave-card"
+        >
+          <div class="ae-card-header">
+            <span class="ae-prefix">{{ ae.nome }}</span>
+          </div>
+          <div class="ae-card-body">
+            <span class="ae-model-label">{{ ae.modeloAeronave?.nome || 'Modelo N/A' }}</span>
+            <span 
+              class="ae-hours-value" 
+              :class="store.getAeronaveHoursClass(ae.horasDisponiveis)"
+            >
+              {{ ae.horasDisponiveis != null ? parseFloat(ae.horasDisponiveis).toFixed(1) : '0.0' }}h
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Tabs Base -->
     <div class="tabs">
       <button :class="['tab-btn', store.state.activeTab === 'SJK' ? 't-sjk' : '']" @click="store.state.activeTab = 'SJK'">✈ SJK</button>
@@ -111,7 +139,7 @@
 </template>
 
 <script setup>
-import { ref, inject } from 'vue'
+import { ref, inject, computed } from 'vue'
 
 const store = inject('store')
 const dragSourceId = ref(null)
@@ -174,6 +202,17 @@ function handleButtonClick(slot) {
     emit('open-create-modal', slot)
   }
 }
+
+// Painel de aeronaves
+const activeAeronaves = computed(() => {
+  const list = store.state.AERONAVES || []
+  return list.filter(ae => {
+    const isActive = ae.ativo !== 0 && ae.ativo !== false
+    const modId = ae.modeloAeronaveId || ae.modeloAeronave?.id
+    const isExcludedModel = modId == 4 || modId == 5
+    return isActive && !isExcludedModel
+  })
+})
 </script>
 
 <style scoped>
@@ -280,4 +319,138 @@ function handleButtonClick(slot) {
 .btn-disp { background: var(--secondary); }
 
 .drag-indicator { cursor: grab; opacity: 0.5; margin-left: 4px; }
+
+/* Horizontal Aircraft Panel */
+.aeronaves-panel {
+  background: var(--white);
+  border: 1px solid #dae2ec;
+  border-radius: 14px;
+  padding: 16px 20px;
+  margin: 12px 0 16px 0;
+  box-shadow: 0 4px 12px rgba(14, 38, 72, 0.03);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.panel-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--primary);
+  font-family: var(--font-title);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.panel-subtitle {
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.aeronaves-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-top: 6px;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+}
+
+.aeronaves-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.aeronaves-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.aeronaves-scroll::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 99px;
+}
+
+.aeronave-card {
+  flex: 0 0 auto;
+  min-width: 140px;
+  min-height: 72px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.aeronave-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
+  border-color: var(--secondary);
+}
+
+.ae-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ae-icon {
+  font-size: 14px;
+}
+
+.ae-prefix {
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.ae-card-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ae-model-label {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.ae-hours-value {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.ae-hours-value.high {
+  background: #dcfce7;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+}
+
+.ae-hours-value.mid {
+  background: #fef9c3;
+  color: #a16207;
+  border: 1px solid #fef08a;
+}
+
+.ae-hours-value.low {
+  background: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
 </style>

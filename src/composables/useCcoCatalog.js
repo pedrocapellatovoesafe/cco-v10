@@ -379,6 +379,40 @@ export function useCcoCatalog({ state, refs }) {
     } 
   }
 
+  async function saveInvaBarra(p) {
+    state.globalLoading = true
+    try {
+      const r = await api.post('/inva-barras', p)
+      return { success: true, data: r.data?.data || r.data }
+    } catch (e) {
+      return { success: false, error: e.response?.data?.message || e.message }
+    } finally {
+      state.globalLoading = false
+    }
+  }
+
+  async function deleteInvaBarra(id) {
+    state.globalLoading = true
+    try {
+      const r = await api.delete(`/inva-barras/${id}`)
+      return { success: true, data: r.data }
+    } catch (e) {
+      return { success: false, error: e.response?.data?.message || e.message }
+    } finally {
+      state.globalLoading = false
+    }
+  }
+
+  async function fetchInvaBarras() {
+    try {
+      const r = await api.get('/inva-barras')
+      return r.data?.data || r.data || []
+    } catch (e) {
+      console.error('Error fetching inva-barras:', e)
+      return []
+    }
+  }
+
   return {
     fetchInvas, saveInva, updateInva, deleteInva,
     fetchBars, fetchBarDetail, saveBarra, updateBarra, deleteBarra,
@@ -388,6 +422,7 @@ export function useCcoCatalog({ state, refs }) {
     fetchRestricoes, saveRestriction, importRestrictions, updateRestriction, deleteRestriction, bulkDeleteRestrictions,
     fetchAeronaves, updateAeronave,
     fetchBases, fetchSituacoes, fetchStatuses,
-    saveAvailability, updateAvailability
+    saveAvailability, updateAvailability,
+    saveInvaBarra, deleteInvaBarra, fetchInvaBarras
   }
 }

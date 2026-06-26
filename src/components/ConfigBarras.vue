@@ -134,6 +134,43 @@
                   </div>
                 </div>
               </div>
+
+              <!-- Gestão de Instrutores autorizados nesta Barra -->
+              <div v-if="isEditing" class="invas-section">
+                <div class="section-header">
+                  <h4>👨‍🏫 Instrutores autorizados nesta Barra</h4>
+                  <button class="btn-add-inva" @click="showAddInva = true">➕ Vincular Instrutor</button>
+                </div>
+
+                <!-- Seleção de múltiplos instrutores -->
+                <div v-if="showAddInva" class="add-inva-box-multiple">
+                  <div class="inva-checklist">
+                    <div v-if="availableInvasToAdd.length === 0" class="empty-times">
+                      Todos os instrutores já estão vinculados a esta barra.
+                    </div>
+                    <label v-for="inva in availableInvasToAdd" :key="inva.id" class="inva-check-item">
+                      <input type="checkbox" :value="inva.id" v-model="selectedInvaIds" />
+                      <span>{{ inva.nome }}</span>
+                    </label>
+                  </div>
+                  <div class="add-inva-actions">
+                    <button class="btn-confirm-inva" @click="handleConfirmAddInvas" :disabled="selectedInvaIds.length === 0">
+                      Vincular Selecionados
+                    </button>
+                    <button class="btn-cancel-inva" @click="cancelAddInva">Cancelar</button>
+                  </div>
+                </div>
+
+                <div class="invas-list">
+                  <div v-if="currentInvaBarras.length === 0" class="empty-times">
+                    Nenhum instrutor vinculado a esta barra.
+                  </div>
+                  <div v-for="ib in currentInvaBarras" :key="ib.id" class="inva-row">
+                    <span class="inva-name-inline">{{ getInvaName(ib.invaId) }}</span>
+                    <button class="btn-del-inva" @click="handleDeleteInva(ib)" title="Remover Vínculo">🗑️</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -175,6 +212,9 @@ const isEditing = ref(false)
 const showAddTime = ref(false)
 const newTime = ref('')
 const showInactiveSchedules = ref(false)
+const showAddInva = ref(false)
+const selectedInvaIds = ref([])
+const allInvaBarras = ref([])
 
 const form = reactive({
   id: null,
@@ -217,7 +257,9 @@ onMounted(async () => {
     await Promise.all([
       store.fetchBars(),
       store.fetchBases(),
-      store.fetchModelos()
+      store.fetchModelos(),
+      store.fetchInvas(),
+      fetchAllInvaBarras()
     ])
   } finally {
     store.state.globalLoading = false
@@ -229,6 +271,7 @@ function createNew() {
   selectedBar.value = null
   form.id = null; form.nome = ''; form.baseId = null; form.modeloAeronaveId = null
   showAddTime.value = false; newTime.value = ''
+  showAddInva.value = false; selectedInvaIds.value = []
 }
 
 async function selectBar(bar) {
@@ -243,6 +286,7 @@ async function selectBar(bar) {
   // Fetch full detail to get all schedules (including inactive)
   const detail = await store.fetchBarDetail(bar.id)
   if (detail) selectedBar.value = detail
+  await fetchAllInvaBarras()
 }
 
 async function handleSaveBar() {
@@ -317,10 +361,114 @@ async function handleDeleteHorario(h) {
   }
 }
 
+async function fetchAllInvaBarras() {
+  try {
+    const list = await store.fetchInvaBarras()
+    allInvaBarras.value = list || []
+  } catch (error) {
+    console.error('Error fetching inva-barras:', error)
+  }
+}
+
 async function refreshSelectedBar() {
   const detail = await store.fetchBarDetail(selectedBar.value.id)
   if (detail) selectedBar.value = detail
   await store.fetchBars() // Update list count
+  await fetchAllInvaBarras()
+}
+
+// Relacionamento Inva-Barra CRUD
+const currentInvaBarras = computed(() => {
+  if (!selectedBar.value) return []
+  
+  // 1. First, check if pivot list is populated directly via the api fetch
+  if (allInvaBarras.value && allInvaBarras.value.length > 0) {
+    const list = allInvaBarras.value.filter(ib => {
+      const bId = ib.barraId || ib.barra_id
+      return bId == selectedBar.value.id
+    })
+    if (list.length > 0) return list
+  }
+  
+  // 2. Fallback to preloaded pivot list (invaBarras or inva_barras)
+  const directList = selectedBar.value.invaBarras || selectedBar.value.inva_barras || []
+  if (directList.length > 0) return directList
+  
+  // 3. Fallback to preloaded invas (many-to-many direct relation)
+  const preloadedInvas = selectedBar.value.invas || []
+  if (preloadedInvas.length > 0) {
+    return preloadedInvas.map(inva => {
+      const pivotId = inva.pivot?.id || inva.$extras?.pivot_id || inva.pivot?.inva_barra_id || inva.id
+      return {
+        id: pivotId,
+        invaId: inva.id,
+        barraId: selectedBar.value.id,
+        inva: inva
+      }
+    })
+  }
+  
+  return []
+})
+
+const availableInvasToAdd = computed(() => {
+  const allInvas = store.INVAS.value || []
+  const alreadyAssignedIds = currentInvaBarras.value.map(ib => ib.invaId)
+  return allInvas.filter(inva => !alreadyAssignedIds.includes(inva.id))
+})
+
+function getInvaName(invaId) {
+  const inva = (store.INVAS.value || []).find(i => i.id == invaId)
+  return inva ? inva.nome : `Instrutor #${invaId}`
+}
+
+async function handleConfirmAddInvas() {
+  if (selectedInvaIds.value.length === 0 || !selectedBar.value?.id) return
+  
+  store.state.globalLoading = true
+  let successCount = 0
+  let errorMsg = ''
+  
+  try {
+    for (const invaId of selectedInvaIds.value) {
+      const res = await store.saveInvaBarra({
+        invaId,
+        barraId: selectedBar.value.id
+      })
+      if (res.success) {
+        successCount++
+      } else {
+        errorMsg = res.error
+      }
+    }
+    
+    if (successCount > 0) {
+      showToast(`${successCount} instrutor(es) vinculado(s) com sucesso!`, 'success')
+      selectedInvaIds.value = []
+      showAddInva.value = false
+      await refreshSelectedBar()
+    } else {
+      showToast(errorMsg || 'Erro ao vincular instrutores', 'danger')
+    }
+  } finally {
+    store.state.globalLoading = false
+  }
+}
+
+async function handleDeleteInva(ib) {
+  if (!confirm('Deseja realmente remover o vínculo deste instrutor com esta barra?')) return
+  const res = await store.deleteInvaBarra(ib.id)
+  if (res.success) {
+    showToast('Vínculo removido!')
+    await refreshSelectedBar()
+  } else {
+    showToast(res.error || 'Erro ao remover vínculo', 'danger')
+  }
+}
+
+function cancelAddInva() {
+  showAddInva.value = false
+  selectedInvaIds.value = []
 }
 </script>
 
@@ -436,6 +584,25 @@ input:checked + .slider:before { transform: translateX(16px); }
 .confirm-actions { display: flex; gap: 12px; }
 .btn-confirm-delete { flex: 1; padding: 12px; background: #c0392b; color: #fff; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; }
 .btn-confirm-cancel { flex: 1; padding: 12px; background: #f1f5f9; color: #475569; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; }
+
+/* Instrutores por Barra */
+.invas-section { display: flex; flex-direction: column; gap: 16px; margin-top: 24px; padding-top: 24px; border-top: 2px dashed #f1f5f9; }
+.btn-add-inva { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.btn-add-inva:hover { background: #cbd5e1; }
+.add-inva-box-multiple { background: #f8fafc; padding: 16px; border-radius: 12px; display: flex; flex-direction: column; gap: 12px; border: 1px solid #e2e8f0; }
+.inva-checklist { display: flex; flex-direction: column; gap: 8px; max-height: 160px; overflow-y: auto; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px; width: 100%; background: #fff; }
+.inva-check-item { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; color: var(--primary); font-weight: 600; }
+.inva-check-item input { cursor: pointer; width: 16px; height: 16px; margin: 0; }
+.add-inva-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.btn-confirm-inva { background: var(--secondary); color: #fff; border: none; padding: 8px 16px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.btn-confirm-inva:disabled { background: #cbd5e1; color: #94a3b8; cursor: default; }
+.btn-cancel-inva { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; padding: 8px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; }
+.invas-list { display: flex; flex-direction: column; gap: 8px; }
+.inva-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #fff; border: 1px solid #f1f5f9; border-radius: 8px; transition: all 0.2s; }
+.inva-row:hover { border-color: #cbd5e1; background: #f8fafc; }
+.inva-name-inline { font-size: 13px; font-weight: 700; color: var(--primary); }
+.btn-del-inva { background: none; border: none; cursor: pointer; font-size: 13px; opacity: 0.4; transition: all 0.2s; }
+.btn-del-inva:hover { opacity: 1; color: #c0392b; }
 
 @media (max-width: 1000px) {
   .module-grid { grid-template-columns: 1fr; }

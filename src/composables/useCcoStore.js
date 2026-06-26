@@ -577,11 +577,31 @@ export function useCcoStore() {
     currentViewDate: computed(() => state.currentViewDate),
     availableDates: computed(() => state.availableDates),
     scheduleBlocks,
-    getInvasByBarra: (barra) => INVAS.value.filter(i => {
-      const isChecador = (i.situacaoInvaId === 5 || i.situacao_inva_id === 5)
-      if (isChecador) return true
-      return getBase(i.base?.nome || i.base) === getBase(barra)
-    }),
+    getInvasByBarra: (barra, currentInvaName) => {
+      const bUpper = (barra || '').toUpperCase().trim()
+      const barraObj = BARRAS.value.find(b => (b.nome || '').toUpperCase().trim() === bUpper)
+      
+      let list = []
+      if (barraObj && Array.isArray(barraObj.invas)) {
+        const configuredIds = barraObj.invas.map(i => i.id)
+        list = INVAS.value.filter(i => configuredIds.includes(i.id))
+      } else {
+        list = INVAS.value.filter(i => {
+          const isChecador = (i.situacaoInvaId === 5 || i.situacao_inva_id === 5)
+          if (isChecador) return true
+          return getBase(i.base?.nome || i.base) === getBase(barra)
+        })
+      }
+      
+      if (currentInvaName) {
+        const currentInva = INVAS.value.find(i => i.nome === currentInvaName)
+        if (currentInva && !list.find(i => i.id === currentInva.id)) {
+          list = [currentInva, ...list]
+        }
+      }
+      
+      return list
+    },
     getAeronavesByBarra: (barraNome, currentAe) => {
       const bUpper = (barraNome || '').toUpperCase().trim(); const barraObj = BARRAS.value.find(b => (b.nome || '').toUpperCase().trim() === bUpper)
       let list = AERONAVES.value
