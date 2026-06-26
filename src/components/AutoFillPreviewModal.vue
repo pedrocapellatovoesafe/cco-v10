@@ -104,6 +104,7 @@
                     class="preview-checkbox"
                   />
                 </th>
+                <th>Base</th>
                 <th>Horário</th>
                 <th>Barra</th>
                 <th>Aeronave</th>
@@ -113,38 +114,46 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="sugg in suggestions" :key="sugg.slotId" class="preview-row">
-                <td style="text-align: center;">
-                  <input 
-                    v-if="sugg.suggestedInvaId"
-                    type="checkbox" 
-                    :value="sugg.slotId" 
-                    v-model="selectedIds" 
-                    class="preview-checkbox"
-                  />
-                  <span v-else title="Nenhum instrutor elegível sem restrições">⚠️</span>
-                </td>
-                <td class="font-bold">{{ sugg.hora }}</td>
-                <td>{{ sugg.barra }}</td>
-                <td class="font-semibold">{{ sugg.ae || '—' }}</td>
-                <td class="font-semibold text-primary">{{ sugg.aluno }}</td>
-                <td class="font-bold" :class="sugg.suggestedInvaId ? 'text-success' : 'text-danger'">
-                  {{ sugg.suggestedInva }}
-                </td>
-                <td>
-                  <div v-if="sugg.alerts.length === 0 && (!sugg.restrictedOptions || sugg.restrictedOptions.length === 0)" class="badge-no-alerts">
-                    Sem alertas
-                  </div>
-                  <div v-else class="alerts-list">
-                    <span v-for="(alert, index) in sugg.alerts" :key="index" class="alert-item">
-                      ⚠️ {{ alert }}
-                    </span>
-                    <span v-for="(group, gIdx) in getGroupedRestrictedOptions(sugg.restrictedOptions)" :key="'g-'+gIdx" class="alert-item text-restriction-info">
-                      ℹ️ Restritos para {{ group.restriction }}: {{ group.invasList }}
-                    </span>
-                  </div>
-                </td>
-              </tr>
+              <template v-for="(groupSuggs, baseName) in groupedSuggestions" :key="baseName">
+                <tr class="base-group-header-row">
+                  <td colspan="8">
+                    🏢 Base {{ baseName }} ({{ groupSuggs.length }})
+                  </td>
+                </tr>
+                <tr v-for="sugg in groupSuggs" :key="sugg.slotId" class="preview-row">
+                  <td style="text-align: center;">
+                    <input 
+                      v-if="sugg.suggestedInvaId"
+                      type="checkbox" 
+                      :value="sugg.slotId" 
+                      v-model="selectedIds" 
+                      class="preview-checkbox"
+                    />
+                    <span v-else title="Nenhum instrutor elegível sem restrições">⚠️</span>
+                  </td>
+                  <td class="font-semibold">{{ sugg.base || '—' }}</td>
+                  <td class="font-bold">{{ sugg.hora }}</td>
+                  <td>{{ sugg.barra }}</td>
+                  <td class="font-semibold">{{ sugg.ae || '—' }}</td>
+                  <td class="font-semibold text-primary">{{ sugg.aluno }}</td>
+                  <td class="font-bold" :class="sugg.suggestedInvaId ? 'text-success' : 'text-danger'">
+                    {{ sugg.suggestedInva }}
+                  </td>
+                  <td>
+                    <div v-if="sugg.alerts.length === 0 && (!sugg.restrictedOptions || sugg.restrictedOptions.length === 0)" class="badge-no-alerts">
+                      Sem alertas
+                    </div>
+                    <div v-else class="alerts-list">
+                      <span v-for="(alert, index) in sugg.alerts" :key="index" class="alert-item">
+                        ⚠️ {{ alert }}
+                      </span>
+                      <span v-for="(group, gIdx) in getGroupedRestrictedOptions(sugg.restrictedOptions)" :key="'g-'+gIdx" class="alert-item text-restriction-info">
+                        ℹ️ Restritos para {{ group.restriction }}: {{ group.invasList }}
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>
@@ -209,6 +218,23 @@ const toggleSelectAll = (e) => {
 const isAllSelected = computed(() => {
   const fillable = props.suggestions ? props.suggestions.filter(s => s.suggestedInvaId) : []
   return fillable.length > 0 && selectedIds.value.length === fillable.length
+})
+
+const groupedSuggestions = computed(() => {
+  const groups = {}
+  if (!props.suggestions) return groups
+  props.suggestions.forEach(s => {
+    let b = (s.base || 'SJK').toUpperCase().trim()
+    if (b.includes('CPQ') || b.includes('CAMPINAS')) b = 'CPQ'
+    else if (b.includes('SJK') || b.includes('JOSÉ')) b = 'SJK'
+    else b = 'SJK' // fallback
+
+    if (!groups[b]) {
+      groups[b] = []
+    }
+    groups[b].push(s)
+  })
+  return groups
 })
 
 const handleConfirm = () => {
@@ -467,5 +493,18 @@ const getGroupedRestrictedOptions = (restrictedOptions) => {
 .fade-slide-leave-to {
   opacity: 0;
   transform: translateY(-8px);
+}
+
+.base-group-header-row td {
+  background: #f1f5f9;
+  font-weight: bold;
+  color: #475569;
+  font-size: 11px;
+  padding: 8px 16px;
+  text-align: left;
+  border-bottom: 1px solid #e2e8f0;
+  border-top: 1px solid #e2e8f0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 </style>

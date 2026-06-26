@@ -504,7 +504,7 @@ const findBestInvaForSlot = (slot, tempSch, voosRealizados, startDate, endDate) 
     const dispState = store.availabilityState(inva.nome)
     const isAvail = dispState === 'avail' || dispState === 'weekend-avail' || dispState === 'sobreaviso' || dispState === 'acionado'
     if (!isAvail) {
-      score += 1000 // High penalty for unavailability
+      continue
     }
     
     // 2. Check simultaneous conflict
@@ -609,6 +609,7 @@ const findBestInvaForSlot = (slot, tempSch, voosRealizados, startDate, endDate) 
               hora: change.slot.hora,
               aluno: change.slot.aluno,
               ae: change.slot.ae,
+              base: change.slot.base,
               originalInva: change.originalInva,
               originalInvaId: change.originalInvaId,
               suggestedInva: change.targetInva.nome,
@@ -756,6 +757,7 @@ const handleAutoFill = async () => {
                 hora: res.hora,
                 aluno: res.aluno,
                 ae: res.ae,
+                base: res.base,
                 originalInva: res.originalInva || '—',
                 suggestedInva: res.suggestedInva,
                 suggestedInvaId: res.suggestedInvaId,
@@ -773,6 +775,7 @@ const handleAutoFill = async () => {
         hora: slot.hora,
         aluno: slot.aluno,
         ae: slot.ae,
+        base: slot.base,
         originalInva: slot.originalInva || slot.inva || '—',
         suggestedInva: result.inva.nome,
         suggestedInvaId: result.inva.id,
@@ -786,6 +789,7 @@ const handleAutoFill = async () => {
         hora: slot.hora,
         aluno: slot.aluno,
         ae: slot.ae,
+        base: slot.base,
         originalInva: slot.inva || '—',
         suggestedInva: 'Nenhum disponível',
         suggestedInvaId: null,
