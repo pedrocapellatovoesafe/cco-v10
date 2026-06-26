@@ -424,10 +424,21 @@ export function useCcoCatalog({ state, refs }) {
     }
   }
 
-  async function syncVoosRealizados(dateStr) {
+  async function syncVoosRealizados(startDate, endDate) {
     state.globalLoading = true
     try {
-      const url = dateStr ? `/voos-realizados/sync?data=${dateStr}` : '/voos-realizados/sync'
+      let url = '/voos-realizados/sync'
+      if (startDate && endDate) {
+        if (startDate === endDate) {
+          url += `?data=${startDate}`
+        } else {
+          url += `?data_inicial=${startDate}&data_final=${endDate}`
+        }
+      } else if (startDate) {
+        url += `?data_inicial=${startDate}`
+      } else if (endDate) {
+        url += `?data_final=${endDate}`
+      }
       const r = await api.get(url)
       return { success: true, data: r.data?.data || r.data }
     } catch (e) {
