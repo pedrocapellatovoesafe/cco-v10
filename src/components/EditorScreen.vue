@@ -113,7 +113,8 @@ onMounted(async () => {
       store.fetchAlunos(),
       store.fetchModelos(),
       store.fetchMissoes(),
-      store.fetchStatuses()
+      store.fetchStatuses(),
+      store.fetchRestricoes()
     ])
     if (store.currentViewDate.value) {
       store.setCurrentViewDate(store.currentViewDate.value)
@@ -251,7 +252,88 @@ const getSimulatedAlerts = (proposedSlot, currentTempSch) => {
   return alerts
 }
 
-const findBestInvaForSlot = (slot, tempSch) => {
+const checkProposedRestrictions = (proposedSlot, restricts) => {
+  if (!restricts || restricts.length === 0) return []
+  
+  const getVal = (o, k) => {
+    if (!o) return null
+    return o[k] ?? o[k.replace(/[A-Z]/g, l => `_${l.toLowerCase()}`)] ?? o[k.toLowerCase()] ?? null
+  }
+  const getInvaId = (o) => getVal(o, 'invaId') || o.inva?.id || null
+  const getAlunoId = (o) => getVal(o, 'alunoId') || o.aluno?.id || null
+  const getMissaoId = (o) => getVal(o, 'missaoId') || o.missao?.id || null
+  const getAeId = (o) => getVal(o, 'aeronaveId') || o.aeronave?.id || null
+  const getModId = (o) => getVal(o, 'modeloAeronaveId') || o.modeloAeronave?.id || o.aeronave?.modeloAeronaveId || o.aeronave?.modeloAeronave?.id || null
+  
+  const slotAlunoId = proposedSlot.alunoId
+  const slotInvaId = proposedSlot.invaId
+  const slotMissaoId = proposedSlot.missaoId
+  const slotAeId = proposedSlot.aeronaveId
+  const slotModId = proposedSlot.modeloId
+
+  return restricts.filter(r => {
+    const isA = r.isAluno || r.is_aluno
+    const isI = r.isInvalida || r.is_invalida || r.isInva || r.is_inva
+    const isM = r.isMissao || r.is_missao
+    const isAe = r.isAeronave || r.is_aeronave
+    const isMod = r.isModelo || r.is_modelo
+
+    if (isA && String(slotAlunoId) !== String(getAlunoId(r))) return false
+    if (isI && String(slotInvaId) !== String(getInvaId(r))) return false
+    if (isM && String(slotMissaoId) !== String(getMissaoId(r))) return false
+    if (isAe && String(slotAeId) !== String(getAeId(r))) return false
+    if (isMod && String(slotModId) !== String(getModId(r))) return false
+
+    return true
+  })
+}
+
+const getInvaRealHours = (invaName, voosRealizados, startDate, endDate) => {
+  if (!invaName || !voosRealizados) return 0
+  const matchedVoos = voosRealizados.filter(voo => {
+    const vInst = (voo.invaRelation?.nome || voo.instrutor || '').toUpperCase().trim()
+    const iName = invaName.toUpperCase().trim()
+    const matchName = vInst && (iName.includes(vInst) || vInst.includes(iName))
+    if (!matchName) return false
+    
+    const vooDate = voo.data ? voo.data.substring(0, 10) : ''
+    if (startDate && vooDate < startDate) return false
+    if (endDate && vooDate > endDate) return false
+    
+    return true
+  })
+  const totalMins = matchedVoos.reduce((sum, voo) => sum + (parseFloat(voo.tempoTotalVoo) || 0), 0)
+  return totalMins / 60
+}
+
+const getInvaScheduledHours = (invaName, startDate, endDate) => {
+  if (!invaName) return 0
+  const technicalImpediments = ['REVISÃO', 'OPERAÇÕES', 'METEOROLOGIA', 'MANUTENÇÃO', 'INDISPONIBILIDADE', 'CANCELADO']
+  
+  const slots = store.state.parsedSlots || []
+  const matchedSlots = slots.filter(s => {
+    const matchInva = s.inva && s.inva.toUpperCase().trim() === invaName.toUpperCase().trim()
+    const hasStudent = !!s.aluno
+    const isNotImpediment = s.st && !technicalImpediments.includes(s.st.toUpperCase().trim())
+    
+    if (!matchInva || !hasStudent || !isNotImpediment) return false
+    
+    let slotDateStr = ''
+    if (s.data) {
+      const [d, m, y] = s.data.split('/')
+      slotDateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    }
+    
+    if (startDate && slotDateStr < startDate) return false
+    if (endDate && slotDateStr > endDate) return false
+    
+    return true
+  })
+  
+  return (matchedSlots.length * 90) / 60
+}
+
+const findBestInvaForSlot = (slot, tempSch, voosRealizados, startDate, endDate) => {
   // Use getInvasByBarra from store
   const eligibleInvas = store.getInvasByBarra(slot.barra)
   if (eligibleInvas.length === 0) return null
@@ -327,17 +409,67 @@ const findBestInvaForSlot = (slot, tempSch) => {
       }
     })
     
+    // 6. Prefer larger difference (planned - flown) and fewer flown hours
+    const flown = getInvaRealHours(inva.nome, voosRealizados, startDate, endDate)
+    const scheduled = getInvaScheduledHours(inva.nome, startDate, endDate)
+    const difference = scheduled - flown
+    
+    // Prefer larger difference (scheduled - flown) and fewer flown hours
+    score -= difference * 0.5
+    score += flown * 0.5
+    
+    // Check for server restrictions on the proposed allocation
+    const activeRestricts = checkProposedRestrictions(proposedSlot, store.state.RESTRICTS)
+    if (activeRestricts.length > 0) {
+      score += 10000 // Huge penalty for restrictions
+    }
+    const restrictAlerts = activeRestricts.map(r => `Restrição: ${r.nome || 'Impedimento Operacional'}`)
+    const allAlerts = [...alerts, ...restrictAlerts]
+    
     if (score < bestScore) {
       bestScore = score
       bestCandidate = inva
-      bestAlerts = alerts
+      bestAlerts = allAlerts
     }
   }
   
   return bestCandidate ? { inva: bestCandidate, alerts: bestAlerts, score: bestScore } : null
 }
 
-const handleAutoFill = () => {
+const handleAutoFill = async () => {
+  isLoading.value = true
+  let voosRealizados = []
+  try {
+    const results = await Promise.all([
+      store.fetchVoosRealizados(),
+      store.fetchRestricoes()
+    ])
+    voosRealizados = results[0] || []
+  } catch (err) {
+    console.error('Error fetching data for auto-fill:', err)
+  } finally {
+    isLoading.value = false
+  }
+  
+  // Calculate current month date window based on store.state.currentViewDate
+  let y, m
+  const dateVal = store.currentViewDate.value || store.currentViewDate
+  if (dateVal) {
+    const match = dateVal.match(/^(\d{4})-(\d{2})/)
+    if (match) {
+      y = parseInt(match[1], 10)
+      m = parseInt(match[2], 10)
+    }
+  }
+  if (!y || !m) {
+    const today = new Date()
+    y = today.getFullYear()
+    m = today.getMonth() + 1
+  }
+  const startDate = `${y}-${String(m).padStart(2, '0')}-01`
+  const lastDay = new Date(y, m, 0).getDate()
+  const endDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`
+
   const tempSch = store.state.SCH.map(s => ({ ...s }))
   const targetSlots = tempSch.filter(s => s.aluno && !s.invaId)
   
@@ -351,7 +483,7 @@ const handleAutoFill = () => {
   const suggestions = []
   
   for (const slot of sortedTargets) {
-    const result = findBestInvaForSlot(slot, tempSch)
+    const result = findBestInvaForSlot(slot, tempSch, voosRealizados, startDate, endDate)
     if (result && result.inva) {
       const indexInTemp = tempSch.findIndex(x => x.id === slot.id)
       tempSch[indexInTemp].inva = result.inva.nome
