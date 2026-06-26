@@ -269,14 +269,56 @@ const checkProposedRestrictions = (proposedSlot, restricts) => {
   const slotInvaId = proposedSlot.invaId
   const slotMissaoId = proposedSlot.missaoId
   const slotAeId = proposedSlot.aeronaveId
-  const slotModId = proposedSlot.modeloId
+
+  // Robustly extract model ID from proposedSlot
+  let slotModId = proposedSlot.modeloId || null
+  if (!slotModId && slotAeId && store?.state?.AERONAVES) {
+    const ae = store.state.AERONAVES.find(x => x.id === slotAeId)
+    if (ae) {
+      slotModId = ae.modeloAeronaveId || ae.modeloAeronave?.id || null
+    }
+  }
+  if (!slotModId && proposedSlot.barra && store?.state?.BARRAS) {
+    const bUpper = (proposedSlot.barra || '').toUpperCase().trim()
+    const barraObj = store.state.BARRAS.find(b => (b.nome || '').toUpperCase().trim() === bUpper)
+    if (barraObj) {
+      slotModId = barraObj.modeloAeronaveId || barraObj.modeloAeronave?.id || null
+    }
+  }
 
   return restricts.filter(r => {
-    const isA = r.isAluno || r.is_aluno
-    const isI = r.isInvalida || r.is_invalida || r.isInva || r.is_inva
-    const isM = r.isMissao || r.is_missao
-    const isAe = r.isAeronave || r.is_aeronave
-    const isMod = r.isModelo || r.is_modelo
+    const isA = !!(r.isAluno || r.is_aluno)
+    const isI = !!(r.isInvalida || r.is_invalida || r.isInva || r.is_inva)
+    const isAI = !!(r.isAlunoInva || r.is_aluno_inva)
+    const isM = !!(r.isMissao || r.is_missao)
+    const isAe = !!(r.isAeronave || r.is_aeronave)
+    const isMod = !!(r.isModelo || r.is_modelo)
+
+    // Special Case: Night Validation (After 17:00) for "Somente Diurna" Aircraft
+    const isNight = proposedSlot.hora && parseInt(proposedSlot.hora.split(':')[0], 10) >= 17
+    const isSomenteDiurna = (r.nome || '').toUpperCase().includes('SOMENTE DIURNA') || 
+                           (r.observacao || '').toUpperCase().includes('SOMENTE DIURNA')
+    
+    if (isNight && isSomenteDiurna && isAe) {
+      if (String(slotAeId) === String(getAeId(r))) return true
+    }
+
+    // Case A: Mandatory Pairing (isAlunoInva)
+    if (isAI) {
+      if (String(slotAlunoId) !== String(getAlunoId(r))) return false
+      if (String(slotInvaId) === String(getInvaId(r))) return false
+      return true
+    }
+
+    // Case B: Prohibitions (Entity matches ALL specified flags)
+    
+    // Special Case: INVA x Modelo (No Mission)
+    if (isI && isMod && !isM) {
+      if (String(slotInvaId) !== String(getInvaId(r))) return false
+      const rModId = String(getModId(r))
+      const slotAeModId = String(slotModId)
+      return (rModId === slotAeModId)
+    }
 
     if (isA && String(slotAlunoId) !== String(getAlunoId(r))) return false
     if (isI && String(slotInvaId) !== String(getInvaId(r))) return false
@@ -333,6 +375,78 @@ const getInvaScheduledHours = (invaName, startDate, endDate) => {
   return (matchedSlots.length * 90) / 60
 }
 
+const findAltInvaForSlot = (slotObj, excludedInvaId, tempSch, voosRealizados, startDate, endDate) => {
+  const eligibleInvas = store.getInvasByBarra(slotObj.barra)
+  let bestAlt = null
+  let bestScore = Infinity
+  
+  // Convert slot time to numeric hours
+  const hv = (hora) => {
+    const m = hora && hora.match(/^(\d+):(\d+)/)
+    return m ? +m[1] + +m[2] / 60 : 0
+  }
+
+  for (const inva of eligibleInvas) {
+    if (inva.id === excludedInvaId) continue
+    
+    // 1. Check availability
+    const dispState = store.availabilityState(inva.nome)
+    const isAvail = dispState === 'avail' || dispState === 'weekend-avail' || dispState === 'sobreaviso' || dispState === 'acionado'
+    if (!isAvail) continue
+    
+    const proposedSlot = { ...slotObj, inva: inva.nome, invaId: inva.id }
+    
+    // Check restrictions FIRST
+    const activeRestricts = checkProposedRestrictions(proposedSlot, store.state.RESTRICTS)
+    if (activeRestricts.length > 0) continue
+    
+    // 2. Check simultaneous conflict
+    const isAlreadyAllocatedSameHour = tempSch.some(other => 
+      other.invaId === inva.id && 
+      other.hora === slotObj.hora && 
+      other.id !== slotObj.id && 
+      other.aluno
+    )
+    if (isAlreadyAllocatedSameHour) continue
+    
+    // Evaluate warnings using the validation engine
+    const indexInTemp = tempSch.findIndex(x => x.id === slotObj.id)
+    if (indexInTemp === -1) continue
+    
+    const originalTempSlot = tempSch[indexInTemp]
+    tempSch[indexInTemp] = proposedSlot
+    
+    const alerts = getSimulatedAlerts(proposedSlot, tempSch)
+    
+    tempSch[indexInTemp] = originalTempSlot
+    
+    const hasCriticalAlert = alerts.some(alert => 
+      alert.includes('Limite de Jornada') || 
+      alert.includes('Conflito Simultâneo') || 
+      alert.includes('Indisponibilidade') ||
+      alert.includes('Troca de Aluno em Sequência')
+    )
+    if (hasCriticalAlert) continue
+    
+    let score = 0
+    const invaBase = inva.base?.nome || inva.base || ''
+    if (invaBase.toUpperCase() === (slotObj.base || '').toUpperCase()) {
+      score -= 2
+    }
+    
+    const flown = getInvaRealHours(inva.nome, voosRealizados, startDate, endDate)
+    const scheduled = getInvaScheduledHours(inva.nome, startDate, endDate)
+    score -= (scheduled - flown) * 0.5 + flown * 0.5
+    
+    if (score < bestScore) {
+      bestScore = score
+      bestAlt = inva
+    }
+  }
+  
+  return bestAlt ? { inva: bestAlt } : null
+}
+
 const findBestInvaForSlot = (slot, tempSch, voosRealizados, startDate, endDate) => {
   // Use getInvasByBarra from store
   const eligibleInvas = store.getInvasByBarra(slot.barra)
@@ -341,6 +455,8 @@ const findBestInvaForSlot = (slot, tempSch, voosRealizados, startDate, endDate) 
   let bestCandidate = null
   let bestScore = Infinity
   let bestAlerts = []
+  let bestResolutions = []
+  const restrictedOptions = []
   
   // Convert slot time to numeric hours
   const hv = (hora) => {
@@ -349,6 +465,39 @@ const findBestInvaForSlot = (slot, tempSch, voosRealizados, startDate, endDate) 
   }
   
   for (const inva of eligibleInvas) {
+    const proposedSlot = { ...slot, inva: inva.nome, invaId: inva.id }
+    
+    // Check for server restrictions on the proposed allocation FIRST
+    const activeRestricts = checkProposedRestrictions(proposedSlot, store.state.RESTRICTS)
+    if (activeRestricts.length > 0) {
+      // If the instructor has restrictions, they are not candidates.
+      // But if they are available, collect them for showing in alerts.
+      const dispState = store.availabilityState(inva.nome)
+      const isAvail = dispState === 'avail' || dispState === 'weekend-avail' || dispState === 'sobreaviso' || dispState === 'acionado'
+      if (isAvail) {
+        const cleanRestricts = activeRestricts.map(r => {
+          let name = r.nome || 'Impedimento Operacional'
+          // Clean preset tag like [Preset Padrão]
+          name = name.replace(/\[[^\]]+\]\s*/g, '')
+          // Clean instructor name prefix
+          const iName = inva.nome || ''
+          if (iName) {
+            const escName = iName.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')
+            name = name.replace(new RegExp(`^${escName}\\s*-\\s*`, 'i'), '')
+          }
+          // Clean "Restrição " prefix
+          name = name.replace(/^Restri[cç]ão\s+/i, '')
+          return name.trim()
+        })
+        
+        restrictedOptions.push({
+          invaName: inva.nome,
+          restrictions: cleanRestricts
+        })
+      }
+      continue // Skip this instructor entirely as a suggested option!
+    }
+
     let score = 0
     
     // 1. Check availability
@@ -389,17 +538,91 @@ const findBestInvaForSlot = (slot, tempSch, voosRealizados, startDate, endDate) 
     }
     
     // 5. Evaluate warnings using the validation engine
-    const proposedSlot = { ...slot, inva: inva.nome, invaId: inva.id }
     
     // Insert proposed slot into tempSch temporarily
     const indexInTemp = tempSch.findIndex(x => x.id === slot.id)
     const originalTempSlot = tempSch[indexInTemp]
     tempSch[indexInTemp] = proposedSlot
     
-    const alerts = getSimulatedAlerts(proposedSlot, tempSch)
+    let alerts = getSimulatedAlerts(proposedSlot, tempSch)
     
     // Restore
     tempSch[indexInTemp] = originalTempSlot
+    
+    // Resolution for "Troca de Aluno em Sequência"
+    const hasSwapAlert = alerts.some(a => a.includes('Troca de Aluno em Sequência'))
+    const localResolutions = []
+    
+    if (hasSwapAlert) {
+      const myTime = hv(slot.hora)
+      const technicalImpediments = ['REVISÃO', 'OPERAÇÕES', 'METEOROLOGIA', 'MANUTENÇÃO', 'INDISPONIBILIDADE', 'CANCELADO']
+      
+      const prevSlot = tempSch.find(s => s.invaId === inva.id && s.id !== slot.id && s.aluno && !technicalImpediments.includes(s.st) && Math.abs(myTime - hv(s.hora) - 2) < 0.1)
+      const nextSlot = tempSch.find(s => s.invaId === inva.id && s.id !== slot.id && s.aluno && !technicalImpediments.includes(s.st) && Math.abs(hv(s.hora) - myTime - 2) < 0.1)
+      
+      let resolvePrev = true
+      let resolveNext = true
+      const simulatedChanges = []
+      
+      if (prevSlot && prevSlot.aluno !== slot.aluno) {
+        const res = findAltInvaForSlot(prevSlot, inva.id, tempSch, voosRealizados, startDate, endDate)
+        if (res) {
+          simulatedChanges.push({ slot: prevSlot, originalInva: prevSlot.inva, originalInvaId: prevSlot.invaId, targetInva: res.inva })
+        } else {
+          resolvePrev = false
+        }
+      }
+      
+      if (nextSlot && nextSlot.aluno !== slot.aluno) {
+        const res = findAltInvaForSlot(nextSlot, inva.id, tempSch, voosRealizados, startDate, endDate)
+        if (res) {
+          simulatedChanges.push({ slot: nextSlot, originalInva: nextSlot.inva, originalInvaId: nextSlot.invaId, targetInva: res.inva })
+        } else {
+          resolveNext = false
+        }
+      }
+      
+      if ((!prevSlot || resolvePrev) && (!nextSlot || resolveNext) && simulatedChanges.length > 0) {
+        const tempOriginals = []
+        simulatedChanges.forEach(change => {
+          const idx = tempSch.findIndex(x => x.id === change.slot.id)
+          tempOriginals.push({ idx, slot: { ...tempSch[idx] } })
+          tempSch[idx].inva = change.targetInva.nome
+          tempSch[idx].invaId = change.targetInva.id
+        })
+        
+        tempSch[indexInTemp] = proposedSlot
+        const newAlerts = getSimulatedAlerts(proposedSlot, tempSch)
+        tempSch[indexInTemp] = originalTempSlot
+        
+        tempOriginals.forEach(orig => {
+          tempSch[orig.idx] = orig.slot
+        })
+        
+        const stillHasSwap = newAlerts.some(a => a.includes('Troca de Aluno em Sequência'))
+        if (!stillHasSwap) {
+          alerts = newAlerts
+          simulatedChanges.forEach(change => {
+            localResolutions.push({
+              slotId: change.slot.id,
+              barra: change.slot.barra,
+              hora: change.slot.hora,
+              aluno: change.slot.aluno,
+              ae: change.slot.ae,
+              originalInva: change.originalInva,
+              originalInvaId: change.originalInvaId,
+              suggestedInva: change.targetInva.nome,
+              suggestedInvaId: change.targetInva.id
+            })
+          })
+        }
+      }
+    }
+    
+    // If it STILL has a student swap alert, we MUST skip this instructor candidate
+    if (alerts.some(a => a.includes('Troca de Aluno em Sequência'))) {
+      continue
+    }
     
     alerts.forEach(alert => {
       if (alert.includes('Limite de Jornada') || alert.includes('Conflito Simultâneo') || alert.includes('Indisponibilidade')) {
@@ -431,22 +654,21 @@ const findBestInvaForSlot = (slot, tempSch, voosRealizados, startDate, endDate) 
       score -= 50
     }
     
-    // Check for server restrictions on the proposed allocation
-    const activeRestricts = checkProposedRestrictions(proposedSlot, store.state.RESTRICTS)
-    if (activeRestricts.length > 0) {
-      score += 10000 // Huge penalty for restrictions
-    }
-    const restrictAlerts = activeRestricts.map(r => `Restrição: ${r.nome || 'Impedimento Operacional'}`)
-    const allAlerts = [...alerts, ...restrictAlerts]
-    
     if (score < bestScore) {
       bestScore = score
       bestCandidate = inva
-      bestAlerts = allAlerts
+      bestAlerts = alerts
+      bestResolutions = localResolutions
     }
   }
   
-  return bestCandidate ? { inva: bestCandidate, alerts: bestAlerts, score: bestScore } : null
+  return {
+    inva: bestCandidate,
+    alerts: bestAlerts,
+    score: bestCandidate ? bestScore : Infinity,
+    restrictedOptions,
+    resolutions: bestCandidate ? bestResolutions : []
+  }
 }
 
 const handleAutoFill = async () => {
@@ -518,6 +740,46 @@ const handleAutoFill = async () => {
       tempSch[indexInTemp].inva = result.inva.nome
       tempSch[indexInTemp].invaId = result.inva.id
       
+      // Apply resolutions if found
+      if (result.resolutions && result.resolutions.length > 0) {
+        result.resolutions.forEach(res => {
+          const resIdx = tempSch.findIndex(x => x.id === res.slotId)
+          if (resIdx !== -1) {
+            tempSch[resIdx].inva = res.suggestedInva
+            tempSch[resIdx].invaId = res.suggestedInvaId
+            
+            // Add resolution proposal to suggestion list if not already present
+            if (!suggestions.some(s => s.slotId === res.slotId)) {
+              suggestions.push({
+                slotId: res.slotId,
+                barra: res.barra,
+                hora: res.hora,
+                aluno: res.aluno,
+                ae: res.ae,
+                originalInva: res.originalInva || '—',
+                suggestedInva: res.suggestedInva,
+                suggestedInvaId: res.suggestedInvaId,
+                alerts: ['Resolução: Alterado instrutor para evitar conflito de Troca de Aluno'],
+                restrictedOptions: []
+              })
+            }
+          }
+        })
+      }
+      
+      suggestions.push({
+        slotId: slot.id,
+        barra: slot.barra,
+        hora: slot.hora,
+        aluno: slot.aluno,
+        ae: slot.ae,
+        originalInva: slot.originalInva || slot.inva || '—',
+        suggestedInva: result.inva.nome,
+        suggestedInvaId: result.inva.id,
+        alerts: result.alerts,
+        restrictedOptions: result.restrictedOptions || []
+      })
+    } else {
       suggestions.push({
         slotId: slot.id,
         barra: slot.barra,
@@ -525,9 +787,10 @@ const handleAutoFill = async () => {
         aluno: slot.aluno,
         ae: slot.ae,
         originalInva: slot.inva || '—',
-        suggestedInva: result.inva.nome,
-        suggestedInvaId: result.inva.id,
-        alerts: result.alerts
+        suggestedInva: 'Nenhum disponível',
+        suggestedInvaId: null,
+        alerts: [],
+        restrictedOptions: result ? (result.restrictedOptions || []) : []
       })
     }
   }

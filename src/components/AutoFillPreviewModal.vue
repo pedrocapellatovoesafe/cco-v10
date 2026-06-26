@@ -40,24 +40,31 @@
               <tr v-for="sugg in suggestions" :key="sugg.slotId" class="preview-row">
                 <td style="text-align: center;">
                   <input 
+                    v-if="sugg.suggestedInvaId"
                     type="checkbox" 
                     :value="sugg.slotId" 
                     v-model="selectedIds" 
                     class="preview-checkbox"
                   />
+                  <span v-else title="Nenhum instrutor elegível sem restrições">⚠️</span>
                 </td>
                 <td class="font-bold">{{ sugg.hora }}</td>
                 <td>{{ sugg.barra }}</td>
                 <td class="font-semibold">{{ sugg.ae || '—' }}</td>
                 <td class="font-semibold text-primary">{{ sugg.aluno }}</td>
-                <td class="font-bold text-success">{{ sugg.suggestedInva }}</td>
+                <td class="font-bold" :class="sugg.suggestedInvaId ? 'text-success' : 'text-danger'">
+                  {{ sugg.suggestedInva }}
+                </td>
                 <td>
-                  <div v-if="sugg.alerts.length === 0" class="badge-no-alerts">
+                  <div v-if="sugg.alerts.length === 0 && (!sugg.restrictedOptions || sugg.restrictedOptions.length === 0)" class="badge-no-alerts">
                     Sem alertas
                   </div>
                   <div v-else class="alerts-list">
                     <span v-for="(alert, index) in sugg.alerts" :key="index" class="alert-item">
                       ⚠️ {{ alert }}
+                    </span>
+                    <span v-for="(group, gIdx) in getGroupedRestrictedOptions(sugg.restrictedOptions)" :key="'g-'+gIdx" class="alert-item text-restriction-info">
+                      ℹ️ Restritos para {{ group.restriction }}: {{ group.invasList }}
                     </span>
                   </div>
                 </td>
@@ -98,7 +105,7 @@ watch(
   () => props.isOpen,
   (val) => {
     if (val && props.suggestions) {
-      selectedIds.value = props.suggestions.map(s => s.slotId)
+      selectedIds.value = props.suggestions.filter(s => s.suggestedInvaId).map(s => s.slotId)
     }
   },
   { immediate: true }
@@ -108,7 +115,7 @@ watch(
   () => props.suggestions,
   (newSuggestions) => {
     if (newSuggestions) {
-      selectedIds.value = newSuggestions.map(s => s.slotId)
+      selectedIds.value = newSuggestions.filter(s => s.suggestedInvaId).map(s => s.slotId)
     }
   },
   { immediate: true }
@@ -116,19 +123,38 @@ watch(
 
 const toggleSelectAll = (e) => {
   if (e.target.checked) {
-    selectedIds.value = props.suggestions.map(s => s.slotId)
+    selectedIds.value = props.suggestions.filter(s => s.suggestedInvaId).map(s => s.slotId)
   } else {
     selectedIds.value = []
   }
 }
 
 const isAllSelected = computed(() => {
-  return props.suggestions && props.suggestions.length > 0 && selectedIds.value.length === props.suggestions.length
+  const fillable = props.suggestions ? props.suggestions.filter(s => s.suggestedInvaId) : []
+  return fillable.length > 0 && selectedIds.value.length === fillable.length
 })
 
 const handleConfirm = () => {
   const approved = props.suggestions.filter(s => selectedIds.value.includes(s.slotId))
   emit('confirm', approved)
+}
+
+const getGroupedRestrictedOptions = (restrictedOptions) => {
+  if (!restrictedOptions || restrictedOptions.length === 0) return []
+  
+  const groups = {}
+  restrictedOptions.forEach(opt => {
+    const key = opt.restrictions.join(', ') || 'Impedimento Operacional'
+    if (!groups[key]) {
+      groups[key] = []
+    }
+    groups[key].push(opt.invaName)
+  })
+  
+  return Object.entries(groups).map(([restriction, invas]) => ({
+    restriction,
+    invasList: invas.join(', ')
+  }))
 }
 </script>
 
@@ -218,6 +244,10 @@ const handleConfirm = () => {
 .alert-item {
   font-size: 11px; color: #b45309; font-weight: 600;
   line-height: 1.3;
+}
+.text-restriction-info {
+  color: #475569;
+  font-weight: 500;
 }
 
 .modal-footer { 
