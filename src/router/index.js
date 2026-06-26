@@ -12,6 +12,7 @@ const ConfigBarras = () => import('../components/ConfigBarras.vue')
 const ConfigCursos = () => import('../components/ConfigCursos.vue')
 const ConfigUsuarios = () => import('../components/ConfigUsuarios.vue')
 const UnauthorizedScreen = () => import('../components/UnauthorizedScreen.vue')
+const RelatoriosScreen = () => import('../components/RelatoriosScreen.vue')
 
 const SESSION_KEY = 'cco_auth'
 const TOKEN_KEY = 'cco_token'
@@ -87,6 +88,12 @@ const routes = [
     path: '/configuracoes/usuarios',
     name: 'ConfigUsuarios',
     component: ConfigUsuarios,
+    meta: { requiresAuth: true }
+  },
+  {
+    path: '/configuracoes/relatorios',
+    name: 'Relatorios',
+    component: RelatoriosScreen,
     meta: { requiresAuth: true }
   },
   {

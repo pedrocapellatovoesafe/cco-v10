@@ -79,6 +79,13 @@ const configItems = [
     description: 'Controle de acesso e permissões do sistema.',
     icon: '👥',
     route: '/configuracoes/usuarios'
+  },
+  {
+    id: 'relatorios',
+    title: 'Relatórios',
+    description: 'Consulte as horas de voo previstas e sincronize os voos do Cavok.',
+    icon: '📈',
+    route: '/configuracoes/relatorios'
   }
 ]
 

@@ -413,6 +413,30 @@ export function useCcoCatalog({ state, refs }) {
     }
   }
 
+  async function fetchVoosRealizados(dateStr) {
+    try {
+      const url = dateStr ? `/voos-realizados?data=${dateStr}` : '/voos-realizados'
+      const r = await api.get(url)
+      return r.data?.data || r.data || []
+    } catch (e) {
+      console.error('Error fetching voos-realizados:', e)
+      return []
+    }
+  }
+
+  async function syncVoosRealizados(dateStr) {
+    state.globalLoading = true
+    try {
+      const url = dateStr ? `/voos-realizados/sync?data=${dateStr}` : '/voos-realizados/sync'
+      const r = await api.get(url)
+      return { success: true, data: r.data?.data || r.data }
+    } catch (e) {
+      return { success: false, error: e.response?.data?.message || e.message }
+    } finally {
+      state.globalLoading = false
+    }
+  }
+
   return {
     fetchInvas, saveInva, updateInva, deleteInva,
     fetchBars, fetchBarDetail, saveBarra, updateBarra, deleteBarra,
@@ -423,6 +447,7 @@ export function useCcoCatalog({ state, refs }) {
     fetchAeronaves, updateAeronave,
     fetchBases, fetchSituacoes, fetchStatuses,
     saveAvailability, updateAvailability,
-    saveInvaBarra, deleteInvaBarra, fetchInvaBarras
+    saveInvaBarra, deleteInvaBarra, fetchInvaBarras,
+    fetchVoosRealizados, syncVoosRealizados
   }
 }
