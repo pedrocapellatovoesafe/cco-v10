@@ -622,6 +622,7 @@ export function useCcoStore() {
     },
     deleteSlot: async (id) => { state.globalLoading = true; try { await api.delete(`/slots/${id}`); await fetchSlots(); gerarEditor() } finally { state.globalLoading = false } },
     saveSlot,
+    updateSlot,
     swapSlots: async (idA, idB) => {
       const a = SCH.value.find(x => x.id === idA); const b = SCH.value.find(x => x.id === idB)
       if (!a || !b) return

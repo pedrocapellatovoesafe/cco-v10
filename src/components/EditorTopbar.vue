@@ -119,7 +119,10 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 .btn-back { background: var(--primary); color: #fff; }
+.btn-autofill-action { background: #16a34a; color: #fff; }
+.btn-autofill-action:hover { background: #15803d; }
 .btn-logout-editor { background: #c0392b; color: #fff; }
+.text-success { color: #16a34a !important; }
 
 /* Responsive Logic */
 .mobile-only { display: none; }

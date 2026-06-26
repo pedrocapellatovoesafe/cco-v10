@@ -44,9 +44,12 @@
     </div>
 
     <!-- Tabs Base -->
-    <div class="tabs">
-      <button :class="['tab-btn', store.state.activeTab === 'SJK' ? 't-sjk' : '']" @click="store.state.activeTab = 'SJK'">✈ SJK</button>
-      <button :class="['tab-btn', store.state.activeTab === 'CPQ' ? 't-cpq' : '']" @click="store.state.activeTab = 'CPQ'">✈ CPQ</button>
+    <div class="tabs-container">
+      <div class="tabs">
+        <button :class="['tab-btn', store.state.activeTab === 'SJK' ? 't-sjk' : '']" @click="store.state.activeTab = 'SJK'">✈ SJK</button>
+        <button :class="['tab-btn', store.state.activeTab === 'CPQ' ? 't-cpq' : '']" @click="store.state.activeTab = 'CPQ'">✈ CPQ</button>
+      </div>
+      <button class="btn-tab-autofill" @click="$emit('auto-fill')">✨ Preencher Escala</button>
     </div>
 
     <!-- Editor Grid -->
@@ -153,7 +156,8 @@ const emit = defineEmits([
   'update-aeronave',
   'update-status',
   'update-checked',
-  'swap-slots'
+  'swap-slots',
+  'auto-fill'
 ])
 
 function onDragStart(id) {
@@ -229,7 +233,31 @@ const activeAeronaves = computed(() => {
 .date-btn:hover { border-color: var(--primary); color: var(--primary); }
 .date-btn.active { background: var(--primary); color: var(--white); border-color: var(--primary); }
 
-.tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.tabs-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.tabs { display: flex; gap: 6px; }
+.btn-tab-autofill {
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 10px 22px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: var(--font-title);
+}
+.btn-tab-autofill:hover {
+  background: #15803d;
+  transform: translateY(-1px);
+}
 .tab-btn { padding: 10px 22px; font-size: 13px; font-weight: 700; border: none; border-radius: 999px; background: #d4d4d4; cursor: pointer; font-family: var(--font-title); }
 .tab-btn.t-sjk { background: var(--primary); color: var(--white); }
 .tab-btn.t-cpq { background: #1d3a52; color: var(--white); }

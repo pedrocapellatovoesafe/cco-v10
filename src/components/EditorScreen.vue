@@ -24,6 +24,7 @@
         @update-status="onStatusChange"
         @update-checked="onCheckedChange"
         @swap-slots="handleSwapSlots"
+        @auto-fill="handleAutoFill"
       />
 
       <div class="footer">
@@ -51,6 +52,13 @@
         @save="handleSaveFlight"
       />
 
+      <AutoFillPreviewModal
+        :is-open="isAutoFillModalOpen"
+        :suggestions="autoFillSuggestions"
+        @close="isAutoFillModalOpen = false"
+        @confirm="confirmAutoFill"
+      />
+
       <!-- Toast Notifications -->
       <div v-if="toast.show" :class="['toast-notification', `toast-${toast.type}`]">
         <span class="toast-icon">{{ toast.type === 'success' ? '✅' : '⚠️' }}</span>
@@ -69,6 +77,7 @@ import SlotGrid from './SlotGrid.vue'
 import SlotDetailModal from './SlotDetailModal.vue'
 import SlotDeleteModal from './SlotDeleteModal.vue'
 import FlightCreateModal from './FlightCreateModal.vue'
+import AutoFillPreviewModal from './AutoFillPreviewModal.vue'
 
 const router = useRouter()
 const store = inject('store')
@@ -227,6 +236,182 @@ async function handleSwapSlots(id1, id2) {
     showToast('Troca realizada com sucesso!', 'success')
   } catch (e) {
     showToast('Erro ao realizar troca.', 'danger')
+  }
+}
+
+// Auto-fill simulation and heuristic matching logic
+const isAutoFillModalOpen = ref(false)
+const autoFillSuggestions = ref([])
+
+const getSimulatedAlerts = (proposedSlot, currentTempSch) => {
+  const originalValue = store.SCH.value
+  store.SCH.value = currentTempSch
+  const alerts = store.getSlotAlerts(proposedSlot)
+  store.SCH.value = originalValue
+  return alerts
+}
+
+const findBestInvaForSlot = (slot, tempSch) => {
+  // Use getInvasByBarra from store
+  const eligibleInvas = store.getInvasByBarra(slot.barra)
+  if (eligibleInvas.length === 0) return null
+  
+  let bestCandidate = null
+  let bestScore = Infinity
+  let bestAlerts = []
+  
+  // Convert slot time to numeric hours
+  const hv = (hora) => {
+    const m = hora && hora.match(/^(\d+):(\d+)/)
+    return m ? +m[1] + +m[2] / 60 : 0
+  }
+  
+  for (const inva of eligibleInvas) {
+    let score = 0
+    
+    // 1. Check availability
+    const dispState = store.availabilityState(inva.nome)
+    const isAvail = dispState === 'avail' || dispState === 'weekend-avail' || dispState === 'sobreaviso'
+    if (!isAvail) {
+      score += 1000 // High penalty for unavailability
+    }
+    
+    // 2. Check simultaneous conflict
+    const isAlreadyAllocatedSameHour = tempSch.some(other => 
+      other.invaId === inva.id && 
+      other.hora === slot.hora && 
+      other.id !== slot.id && 
+      other.aluno
+    )
+    if (isAlreadyAllocatedSameHour) {
+      score += 2000 // Critical conflict: simultaneous allocation
+    }
+    
+    // 3. Base matching bonus
+    const invaBase = inva.base?.nome || inva.base || ''
+    const slotBase = slot.base || ''
+    if (invaBase.toUpperCase() === slotBase.toUpperCase()) {
+      score -= 2
+    }
+    
+    // 4. Consecutive instructor bonus (keep instructor with student or aircraft)
+    const timeVal = hv(slot.hora)
+    const hasConsecutiveSession = tempSch.some(other => {
+      if (other.invaId !== inva.id) return false
+      const otherTime = hv(other.hora)
+      const isAdjacent = Math.abs(timeVal - otherTime - 2) < 0.1 || Math.abs(otherTime - timeVal - 2) < 0.1
+      return isAdjacent && (other.aluno === slot.aluno || other.ae === slot.ae)
+    })
+    if (hasConsecutiveSession) {
+      score -= 10
+    }
+    
+    // 5. Evaluate warnings using the validation engine
+    const proposedSlot = { ...slot, inva: inva.nome, invaId: inva.id }
+    
+    // Insert proposed slot into tempSch temporarily
+    const indexInTemp = tempSch.findIndex(x => x.id === slot.id)
+    const originalTempSlot = tempSch[indexInTemp]
+    tempSch[indexInTemp] = proposedSlot
+    
+    const alerts = getSimulatedAlerts(proposedSlot, tempSch)
+    
+    // Restore
+    tempSch[indexInTemp] = originalTempSlot
+    
+    alerts.forEach(alert => {
+      if (alert.includes('Limite de Jornada') || alert.includes('Conflito Simultâneo') || alert.includes('Indisponibilidade')) {
+        score += 500
+      } else {
+        score += 10
+      }
+    })
+    
+    if (score < bestScore) {
+      bestScore = score
+      bestCandidate = inva
+      bestAlerts = alerts
+    }
+  }
+  
+  return bestCandidate ? { inva: bestCandidate, alerts: bestAlerts, score: bestScore } : null
+}
+
+const handleAutoFill = () => {
+  const tempSch = store.state.SCH.map(s => ({ ...s }))
+  const targetSlots = tempSch.filter(s => s.aluno && !s.invaId)
+  
+  // Sort chronologically by hour
+  const sortedTargets = [...targetSlots].sort((a, b) => {
+    const timeA = a.hora.split(':').map(Number)
+    const timeB = b.hora.split(':').map(Number)
+    return (timeA[0] * 60 + timeA[1]) - (timeB[0] * 60 + timeB[1])
+  })
+  
+  const suggestions = []
+  
+  for (const slot of sortedTargets) {
+    const result = findBestInvaForSlot(slot, tempSch)
+    if (result && result.inva) {
+      const indexInTemp = tempSch.findIndex(x => x.id === slot.id)
+      tempSch[indexInTemp].inva = result.inva.nome
+      tempSch[indexInTemp].invaId = result.inva.id
+      
+      suggestions.push({
+        slotId: slot.id,
+        barra: slot.barra,
+        hora: slot.hora,
+        aluno: slot.aluno,
+        ae: slot.ae,
+        originalInva: slot.inva || '—',
+        suggestedInva: result.inva.nome,
+        suggestedInvaId: result.inva.id,
+        alerts: result.alerts
+      })
+    }
+  }
+  
+  autoFillSuggestions.value = suggestions
+  isAutoFillModalOpen.value = true
+}
+
+const confirmAutoFill = async (approvedSuggestions) => {
+  isAutoFillModalOpen.value = false
+  isLoading.value = true
+  try {
+    const promises = []
+    const targets = approvedSuggestions || autoFillSuggestions.value
+    for (const sugg of targets) {
+      const slotObj = store.state.SCH.find(s => s.id === sugg.slotId)
+      if (slotObj) {
+        slotObj.inva = sugg.suggestedInva
+        slotObj.invaId = sugg.suggestedInvaId
+        
+        // Update status to 'AGUARDANDO CONFIRMAÇÃO'
+        const statusName = 'AGUARDANDO CONFIRMAÇÃO'
+        const statusObj = store.state.STATUSES.find(x => x.nome && x.nome.toUpperCase() === statusName)
+        if (statusObj) {
+          slotObj.st = statusName
+          slotObj.statusSlotId = statusObj.id
+        }
+        
+        promises.push(store.updateSlot(slotObj, false))
+      }
+    }
+    
+    if (promises.length > 0) {
+      await Promise.all(promises)
+      await store.fetchSlots()
+      store.generateEditor()
+      showToast('Escala preenchida com sucesso!', 'success')
+    } else {
+      showToast('Nenhuma alocação pendente de atualização.', 'info')
+    }
+  } catch (err) {
+    showToast('Erro ao atualizar escala automaticamente.', 'danger')
+  } finally {
+    isLoading.value = false
+    store.state.globalLoading = false
   }
 }
 
