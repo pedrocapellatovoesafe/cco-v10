@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 
 const LoginScreen = () => import('../components/LoginScreen.vue')
 const UploadScreen = () => import('../components/UploadScreen.vue')
@@ -108,7 +108,7 @@ const routes = [
 ]
 
 const router = createRouter({
-  history: createWebHistory('/'),
+  history: createWebHashHistory(),
   routes
 })
 
